@@ -1,0 +1,102 @@
+/* ==========================================================================
+   404 — "העלה הזה הלך לאיבוד". A lonely leaf drifts across the screen, lands,
+   and the wind (or your cursor / finger) lifts it again. Reduced motion: it rests.
+   ========================================================================== */
+.nf { overflow-x: clip; }
+.nf__stage {
+  --ground: clamp(84px, 15svh, 150px);
+  /* leaf colour follows the Israeli season (set on <html> by notfound.ts) */
+  --leaf-fill: color-mix(in srgb, var(--olive) 52%, var(--bark));
+  --leaf-vein: rgb(var(--cream-rgb) / 0.7);
+  position: relative;
+  min-height: 100svh;
+  display: grid;
+  align-items: center;
+  padding-block: calc(var(--header-h) + var(--safe-top) + 32px) calc(var(--ground) + 48px);
+  overflow: hidden;
+  isolation: isolate;
+  touch-action: pan-y;
+}
+html[data-season='spring'] .nf__stage { --leaf-fill: var(--sage); --leaf-vein: var(--olive-deep); }
+html[data-season='summer'] .nf__stage { --leaf-fill: var(--olive); --leaf-vein: rgb(var(--cream-rgb) / 0.75); }
+html[data-season='winter'] .nf__stage { --leaf-fill: var(--olive-deep); --leaf-vein: var(--sage); }
+
+.nf__copy {
+  position: relative;
+  z-index: 1;
+  width: min(100% - 2 * var(--gutter), var(--maxw));
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.nf__eyebrow { gap: 10px; }
+.nf__code { font-family: var(--font-display); font-size: 17px; letter-spacing: 0.06em; }
+.nf__title {
+  margin-block-start: clamp(16px, 3vh, 28px);
+  font-size: clamp(64px, 10.6vw, 172px);
+  font-weight: 300;
+  line-height: 0.92;
+  letter-spacing: -0.025em;
+  max-width: 7.5ch;
+  color: var(--bark);
+}
+.nf__text { margin-block-start: clamp(18px, 3vh, 30px); max-width: 34ch; font-size: clamp(18px, 1.4vw, 21px); color: var(--ink-soft); }
+.nf__actions { display: flex; flex-wrap: wrap; gap: 12px; margin-block-start: clamp(26px, 4vh, 40px); }
+.nf__links { display: flex; flex-wrap: wrap; gap: 6px 26px; margin: 26px 0 0; padding: 0; list-style: none; font-size: var(--fs-small); }
+.nf__links a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ink-soft); text-decoration: underline; text-decoration-color: var(--line-strong); transition: color var(--t-micro); }
+.nf__links a:hover { color: var(--ink); text-decoration-color: currentColor; }
+
+/* ground */
+.nf__ground { position: absolute; inset-inline: 0; inset-block-end: var(--mbar-space, 0px); width: 100%; height: var(--ground); z-index: 0; }
+.nf__soil { fill: var(--sand); }
+.nf__edge { fill: none; stroke: var(--bark); stroke-width: 1.5; stroke-linecap: round; vector-effect: non-scaling-stroke; opacity: 0.5; }
+.nf__grass { position: absolute; inset-inline: 0; inset-block-end: calc(var(--mbar-space, 0px) + var(--ground) * 0.48 - 4px); width: 100%; height: 56px; z-index: 0; overflow: visible; }
+.nf__grass path { fill: none; stroke: var(--olive); stroke-width: 1.5; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+
+/* the leaf: positioned by transform from the top-left of the stage */
+.nf__leaf {
+  position: absolute;
+  inset-block-start: 0;
+  left: 0;
+  z-index: 2;
+  width: clamp(48px, 4.6vw, 70px);
+  aspect-ratio: 1 / 2;
+  pointer-events: none;
+  perspective: 600px;
+  will-change: transform;
+}
+.nf__leaf-turn { width: 100%; height: 100%; transform-style: preserve-3d; will-change: transform; transform-origin: 50% 50%; }
+.nf__leaf-svg { width: 100%; height: 100%; overflow: visible; }
+.nf__blade { fill: var(--leaf-fill); stroke: color-mix(in srgb, var(--leaf-fill) 70%, var(--soil)); stroke-width: 1.5; vector-effect: non-scaling-stroke; transition: fill 1.2s var(--ease-out); }
+.nf__vein, .nf__stem { fill: none; stroke-width: 1.2; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.nf__vein { stroke: var(--leaf-vein); }
+.nf__stem { stroke: color-mix(in srgb, var(--leaf-fill) 60%, var(--soil)); stroke-width: 1.5; }
+
+/* resting leaf before JS (no-JS fallback): lying on the ground; JS positions it from then on */
+.nf__leaf { transform: translate(var(--rest-x, 20vw), calc(100svh - var(--ground) * 0.55)) rotate(-74deg); }
+
+.nf__hint {
+  position: absolute;
+  z-index: 1;
+  inset-block-end: calc(var(--ground) * 0.36);
+  inset-inline-end: var(--gutter);
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--ink-soft);
+  opacity: 0;
+  transition: opacity 1.2s var(--ease-out);
+}
+.nf__stage[data-hint] .nf__hint { opacity: 1; }
+
+@media (max-width: 768px) {
+  .nf__stage { align-items: start; padding-block: calc(var(--header-h) + var(--safe-top) + 40px) calc(var(--ground) + var(--mbar-space, 0px) + 24px); --ground: 96px; }
+  .nf__title { font-size: clamp(60px, 18vw, 84px); max-width: 6ch; }
+  .nf__text { font-size: 18px; }
+  .nf__actions { display: grid; grid-template-columns: 1fr; width: 100%; }
+  .nf__actions .btn { width: 100%; }
+  .nf__links { gap: 0 22px; }
+  .nf__hint { inset-inline-end: auto; inset-inline-start: var(--gutter); inset-block-end: calc(var(--ground) * 0.32); }
+  .nf__leaf { --rest-x: 70vw; }
+}
+@media (hover: none) { .nf__hint { display: none; } }

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- היער שלנו — all public routes (canonical URLs with the trailing slash the host serves). -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://ourforest.kikkey.com/</loc><lastmod>2026-11-12</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://ourforest.kikkey.com/plant/</loc><lastmod>2026-11-12</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://ourforest.kikkey.com/business/</loc><lastmod>2026-11-12</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://ourforest.kikkey.com/tree/0427/</loc><lastmod>2026-11-12</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ourforest.kikkey.com/legal/terms/</loc><lastmod>2026-11-12</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://ourforest.kikkey.com/legal/privacy/</loc><lastmod>2026-11-12</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://ourforest.kikkey.com/legal/accessibility/</loc><lastmod>2026-11-12</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://ourforest.kikkey.com/credits/</loc><lastmod>2026-11-12</lastmod><changefreq>yearly</changefreq><priority>0.2</priority></url>
+</urlset>

@@ -1,0 +1,216 @@
+/* ==========================================================================
+   Site footer (every page) — "בואו לנטוע" grows out of the soil.
+   Layers (one stacking context, isolation): top links (cream) → the field
+   (seed box, giant letters, sprout, the dog) → the soil band (z 2) with the
+   legal row. The field never creates a stacking context, so a dragged seed
+   (z 4) passes over the soil and a planted one (z 1) sinks behind it.
+   ========================================================================== */
+.site-footer {
+  position: relative;
+  isolation: isolate;
+  z-index: 1;
+  color: var(--ink);
+  padding-block-start: clamp(80px, 10vw, 150px);
+  overflow-x: clip;
+}
+
+/* ---------------------------------------------------------------- top: brand, links, reach */
+.site-footer__top {
+  width: min(100% - 2 * var(--gutter), var(--maxw));
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: start;
+  gap: 40px clamp(40px, 6vw, 112px);
+  padding-block-end: clamp(48px, 6vw, 96px);
+}
+.site-footer__logo {
+  display: inline-block;
+  font-family: var(--font-display); font-weight: 400;
+  font-size: clamp(34px, 3vw, 46px); line-height: 1;
+  color: var(--bark); text-decoration: none;
+}
+.site-footer__tagline { margin-block-start: 14px; font-size: 16px; line-height: 1.5; color: var(--ink-soft); max-width: 22ch; }
+.site-footer__nav { display: grid; grid-template-columns: repeat(2, max-content); gap: 8px clamp(32px, 4.6vw, 80px); }
+.site-footer__links { list-style: none; margin: 0; padding: 0; display: grid; align-content: start; gap: 2px; }
+.site-footer__links a {
+  display: inline-flex; align-items: center; min-height: 40px;
+  font-size: 17px; color: var(--ink); text-decoration: none;
+  background: linear-gradient(currentColor, currentColor) no-repeat right 78% / 0% 1px;
+  transition: background-size var(--t-ui) var(--ease-out);
+}
+.site-footer__links a:hover { background-size: 100% 1px; }
+.site-footer__reach { display: grid; justify-items: start; gap: 16px; }
+.site-footer__place { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; color: var(--ink-soft); }
+.site-footer__place .icon { width: 19px; height: 19px; color: var(--olive); }
+
+/* ---------------------------------------------------------------- the field */
+.site-footer__field {
+  position: relative;
+  display: flow-root; /* the letters' negative bottom margin must not escape: field bottom = the soil line */
+  width: min(100% - 2 * var(--gutter), 1800px);
+  margin-inline: auto;
+  color: var(--bark); /* the dog takes this colour */
+}
+.site-footer__seedbox {
+  position: relative;
+  left: var(--gap-shift, 0px); /* physical: centred over the gap between the two words (set by JS) */
+  display: grid;
+  justify-items: center;
+  align-items: end;
+  min-height: 84px;
+  margin-block-end: clamp(10px, 1.6vw, 26px);
+}
+.site-footer__seedbox > * { grid-area: 1 / 1; }
+.site-footer__ask { display: flex; align-items: center; gap: 10px; }
+.site-footer__ask[hidden] { display: none; }
+.site-footer__seed {
+  position: relative;
+  z-index: 4;
+  display: grid; place-items: center;
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  color: var(--bark);
+  touch-action: none;
+  cursor: grab;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none; user-select: none;
+}
+.site-footer__seed svg {
+  width: 34px; height: 34px;
+  fill: rgb(var(--cream-rgb) / 0.9); stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;
+  transform: rotate(-24deg);
+  transition: transform var(--t-ui) var(--ease-out);
+}
+.site-footer__seed::before {
+  /* a soft ring that invites a touch */
+  content: ''; position: absolute; inset: 6px;
+  border: 1px dashed var(--line-strong); border-radius: 50%;
+  transition: opacity var(--t-ui), transform var(--t-appear) var(--ease-out);
+}
+.site-footer__seed:hover svg { transform: rotate(-8deg) scale(1.06); }
+.site-footer__seed:hover::before { transform: scale(1.12) rotate(30deg); }
+.site-footer__seed.is-dragging { cursor: grabbing; }
+.site-footer__seed.is-dragging::before, .site-footer__seed.is-falling::before { opacity: 0; }
+.site-footer__seed.is-falling { z-index: 1; pointer-events: none; }
+html.motion .site-footer__seed:not(.is-dragging):not(.is-falling) svg { animation: sf-bob 3.4s var(--ease-inout) infinite alternate; }
+@keyframes sf-bob { from { transform: translateY(-3px) rotate(-30deg); } to { transform: translateY(3px) rotate(-16deg); } }
+.site-footer__hint { font-size: 15px; color: var(--ink-soft); white-space: nowrap; transition: opacity var(--t-ui) var(--ease-out); }
+.site-footer--dragging .site-footer__hint { opacity: 0; }
+
+.site-footer__cta { position: relative; z-index: 3; }
+/* while the seed waits: the button is not there yet (no-JS / reduced motion users get it after one press) */
+.site-footer--seed .site-footer__cta { visibility: hidden; opacity: 0; pointer-events: none; }
+.site-footer--planted .site-footer__cta { visibility: visible; }
+
+.site-footer__big {
+  position: relative;
+  margin: 0;
+  margin-block-end: calc(-1 * var(--big-desc, 0.24em) - var(--big-sink, 5px));
+  display: flex; justify-content: center; flex-wrap: nowrap;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--big-fs, 17vw);
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--olive);
+  white-space: nowrap;
+  text-wrap: nowrap;
+  -webkit-user-select: none; user-select: none;
+}
+.site-footer__big > * { flex: none; } /* never squeeze the letters: the size is fitted in JS */
+.site-footer__ch {
+  display: inline-block;
+  transform-origin: 50% calc(100% - var(--big-desc, 0.24em));
+  will-change: transform;
+}
+.site-footer__ch-in { display: inline-block; }
+.site-footer__sp { display: inline-block; width: 0.24em; }
+
+/* the sprout (built by JS at the planting spot) */
+.site-footer__sprout {
+  position: absolute; z-index: 1;
+  bottom: 0;
+  width: var(--sprout-w, 80px); height: var(--sprout-h, 122px);
+  overflow: visible;
+  pointer-events: none;
+  fill: none; stroke-linecap: round; stroke-linejoin: round;
+}
+.site-footer__sprout .halo { stroke: var(--cream); stroke-width: 7; }
+.site-footer__sprout .line { stroke: var(--olive-deep); stroke-width: 1.7; }
+.site-footer__sprout .leaf { fill: var(--cream); }
+
+/* ---------------------------------------------------------------- the soil */
+.site-footer__soil {
+  position: relative;
+  z-index: 2;
+  background: var(--soil);
+  color: rgb(var(--cream-rgb) / 0.74);
+  padding-block: clamp(96px, 10vw, 150px) 40px;
+}
+.site-footer__surface { position: absolute; inset-inline: 0; inset-block-start: -20px; width: 100%; height: 48px; fill: var(--soil); pointer-events: none; }
+.site-footer__under {
+  position: absolute; inset-inline: 0; inset-block-start: 0;
+  width: 100%; height: 130px;
+  overflow: visible;
+  fill: none; stroke: rgb(var(--cream-rgb) / 0.17); stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round;
+  pointer-events: none;
+}
+.site-footer__under .pebble { stroke: rgb(var(--cream-rgb) / 0.12); }
+.site-footer__hole {
+  position: absolute; z-index: 3; inset-block-start: -7px;
+  width: 52px; height: 14px; margin-inline-start: -26px;
+  border-radius: 50%;
+  background: rgb(10 7 4 / 0.75);
+  border: 1px dashed rgb(var(--cream-rgb) / 0.55);
+  transform: scale(0, 0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform var(--t-ui) var(--ease-out), opacity var(--t-ui) var(--ease-out);
+}
+.site-footer__hole.is-open { transform: scale(1); opacity: 1; }
+.site-footer__hole.is-near { transform: scale(0.5, 0.6); opacity: 0.7; }
+
+.site-footer__legal {
+  position: relative;
+  width: min(100% - 2 * var(--gutter), var(--maxw));
+  margin-inline: auto;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 12px 32px;
+  padding-block-start: 22px;
+  border-block-start: 1px solid rgb(var(--cream-rgb) / 0.12);
+  font-size: 14.5px;
+}
+.site-footer__legal-links { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 26px; }
+.site-footer__legal a { display: inline-flex; align-items: center; min-height: 40px; color: rgb(var(--cream-rgb) / 0.88); text-decoration: none; }
+.site-footer__legal a:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.3em; }
+.site-footer__rights { color: rgb(var(--cream-rgb) / 0.66); }
+.site-footer__credit { color: rgb(var(--cream-rgb) / 0.66) !important; }
+.site-footer__soil :focus-visible { outline-color: var(--cream); }
+
+/* ---------------------------------------------------------------- tablet */
+@media (max-width: 1100px) and (min-width: 769px) {
+  .site-footer__top { grid-template-columns: minmax(0, 1fr) auto; }
+  .site-footer__reach { grid-column: 1 / -1; grid-auto-flow: column; justify-content: start; align-items: center; }
+}
+
+/* ---------------------------------------------------------------- phones */
+@media (max-width: 768px) {
+  .site-footer { padding-block-start: 72px; }
+  .site-footer__top { grid-template-columns: 1fr; gap: 32px; padding-block-end: 40px; }
+  .site-footer__logo { font-size: 34px; }
+  .site-footer__nav { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
+  .site-footer__links a { min-height: 44px; font-size: 16.5px; }
+  .site-footer__reach { grid-auto-flow: column; justify-content: start; align-items: center; gap: 18px; }
+  .site-footer__field { width: calc(100% - 24px); }
+  .site-footer__seedbox { min-height: 72px; margin-block-end: 10px; }
+  .site-footer__seed { width: 56px; height: 56px; }
+  .site-footer__hint { font-size: 14.5px; }
+  .site-footer__soil { padding-block: 80px calc(80px + var(--safe-bottom)); }
+  .site-footer__legal { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .site-footer__legal-links { gap: 0 22px; }
+}
+
+/* the runAcross dog (src/components/dog.ts) crossing the letters: a cream outline keeps it readable */
+.site-footer__defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.site-footer .dog__svg { filter: url(#sf-halo); }

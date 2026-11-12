@@ -1,0 +1,266 @@
+/* ==========================================================================
+   Below the stage: the tree's card (7.17), "מה שלום העץ?", buttons, the journal,
+   the herbarium (old botanical book) and the calm additions.
+   ========================================================================== */
+.tree-sec { position: relative; padding-block: clamp(80px, 11vw, 150px); }
+.tree-sec__eyebrow { font-size: var(--fs-eyebrow); font-weight: 500; letter-spacing: 0.04em; color: var(--olive-deep); margin-block-end: 14px; }
+.tree-sec__title { font-family: var(--font-display); font-weight: 300; font-size: clamp(40px, 5vw, 76px); line-height: 1.02; letter-spacing: -0.015em; color: var(--bark); }
+.tree-sec__title--sm { font-size: clamp(32px, 3.6vw, 52px); margin-block-end: 36px; }
+
+/* ---------------- the tree card ---------------- */
+.tree-about { padding-block-end: clamp(56px, 7vw, 96px); }
+.tree-about__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: clamp(28px, 5vw, 80px); align-items: start; }
+.tree-label {
+  position: relative;
+  padding: clamp(28px, 3.4vw, 46px);
+  background: var(--sand);
+  border-radius: var(--leaf);
+  outline: 1px solid rgb(var(--soil-rgb) / 0.1);
+  outline-offset: -12px;
+}
+.tree-label__title { font-family: var(--font-display); font-weight: 300; font-size: clamp(44px, 5vw, 72px); line-height: 1; color: var(--bark); margin-block-end: 26px; }
+.tree-label__list { display: grid; gap: 0; margin: 0; }
+.tree-label__list > div {
+  display: grid;
+  grid-template-columns: 9.5em 1fr;
+  gap: 16px;
+  padding-block: 13px;
+  border-block-end: 1px dashed rgb(var(--soil-rgb) / 0.2);
+}
+.tree-label__list dt { font-size: 14px; color: var(--ink-soft); }
+.tree-label__list dd { margin: 0; font-size: 17px; color: var(--soil); }
+.tree-label__ded { font-family: var(--font-display); font-size: 22px !important; line-height: 1.25; }
+.tree-label__latin { font-size: 14px; color: var(--ink-soft); font-style: italic; margin-inline-start: 6px; }
+.tree-label__qr { display: flex; align-items: center; gap: 16px; margin-block-start: 26px; font-size: 15px; color: var(--ink-soft); }
+.tree-label__qr-code { width: 76px; height: 76px; padding: 8px; background: var(--cream); border-radius: 12px 0 12px 0; flex: none; }
+.tree-label__qr-code svg { width: 100%; height: 100%; display: block; }
+.tree-label__qr-code svg path, .tree-label__qr-code svg rect { fill: var(--soil); }
+.tree-label__qr-code svg rect:first-child { fill: transparent; }
+
+.tree-how { padding-block-start: 8px; }
+.tree-how__title { font-family: var(--font-display); font-weight: 300; font-size: clamp(40px, 4.6vw, 68px); line-height: 1.02; color: var(--bark); margin-block-end: 26px; }
+.tree-how__list { list-style: none; padding: 0; display: grid; }
+.tree-how__list li {
+  display: grid;
+  grid-template-columns: 30px 9em 1fr;
+  gap: 14px;
+  align-items: center;
+  padding-block: 14px;
+  border-block-end: 1px solid var(--line);
+}
+.tree-how__ic .icon { width: 22px; height: 22px; color: var(--olive); }
+.tree-how__k { font-size: 14px; color: var(--ink-soft); }
+.tree-how__v { font-size: 17px; }
+.tree-how__honest { margin-block-start: 22px; font-size: 15px; color: var(--ink-soft); max-width: 46ch; }
+
+.tree-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-block-start: clamp(48px, 6vw, 80px);
+  padding-block-start: clamp(32px, 4vw, 48px);
+  border-block-start: 1px solid var(--line);
+}
+.tree-actions__price { font-weight: 400; font-size: 14px; opacity: 0.85; padding-inline-start: 10px; margin-inline-start: 2px; border-inline-start: 1px solid currentColor; }
+.tree-actions__price .price { color: inherit; font-weight: 500; }
+
+/* ---------------- the journal ---------------- */
+.tree-feed { background: var(--sand); }
+.tree-feed__grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: clamp(32px, 6vw, 110px); align-items: start; }
+.tree-feed__intro { position: sticky; top: calc(var(--header-h) + 32px); display: grid; gap: 18px; justify-items: start; }
+.tree-feed__lead { font-size: 18px; color: var(--ink-soft); max-width: 40ch; }
+.tree-feed__ctas { display: flex; flex-wrap: wrap; gap: 10px; margin-block-start: 6px; }
+.tree-feed__list { list-style: none; padding: 0; position: relative; }
+.tree-feed__list::before {
+  content: '';
+  position: absolute;
+  inset-block: 18px 18px;
+  inset-inline-start: calc(7.2em + 21px);
+  width: 1px;
+  background: rgb(var(--soil-rgb) / 0.18);
+}
+.tfeed__item { position: relative; display: grid; grid-template-columns: 7.2em 1fr; gap: 42px; padding-block: 18px; }
+.tfeed__item::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: calc(7.2em + 17px);
+  top: 27px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--sand);
+  border: 1px solid rgb(var(--soil-rgb) / 0.45);
+}
+.tfeed__date { font-family: var(--font-display); font-size: 17px; color: var(--ink-soft); padding-top: 4px; font-variant-numeric: lining-nums tabular-nums; }
+.tfeed__body { display: flex; gap: 14px; align-items: flex-start; }
+.tfeed__ic { display: grid; place-items: center; width: 44px; height: 44px; flex: none; color: var(--olive); }
+.tfeed__txt { flex: 1; display: grid; gap: 4px; padding-top: 6px; }
+.tfeed__t { font-family: var(--font-display); font-size: 22px; line-height: 1.2; color: var(--bark); }
+.tfeed__q { font-family: var(--font-display); font-weight: 300; font-size: 22px; line-height: 1.3; color: var(--soil); }
+.tfeed__d { font-size: 15px; color: var(--ink-soft); }
+.tfeed__photo { width: 108px; flex: none; aspect-ratio: 1; overflow: hidden; border-radius: 22px 0 22px 0; }
+.tfeed__photo picture, .tfeed__photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* ---------------- herbarium: an old botanical book ---------------- */
+.tree-herb__head { display: grid; justify-items: start; margin-block-end: clamp(32px, 4vw, 56px); }
+.tree-herb__book {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  background: #F6EEDD;
+  border: 1px solid rgb(var(--soil-rgb) / 0.12);
+  border-radius: 6px;
+}
+.tree-herb__book::before {
+  /* the fold */
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  left: 50%;
+  width: 40px;
+  margin-left: -20px;
+  background: linear-gradient(90deg, rgb(var(--soil-rgb) / 0) 0%, rgb(var(--soil-rgb) / 0.06) 46%, rgb(var(--soil-rgb) / 0.1) 50%, rgb(var(--soil-rgb) / 0.06) 54%, rgb(var(--soil-rgb) / 0) 100%);
+  pointer-events: none;
+}
+.hb-page { position: relative; padding: clamp(24px, 3.4vw, 52px); display: grid; gap: 22px; align-content: start; }
+.hb-page__head { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--font-display); font-size: 22px; color: var(--bark); border-block-end: 1px solid rgb(var(--soil-rgb) / 0.2); padding-block-end: 10px; }
+.hb-page__latin { font-size: 16px; font-style: italic; color: var(--ink-soft); }
+.hb-page__foot { font-size: 14px; color: var(--ink-soft); text-align: center; }
+.hb-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(14px, 2vw, 26px); }
+.hb-sheet {
+  position: relative;
+  margin: 0;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  aspect-ratio: 3 / 4;
+  padding: 12px 12px 0;
+  background: #FBF6EA;
+  border: 1px solid rgb(var(--soil-rgb) / 0.14);
+}
+.hb-sheet__no { position: absolute; top: 8px; inset-inline-end: 10px; font-size: 10px; letter-spacing: 0.08em; color: rgb(var(--soil-rgb) / 0.45); font-family: var(--font-display); }
+.hb-sheet__spec { position: relative; display: grid; place-items: center; min-height: 0; }
+.hb-svg { width: 82%; height: 100%; max-height: 100%; overflow: visible; }
+.hb-svg--empty path { fill: none; stroke: rgb(var(--soil-rgb) / 0.22); stroke-width: 1; stroke-dasharray: 3 4; }
+.hb-leaf { stroke: rgb(var(--soil-rgb) / 0.35); stroke-width: 0.6; }
+.hb-leaf--spring { fill: color-mix(in srgb, var(--sage) 62%, var(--olive)); }
+.hb-leaf--summer { fill: color-mix(in srgb, var(--olive) 70%, var(--olive-deep)); }
+.hb-leaf--autumn { fill: color-mix(in srgb, var(--fruit) 34%, color-mix(in srgb, var(--olive) 40%, var(--sand))); }
+.hb-leaf--winter { fill: color-mix(in srgb, var(--olive-deep) 70%, var(--bark)); }
+.hb-vein { fill: none; stroke: rgb(var(--cream-rgb) / 0.55); stroke-width: 0.7; stroke-linecap: round; }
+.hb-twig { fill: none; stroke: var(--bark); stroke-width: 1.6; stroke-linecap: round; }
+.hb-bud { fill: color-mix(in srgb, var(--bark) 80%, var(--fruit)); }
+.hb-petal { fill: #FBF3F0; stroke: color-mix(in srgb, var(--fruit) 40%, var(--sand)); stroke-width: 0.6; }
+.hb-fruit path:first-child { fill: color-mix(in srgb, var(--fruit) 55%, var(--bark)); stroke: rgb(var(--soil-rgb) / 0.4); stroke-width: 0.6; }
+.hb-stamp circle { fill: none; stroke: color-mix(in srgb, var(--fruit) 70%, var(--bark)); stroke-width: 1; opacity: 0.75; }
+.hb-stamp text { font-family: var(--font-display); font-size: 9px; fill: color-mix(in srgb, var(--fruit) 70%, var(--bark)); opacity: 0.85; }
+.hb-tape {
+  position: absolute;
+  width: 34px;
+  height: 11px;
+  background: rgb(237 229 212 / 0.82);
+  border: 1px solid rgb(var(--soil-rgb) / 0.08);
+  transform-origin: center;
+}
+.hb-tape--a { left: 50%; bottom: 14%; margin-left: -17px; rotate: -6deg; }
+.hb-tape--b { left: 56%; top: 24%; rotate: 28deg; }
+.hb-label {
+  display: grid;
+  min-width: 0;
+  max-width: 100%;
+  gap: 1px;
+  margin: 8px -4px 8px;
+  padding: 7px 10px;
+  border: 1px solid rgb(var(--soil-rgb) / 0.22);
+  background: #FFFCF5;
+  justify-self: end;
+  min-width: 62%;
+}
+.hb-label__t { font-family: var(--font-display); font-size: 17px; line-height: 1.15; color: var(--bark); }
+.hb-label__date {
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: rgb(var(--soil-rgb) / 0.42);
+  /* embossed */
+  text-shadow: 0 1px 0 rgb(255 255 255 / 0.9), 0 -0.5px 0 rgb(var(--soil-rgb) / 0.15);
+}
+.hb-label__latin { font-size: 11px; font-style: italic; color: rgb(var(--soil-rgb) / 0.5); text-align: start; }
+.hb-label__wait { font-size: 12px; color: rgb(var(--soil-rgb) / 0.5); }
+.hb-sheet:not(.is-filled) { background: transparent; border-style: dashed; }
+.hb-grid--two .hb-sheet { aspect-ratio: 3 / 3.6; }
+
+.hb-seal { display: grid; justify-items: center; gap: 10px; padding-block: 8px; }
+.hb-seal svg { width: 128px; height: 128px; rotate: -8deg; opacity: 0.32; }
+.hb-seal svg circle { fill: none; stroke: var(--bark); stroke-width: 1.2; }
+.hb-seal svg circle:nth-of-type(2) { stroke-dasharray: 2 4; }
+.hb-seal svg path { fill: none; stroke: var(--bark); stroke-width: 1.3; stroke-linecap: round; }
+.hb-seal svg text { font-family: var(--font-display); font-size: 13.5px; letter-spacing: 0.06em; fill: var(--bark); }
+.hb-seal__year { font-size: 14px !important; }
+.hb-seal.is-earned svg { opacity: 0.88; }
+.hb-seal.is-earned svg circle:nth-of-type(2) { stroke-dasharray: none; }
+.hb-seal__t { font-size: 14px; color: var(--ink-soft); text-align: center; }
+.hb-poster { display: grid; gap: 6px; justify-items: start; padding: 20px 22px; border: 1px solid rgb(var(--soil-rgb) / 0.16); border-radius: 26px 0 26px 0; }
+.hb-poster__eyebrow { font-size: 12px; font-weight: 500; letter-spacing: 0.06em; color: var(--olive-deep); }
+.hb-poster__t { font-family: var(--font-display); font-size: 24px; color: var(--bark); }
+.hb-poster__d { font-size: 15px; color: var(--ink-soft); margin-block-end: 8px; }
+
+/* ---------------- calm additions ---------------- */
+.tree-more { padding-block-start: clamp(40px, 6vw, 80px); }
+.tree-more__list { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+.tmore {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 26px 24px 18px;
+  border: 1px solid var(--line);
+  border-radius: 34px 0 34px 0;
+  transition: border-color var(--t-ui) var(--ease-out), border-radius var(--t-appear) var(--ease-out);
+}
+.tmore:hover { border-color: var(--line-strong); border-radius: 0 34px 0 34px; }
+.tmore--ripe { border-color: rgb(var(--fruit-rgb) / 0.4); }
+.tmore__ic .icon { width: 30px; height: 30px; color: var(--olive); margin-block-end: 10px; }
+.tmore__eyebrow { font-size: 12px; font-weight: 500; letter-spacing: 0.06em; color: var(--olive-deep); }
+.tmore__t { font-family: var(--font-display); font-size: 24px; line-height: 1.15; color: var(--bark); }
+.tmore__d { font-size: 15px; color: var(--ink-soft); }
+.tmore__btn {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 6px;
+  font-size: 15px; font-weight: 500; color: var(--soil); text-decoration: none; justify-self: start;
+}
+.tmore__btn .icon { width: 18px; height: 18px; transition: transform var(--t-ui) var(--ease-out); }
+.tmore__btn:hover .icon { transform: translateX(-4px); }
+
+/* memorial: quieter page */
+.tree[data-mode='memorial'] .tree-feed { background: #EFE9DD; }
+
+/* ===================================================================== phone */
+@media (max-width: 768px) {
+  .tree-sec { padding-block: 72px; }
+  .tree-about__grid { grid-template-columns: 1fr; }
+  .tree-label { padding: 26px 22px 28px; }
+  .tree-label__list > div { grid-template-columns: 7.4em 1fr; gap: 12px; }
+  .tree-label__list dd { font-size: 16px; }
+  .tree-how__list li { grid-template-columns: 26px 7.4em 1fr; gap: 10px; padding-block: 12px; }
+  .tree-how__v { font-size: 15px; }
+  .tree-actions { gap: 10px; }
+  .tree-actions .btn { flex: 1 1 100%; min-width: 0; white-space: normal; text-align: center; line-height: 1.25; padding-inline: 20px; }
+  .tree-actions__price { font-size: 13px; padding-inline-start: 8px; }
+  .tree-feed__grid { grid-template-columns: 1fr; }
+  .tree-feed__intro { position: static; }
+  .tree-feed__ctas .btn { flex: 1 1 100%; min-width: 0; white-space: normal; text-align: center; line-height: 1.25; }
+  .tree-feed__list::before { inset-inline-start: 5px; }
+  .tfeed__item { grid-template-columns: 1fr; gap: 4px; padding-inline-start: 26px; padding-block: 14px; }
+  .tfeed__item::before { inset-inline-start: 1px; top: 22px; }
+  .tfeed__date { font-size: 15px; padding: 0; }
+  .tfeed__t, .tfeed__q { font-size: 19px; }
+  .tfeed__photo { width: 76px; }
+  .tree-herb__book { grid-template-columns: minmax(0, 1fr); }
+  .tree-herb__book::before { display: none; }
+  .hb-page { padding: 18px 14px 22px; }
+  .hb-page--special { border-block-start: 1px dashed rgb(var(--soil-rgb) / 0.2); }
+  .hb-grid { gap: 10px; }
+  .hb-label { padding: 5px 7px; min-width: 70%; }
+  .hb-label__t { font-size: 15px; }
+  .hb-label__date { font-size: 11px; }
+  .hb-label__latin { display: none; }
+  .hb-sheet { padding: 8px 8px 0; }
+  .hb-seal svg { width: 108px; height: 108px; }
+}

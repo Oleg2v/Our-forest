@@ -26,7 +26,7 @@ export function initMenu() {
   qsa('[data-menu-open]').forEach((b) => b.addEventListener('click', () => { opener = b; openMenu(); }));
   menu.querySelectorAll<HTMLElement>('[data-menu-close]').forEach((b) => b.addEventListener('click', () => closeMenu()));
   // leaving the tablet layout while open (rotation / resize to desktop)
-  matchMedia('(min-width: 1200px)').addEventListener?.('change', (e) => { if (e.matches && isOpen) closeMenu({ instant: true }); });
+  matchMedia('(min-width: 1240px)').addEventListener?.('change', (e) => { if (e.matches && isOpen) closeMenu({ instant: true }); });
   bus.on('page:restore', () => { if (isOpen) closeMenu({ instant: true, restoreFocus: false }); });
 }
 

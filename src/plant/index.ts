@@ -35,6 +35,8 @@ const FACTORIES: Record<StepId, (ctx: Ctx, el: HTMLElement, body: HTMLElement) =
 };
 const PRODUCTS: Product[] = ['tree', 'bench', 'workshop', 'corner'];
 const pad = (n: number) => String(n).padStart(2, '0');
+/** memorial mood only where the occasion is part of the product */
+const isMemorial = (s: PlantState) => s.occasion === 'memorial' && STEPS[s.product].includes('occasion');
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 export function initPlant(root: HTMLElement) {
@@ -103,8 +105,8 @@ export function initPlant(root: HTMLElement) {
     root: pc,
     store,
     motion: () => motion,
-    speed: () => (store.get().occasion === 'memorial' ? 1.5 : 1),
-    memorial: () => store.get().occasion === 'memorial',
+    speed: () => (isMemorial(store.get()) ? 1.5 : 1),
+    memorial: () => isMemorial(store.get()),
     mobile: () => mq.matches,
     pricing: (s = store.get()) => pricing(s, { main: ctx.mainLabel(s), extra: extraTitle }),
     steps: () => STEPS[store.get().product],
@@ -129,7 +131,7 @@ export function initPlant(root: HTMLElement) {
     memorial: ctx.memorial(),
     motion,
     placeholder: he.plant.plaquePlaceholder.replace(/^לדוגמה:\s*/, ''),
-    resolution: 1.5,
+    resolution: 2,
     onBurnChar: () => {
       if (ctx.memorial()) return;
       const t = performance.now();
@@ -248,6 +250,9 @@ export function initPlant(root: HTMLElement) {
     nextBtn.hidden = current === 'checkout';
     q<HTMLElement>('.pc__next-label').textContent = cta?.label ?? 'הבא';
     q<HTMLElement>('.pc__next-to').textContent = !cta && nxt ? stepTitle(nxt, s.product) : '';
+    const nextName = cta?.label ?? (nxt ? `הבא: ${stepTitle(nxt, s.product)}` : 'הבא');
+    nextBtn.setAttribute('aria-label', nextName);
+    barNext.setAttribute('aria-label', nextName);
     nextBtn.classList.toggle('btn--fruit', !!cta?.fruit);
     barNext.classList.toggle('btn--fruit', !!cta?.fruit);
     if (cta?.fruit) { nextBtn.dataset.cursor = 'שתלו'; nextBtn.dataset.cursorFill = 'fruit'; barNext.dataset.cursor = 'שתלו'; }
@@ -320,14 +325,14 @@ export function initPlant(root: HTMLElement) {
 
   /* ---------- mood: memorial = quieter ---------- */
   const setMood = (s: PlantState) => {
-    const mem = s.occasion === 'memorial';
+    const mem = isMemorial(s);
     pc.classList.toggle('pc--memorial', mem);
     engraver.setMemorial(mem);
   };
 
   /* ---------- store → UI ---------- */
   store.subscribe((s, p) => {
-    if (s.product !== p.product) { build(); stage.update(s, p); barOdo.set(ctx.pricing(s).total); placePlaque(); return; }
+    if (s.product !== p.product) { build(); setMood(s); stage.update(s, p); barOdo.set(ctx.pricing(s).total); placePlaque(); return; }
     views.forEach((v) => v.update?.(s, p));
     stage.update(s, p);
     if (s.text !== p.text) { engraver.setText(s.text); describePlaque(); }
@@ -340,10 +345,13 @@ export function initPlant(root: HTMLElement) {
     } else paintNav();
   });
 
+  // browser back/forward moves between steps but keeps what was chosen since (a different product restores that URL)
   window.addEventListener('popstate', () => {
     if (pc.hidden) return;
-    const s = fromUrl();
-    store.set(s, { history: 'none' });
+    const u = fromUrl();
+    const cur = store.get();
+    if (u.product !== cur.product) store.set(u, { history: 'none' });
+    else if (u.step !== cur.step) { pending = { step: u.step, focus: true }; store.set({ step: u.step }, { history: 'replace' }); pending = null; }
   });
 
   /* ---------- mobile sheet: drag the handle to give the step the whole screen; keyboard keeps the plaque visible ---------- */
@@ -378,19 +386,14 @@ export function initPlant(root: HTMLElement) {
     const kb = window.innerHeight - vv.height > 140;
     pc.style.setProperty('--vvh', `${vv.height}px`);
     pc.classList.toggle('is-typing', kb && mq.matches);
-    if (kb && mq.matches) {
+    if (kb && mq.matches && current !== 'plaque') {
       const a = document.activeElement as HTMLElement | null;
-      if (a && scrollEl.contains(a)) requestAnimationFrame(() => {
-        const slot = current === 'plaque' ? views.get('plaque')?.plaqueSlot : null;
-        (slot ?? a).scrollIntoView({ block: 'start', behavior: 'auto' });
-      });
+      if (a && scrollEl.contains(a)) requestAnimationFrame(() => a.scrollIntoView({ block: 'center', behavior: 'auto' }));
     }
   };
   vv?.addEventListener('resize', onVV);
-  scrollEl.addEventListener('focusin', (e) => {
-    if (mq.matches && (e.target as HTMLElement).matches('input:not([type="checkbox"]), textarea')) pc.classList.add('is-focus');
-  });
-  scrollEl.addEventListener('focusout', () => pc.classList.remove('is-focus'));
+  // the stage collapses only while the on-screen keyboard is really open (visualViewport), never on focus alone —
+  // otherwise tapping a chip below a focused field would move it under the finger
   mq.addEventListener('change', () => placePlaque());
 
   /* ---------- reduced motion ---------- */

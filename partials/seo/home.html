@@ -1,1 +1,154 @@
-<!-- seo/home: OG image, canonical, JSON-LD — owned by the business/static (SEO) agent -->
+<!-- seo/home: OG image, canonical, JSON-LD (LocalBusiness, WebSite, Event × 3) — owned by the business (SEO) agent. SITE = https://ourforest.kikkey.com (see docs/agent-notes/business.md) -->
+<link rel="canonical" href="https://ourforest.kikkey.com/">
+<meta property="og:url" content="https://ourforest.kikkey.com/">
+<meta property="og:image" content="https://ourforest.kikkey.com/og/home.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="היער שלנו — יער מאכל במושב פדיה">
+<meta name="twitter:image" content="https://ourforest.kikkey.com/og/home.jpg">
+<meta name="twitter:image:alt" content="היער שלנו — יער מאכל במושב פדיה">
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "LocalBusiness",
+   "@id": "https://ourforest.kikkey.com/#forest",
+   "name": "היער שלנו",
+   "alternateName": "Our Forest",
+   "description": "יער מאכל במושב פדיה שמחבר בין אנשים, אדמה וכלבים. מקום לצמיחה, ריפוי והתפתחות אישית וקהילתית.",
+   "slogan": "מקום לצמוח, להתחבר ולהעמיק שורשים",
+   "url": "https://ourforest.kikkey.com/",
+   "logo": "https://ourforest.kikkey.com/favicon.svg",
+   "image": "https://ourforest.kikkey.com/og/home.jpg",
+   "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "מושב פדיה",
+    "addressCountry": "IL"
+   },
+   "areaServed": {
+    "@type": "Country",
+    "name": "ישראל"
+   },
+   "knowsLanguage": "he",
+   "currenciesAccepted": "ILS",
+   "priceRange": "₪180–₪18,000"
+  },
+  {
+   "@type": "WebSite",
+   "@id": "https://ourforest.kikkey.com/#website",
+   "url": "https://ourforest.kikkey.com/",
+   "name": "היער שלנו",
+   "inLanguage": "he-IL",
+   "publisher": {
+    "@id": "https://ourforest.kikkey.com/#forest"
+   }
+  },
+  {
+   "@type": "WebPage",
+   "@id": "https://ourforest.kikkey.com/#page",
+   "url": "https://ourforest.kikkey.com/",
+   "name": "היער שלנו — יער מאכל במושב פדיה",
+   "description": "יער מאכל במושב פדיה שמחבר בין אנשים, אדמה וכלבים.",
+   "inLanguage": "he-IL",
+   "isPartOf": {
+    "@id": "https://ourforest.kikkey.com/#website"
+   },
+   "about": {
+    "@id": "https://ourforest.kikkey.com/#forest"
+   }
+  },
+  {
+   "@type": "Event",
+   "name": "סדנת נגרות: בונים ספסל ליער",
+   "startDate": "2026-11-27",
+   "eventStatus": "https://schema.org/EventScheduled",
+   "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+   "location": {
+    "@type": "Place",
+    "name": "היער שלנו",
+    "address": {
+     "@type": "PostalAddress",
+     "addressLocality": "מושב פדיה",
+     "addressCountry": "IL"
+    }
+   },
+   "organizer": {
+    "@id": "https://ourforest.kikkey.com/#forest"
+   },
+   "image": "https://ourforest.kikkey.com/og/home.jpg",
+   "description": "סדנת נגרות, כלבנות, גינון ועוד. יום חוויות לקבוצות",
+   "inLanguage": "he",
+   "offers": {
+    "@type": "Offer",
+    "price": "280",
+    "priceCurrency": "ILS",
+    "availability": "https://schema.org/InStock",
+    "url": "https://ourforest.kikkey.com/plant/?product=workshop&ws=carpentry",
+    "validFrom": "2026-11-01"
+   }
+  },
+  {
+   "@type": "Event",
+   "name": "כלבנות בטבע: יום עם הכלבים",
+   "startDate": "2026-12-04",
+   "eventStatus": "https://schema.org/EventScheduled",
+   "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+   "location": {
+    "@type": "Place",
+    "name": "היער שלנו",
+    "address": {
+     "@type": "PostalAddress",
+     "addressLocality": "מושב פדיה",
+     "addressCountry": "IL"
+    }
+   },
+   "organizer": {
+    "@id": "https://ourforest.kikkey.com/#forest"
+   },
+   "image": "https://ourforest.kikkey.com/og/home.jpg",
+   "description": "סדנת נגרות, כלבנות, גינון ועוד. יום חוויות לקבוצות",
+   "inLanguage": "he",
+   "offers": {
+    "@type": "Offer",
+    "price": "216",
+    "priceCurrency": "ILS",
+    "availability": "https://schema.org/InStock",
+    "url": "https://ourforest.kikkey.com/plant/?product=workshop&ws=dogs",
+    "validFrom": "2026-11-01"
+   }
+  },
+  {
+   "@type": "Event",
+   "name": "גינון ביער מאכל למתחילים",
+   "startDate": "2026-12-12",
+   "eventStatus": "https://schema.org/EventScheduled",
+   "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+   "location": {
+    "@type": "Place",
+    "name": "היער שלנו",
+    "address": {
+     "@type": "PostalAddress",
+     "addressLocality": "מושב פדיה",
+     "addressCountry": "IL"
+    }
+   },
+   "organizer": {
+    "@id": "https://ourforest.kikkey.com/#forest"
+   },
+   "image": "https://ourforest.kikkey.com/og/home.jpg",
+   "description": "סדנת נגרות, כלבנות, גינון ועוד. יום חוויות לקבוצות",
+   "inLanguage": "he",
+   "offers": {
+    "@type": "Offer",
+    "price": "150",
+    "priceCurrency": "ILS",
+    "availability": "https://schema.org/InStock",
+    "url": "https://ourforest.kikkey.com/plant/?product=workshop&ws=garden",
+    "validFrom": "2026-11-01"
+   }
+  }
+ ]
+}
+</script>

@@ -10,7 +10,7 @@ import type { SpeciesId } from '../components/forest-map';
 import { SAPLING, SPECIES_ART, TREE_VB, GROUND, GRASS, ROOTS, ICONS, icon, iconPath, type IconName } from './art';
 import { createOdometer, type Odometer } from './odometer';
 import { summaryRows } from './steps-flow';
-import { speciesText, WORKSHOPS, type StepId, type ExtraId } from './catalog';
+import { speciesText, stepShort, WORKSHOPS, type StepId, type ExtraId } from './catalog';
 import type { PlantState } from './store';
 import type { Ctx } from './types';
 
@@ -19,16 +19,16 @@ const BIRD = 'M0 0 C3 -4.5 8 -4.5 10.5 -1 L15 -2.8 L12.6 1 C11.4 4.4 6.2 5.6 1.6
 
 /* scene props (stage coordinates, ground y = 214) */
 const PROPS: Record<ExtraId, { icon: IconName; t: string }> = {
-  family: { icon: 'family', t: 'translate(176 180) scale(1.42)' },
-  guardians: { icon: 'can', t: 'translate(30 189) scale(1.08)' },
-  certificate: { icon: 'certificate', t: 'translate(60 192) rotate(-7) scale(0.95)' },
-  box: { icon: 'box', t: 'translate(142 193) scale(0.9)' },
+  family: { icon: 'family', t: 'translate(198 181) scale(1.38)' },
+  guardians: { icon: 'can', t: 'translate(14 190) scale(1.05)' },
+  certificate: { icon: 'certificate', t: 'translate(44 194) rotate(-7) scale(0.86)' },
+  box: { icon: 'box', t: 'translate(173 195) scale(0.82)' },
 };
 const CORNER_PROPS = [
   { icon: 'bench' as IconName, t: 'translate(22 184) scale(1.3)' },
-  { icon: 'lantern' as IconName, t: 'translate(196 176) scale(1.6)' },
-  { icon: 'herbs' as IconName, t: 'translate(150 194) scale(0.85)' },
-  { icon: 'herbs' as IconName, t: 'translate(166 197) scale(0.72)' },
+  { icon: 'lantern' as IconName, t: 'translate(200 176) scale(1.6)' },
+  { icon: 'herbs' as IconName, t: 'translate(168 196) scale(0.8)' },
+  { icon: 'herbs' as IconName, t: 'translate(181 199) scale(0.66)' },
 ];
 
 export interface Stage {
@@ -44,6 +44,7 @@ export function createStage(ctx: Ctx, host: HTMLElement): Stage {
     <div class="pst">
       <div class="pst__scene" data-focus="">
         <p class="pst__season">${icon('calendar')}<span>${he.seasonalBanner}</span></p>
+        <div class="pst__art">
         <svg class="pst__svg" viewBox="${TREE_VB}" aria-hidden="true" focusable="false">
           <path class="pst__roots" d="${ROOTS}" ${NS}/>
           <path class="pst__ground" d="${GROUND}" ${NS}/>
@@ -56,7 +57,7 @@ export function createStage(ctx: Ctx, host: HTMLElement): Stage {
             <g class="pst__details"></g>
           </g>
           <g class="pst__props"></g>
-          <g class="pst__tag" data-playful="false" opacity="0">
+          <g class="pst__tag" opacity="0">
             <path d="M156 146 L160 170" ${NS}/>
             <g transform="translate(152 168) rotate(10)"><path class="pst__tagcard" d="M0 0 h20 l5 6.5 l-5 6.5 h-20 Z M19 6.5 a1.6 1.6 0 1 0 0.01 0" ${NS}/><path d="M4 6.5 h9" ${NS}/></g>
           </g>
@@ -65,10 +66,11 @@ export function createStage(ctx: Ctx, host: HTMLElement): Stage {
         <div class="pst__item" aria-hidden="true"></div>
         <div class="pst__plaque">
           <div class="pst__glow" aria-hidden="true"></div>
-          <div class="pst__plaque-home" data-plaque-home></div>
           <span class="pst__stake" aria-hidden="true"></span>
+          <div class="pst__plaque-home" data-plaque-home></div>
         </div>
         <p class="pst__pin" hidden></p>
+        </div>
       </div>
       <div class="pst__info">
         <div class="pst__head"><p class="pst__name"></p><p class="pst__sub"></p></div>
@@ -146,8 +148,10 @@ export function createStage(ctx: Ctx, host: HTMLElement): Stage {
       .to(roots, { drawSVG: '0% 100%', duration: 1.4 * sp1, ease: 'power3.out' }, '<')
       .to(marks, { opacity: 1, duration: 0.8 * sp1 }, '<0.5')
       .set(details, { opacity: 1 }, '<')
-      .fromTo(() => Array.from(details.children), { opacity: 0, scale: 0.2, transformOrigin: '50% 50%' },
-        { opacity: 1, scale: 1, duration: 0.7 * sp1, stagger: { each: 0.035 * sp1, from: 'random' }, ease: ctx.memorial() ? EASE.soft : 'back.out(2.2)' }, '<0.1');
+      .add(() => {
+        gsap.fromTo(Array.from(details.children), { opacity: 0, scale: 0.2, transformOrigin: '50% 50%' },
+          { opacity: 1, scale: 1, duration: 0.7 * sp1, stagger: { each: 0.035 * sp1, from: 'random' }, ease: ctx.memorial() ? EASE.soft : 'back.out(2.2)' });
+      }, '<0.1');
     if (!ctx.memorial()) {
       tl.fromTo(bird, { opacity: 0, y: -26, x: -18 }, { opacity: 1, y: 0, x: 0, duration: 0.9, ease: 'power3.out' }, '-=0.2')
         .to(bird.firstElementChild, { y: -2, duration: 0.18, yoyo: true, repeat: 3, ease: 'sine.inOut' });
@@ -191,7 +195,7 @@ export function createStage(ctx: Ctx, host: HTMLElement): Stage {
   const setItem = (s: PlantState) => {
     let ic: IconName | null = null;
     if (s.product === 'bench') ic = s.item as IconName;
-    if (s.product === 'workshop') ic = ({ carpentry: 'saw', dogs: 'dog', garden: 'sprout' } as const)[s.ws];
+    if (s.product === 'workshop') ic = ({ carpentry: 'bench', dogs: 'dog', garden: 'sprout' } as const)[s.ws];
     const key = ic ?? '';
     if (item.dataset.icon === key) return;
     item.dataset.icon = key;
@@ -218,7 +222,21 @@ export function createStage(ctx: Ctx, host: HTMLElement): Stage {
     if (s.product === 'tree' || s.product === 'corner') sub.textContent = speciesText(s.species);
     else if (s.product === 'workshop') sub.innerHTML = `${priceHtml(WORKSHOPS.find((w) => w.id === s.ws)!.price)} ${he.pricing.perParticipant}`;
     else sub.textContent = he.participate.cards[1].title;
-    lines.innerHTML = summaryRows(ctx, s).slice(1).map((r) => `
+    // compact: all extras in one row
+    const rows = summaryRows(ctx, s).slice(1);
+    const ex = rows.filter((r) => r.step === 'extras');
+    const compact = rows.filter((r) => r.step !== 'extras');
+    if (ex.length) {
+      const extras = pr.lines.filter((l) => l.id !== 'main');
+      const once = extras.filter((l) => !l.monthly).reduce((a, l) => a + l.amount, 0);
+      const at = compact.findIndex((r) => r.step === 'gift');
+      compact.splice(at < 0 ? compact.length : at, 0, {
+        step: 'extras', label: stepShort('extras', s.product),
+        value: extras.map((l) => l.label).join(' · '),
+        price: once ? priceHtml(once) : undefined,
+      });
+    }
+    lines.innerHTML = compact.map((r) => `
       <div class="pst__line"><dt>${r.label || '<span class="sr-only">תוספת</span>'}</dt>
       <dd><button type="button" class="pst__go" data-go="${r.step}"><span class="pst__v">${r.value}</span></button>${r.price ? `<span class="pst__p">${r.price}</span>` : ''}</dd></div>`).join('');
     odo.set(pr.total);
@@ -260,7 +278,8 @@ export function createStage(ctx: Ctx, host: HTMLElement): Stage {
     setMotion(allowed) {
       if (!allowed) {
         growTl?.progress(1);
-        gsap.set([marks, details, roots, tag], { clearProps: 'opacity' });
+        gsap.set([marks, details, roots], { clearProps: 'opacity' });
+        gsap.set(Array.from(details.children), { clearProps: 'all' });
       }
     },
   };

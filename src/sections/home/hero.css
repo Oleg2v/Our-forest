@@ -1,0 +1,240 @@
+/* ==========================================================================
+   Home 2 — hero "Crown" (היער שלנו).
+   Layers (bottom → top): photo (+ WebGL canvas / phone video) in a zoom wrapper · legibility shade ·
+   scroll dim · seasonal motes (CSS fallback only) · content · corner (live counter, tilt) · ground wave.
+   Desktop: editorial bottom band (title across, text right, actions left), counter top-left under the
+   header CTA. Phone (designed separately): portrait crop, two-line title, stacked actions, counter on top.
+   ========================================================================== */
+.hero {
+  --hero-pad-b: clamp(44px, 8.5vh, 96px);
+  --ground-h: clamp(110px, 20vh, 220px);
+  position: relative;
+  height: 100vh;
+  height: 100svh;
+  min-height: 620px;
+  overflow: clip;
+  isolation: isolate;
+  color: var(--cream);
+}
+
+/* ---------- photo ---------- */
+.hero__media { position: absolute; inset: 0; overflow: hidden; background: var(--moss); }
+.hero__zoom { position: absolute; inset: 0; transform-origin: 50% 38%; }
+.hero__picture, .hero__img, .hero__video {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%;
+}
+.hero__picture { display: block; }
+.hero__video { opacity: 0; transition: opacity 1.1s var(--ease-out); pointer-events: none; }
+.hero__video.is-playing { opacity: 1; }
+.hero__zoom .gl-stage { opacity: 0; transition: opacity .6s var(--ease-out); }
+.hero__zoom .gl-stage.is-on { opacity: 1; }
+
+/* legibility: moss from the bottom and from the text side (RTL → right), a breath of it under the header */
+.hero__shade {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(to top, rgb(var(--moss-rgb) / .84) 0%, rgb(var(--moss-rgb) / .5) 30%, rgb(var(--moss-rgb) / .12) 58%, rgb(var(--moss-rgb) / 0) 72%),
+    linear-gradient(to left, rgb(var(--moss-rgb) / .38) 0%, rgb(var(--moss-rgb) / 0) 58%),
+    linear-gradient(to bottom, rgb(var(--moss-rgb) / .42) 0%, rgb(var(--moss-rgb) / 0) 20%);
+}
+.hero__dim { position: absolute; inset: 0; background: var(--moss); opacity: 0; pointer-events: none; }
+
+/* gentle CSS-only life (no WebGL / weak device): the photo breathes */
+.hero--still .hero__img { animation: hero-breathe 22s ease-in-out infinite alternate; transform-origin: 50% 30%; }
+@keyframes hero-breathe { from { transform: scale(1); } to { transform: scale(1.045) translate3d(-.6%, .4%, 0); } }
+
+/* ---------- seasonal motes (fallback layer; the WebGL path draws its own) ---------- */
+.hero__motes { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.hero__mote {
+  position: absolute; inset-inline-start: var(--x); top: var(--y);
+  width: var(--s); height: var(--s); border-radius: 50%;
+  background: radial-gradient(circle, rgb(255 246 222 / .95) 0 30%, rgb(255 240 210 / 0) 70%);
+  opacity: 0; filter: blur(var(--b, 0px));
+  animation: hero-mote var(--dur) linear var(--delay) infinite;
+}
+.hero__motes--leaves .hero__mote {
+  width: calc(var(--s) * .55); height: var(--s); border-radius: 100% 0 100% 0;
+  background: var(--c, var(--olive));
+  animation-name: hero-leaf;
+}
+@keyframes hero-mote {
+  0% { opacity: 0; transform: translate3d(0, 0, 0); }
+  15% { opacity: var(--o, .7); }
+  85% { opacity: var(--o, .7); }
+  100% { opacity: 0; transform: translate3d(-9vw, -18vh, 0); }
+}
+@keyframes hero-leaf {
+  0% { opacity: 0; transform: translate3d(0, -6vh, 0) rotate(0deg); }
+  12% { opacity: var(--o, .85); }
+  50% { transform: translate3d(-5vw, 26vh, 0) rotate(160deg); }
+  88% { opacity: var(--o, .85); }
+  100% { opacity: 0; transform: translate3d(-12vw, 58vh, 0) rotate(320deg); }
+}
+
+/* ---------- content ---------- */
+.hero__content {
+  position: absolute; z-index: 2;
+  inset-inline: var(--gutter); inset-block-end: var(--hero-pad-b);
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end;
+  column-gap: clamp(32px, 5vw, 96px);
+  max-width: var(--maxw); margin-inline: auto;
+}
+.hero__greet {
+  grid-column: 1 / -1;
+  display: inline-flex; align-items: center; gap: 10px; justify-self: start;
+  font-size: 14px; font-weight: 500; letter-spacing: .05em; line-height: 1;
+  color: rgb(var(--cream-rgb) / .86);
+}
+/* the row is always reserved (no layout shift); it shows once JS has written the Israel-time greeting */
+.hero__greet:not(.is-ready) { visibility: hidden; }
+.hero__greet-icon { width: 20px; height: 20px; color: var(--sage); }
+.hero__greet-sep { width: 20px; height: 1px; background: currentColor; opacity: .55; }
+
+.hero__title {
+  grid-column: 1 / -1;
+  margin-block: clamp(6px, 1.2vh, 14px) clamp(18px, 3vh, 34px);
+  font-family: var(--font-display); font-weight: 300; font-size: var(--fs-hero);
+  line-height: var(--lh-tight); letter-spacing: -.02em; color: var(--cream);
+  text-wrap: nowrap;
+}
+.hero__word {
+  display: inline-block; vertical-align: top;
+  /* the mask: letters rise from under the word's lower edge; top and sides stay open (rotation, blur) */
+  clip-path: inset(-60% -18% -.07em -18%);
+}
+.hero__word + .hero__word { margin-inline-start: -.04em; }
+.hero__word-in { display: inline-block; }
+.hero__char { display: inline-block; transform-origin: 50% 100%; }
+
+.hero__body { grid-column: 1; max-width: 37rem; padding-block-end: 4px; }
+.hero__subtitle {
+  font-family: var(--font-display); font-weight: 400; font-size: clamp(22px, 2.1vw, 32px); line-height: 1.25;
+  color: var(--cream); text-wrap: balance;
+}
+.hero__text {
+  margin-block-start: 14px; max-width: 46ch;
+  font-size: clamp(16px, 1.15vw, 18px); font-weight: 300; line-height: 1.65; color: rgb(var(--cream-rgb) / .84);
+}
+.hero__line { display: block; }
+
+.hero__actions { grid-column: 2; display: grid; justify-items: end; gap: 18px; }
+.hero__buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
+.hero__cta .icon, .hero__more .icon { width: 20px; height: 20px; }
+.hero__more { --btn-bd: rgb(var(--cream-rgb) / .55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.hero__gift {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding-inline: 4px;
+  color: rgb(var(--cream-rgb) / .9); font-size: 16px; text-decoration: none;
+  background: linear-gradient(currentColor, currentColor) no-repeat 100% calc(100% - 9px) / 100% 1px;
+  transition: color var(--t-ui) var(--ease-out), background-size var(--t-ui) var(--ease-out);
+}
+.hero__gift .icon { width: 20px; height: 20px; color: var(--sage); }
+.hero__gift:hover { color: var(--cream); background-size: 0% 1px; }
+.hero__gift:hover .icon { animation: hero-gift .6s var(--ease-out); }
+@keyframes hero-gift { 40% { transform: rotate(-10deg) translateY(-2px); } }
+
+/* ---------- corner: live counter + tilt ---------- */
+.hero__corner {
+  position: absolute; z-index: 3;
+  inset-block-start: calc(var(--safe-top) + var(--header-h) + clamp(14px, 3vh, 30px));
+  inset-inline-end: var(--gutter);
+  display: flex; align-items: center; gap: 12px;
+}
+.hero__count {
+  display: inline-flex; align-items: center; gap: 12px;
+  padding: 9px 16px 9px 14px; border-radius: var(--pill);
+  background: rgb(var(--moss-rgb) / .34); border: 1px solid rgb(var(--cream-rgb) / .16);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  font-size: 14px; font-weight: 400; line-height: 1.2; color: rgb(var(--cream-rgb) / .92);
+}
+.hero__count-num {
+  font-family: var(--font-display); font-weight: 500; font-size: 17px; letter-spacing: .01em;
+  font-variant-numeric: lining-nums tabular-nums; color: var(--cream);
+  display: inline-block; min-width: 3ch; text-align: center;
+}
+.hero__pulse { position: relative; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--sage); }
+.hero__pulse::after {
+  content: ''; position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid var(--sage);
+  animation: hero-pulse 2.6s var(--ease-out) infinite;
+}
+@keyframes hero-pulse { 0% { transform: scale(1); opacity: .9; } 70%, 100% { transform: scale(3.4); opacity: 0; } }
+
+.hero__tilt {
+  display: inline-flex; align-items: center; gap: 6px; min-width: 44px; min-height: 44px; padding-inline: 12px;
+  border-radius: var(--pill); color: var(--cream);
+  background: rgb(var(--moss-rgb) / .34); border: 1px solid rgb(var(--cream-rgb) / .16);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  font-size: 13px; font-weight: 500; transition: background-color var(--t-ui) var(--ease-out), color var(--t-ui) var(--ease-out);
+}
+.hero__tilt .icon { width: 20px; height: 20px; }
+.hero__tilt[aria-pressed='true'] { background: var(--cream); color: var(--moss); }
+
+/* ---------- scroll cue (desktop) ---------- */
+.hero__cue {
+  position: absolute; z-index: 2; inset-block-end: 22px; left: 50%; translate: -50% 0;
+  width: 1px; height: 46px; overflow: hidden; background: rgb(var(--cream-rgb) / .22);
+}
+.hero__cue-line {
+  position: absolute; inset-inline: 0; top: 0; height: 40%; background: var(--cream);
+  animation: hero-cue 2.4s var(--ease-inout) infinite;
+}
+@keyframes hero-cue { 0% { transform: translateY(-100%); } 70%, 100% { transform: translateY(260%); } }
+
+/* ---------- ground: the bottom edge becomes the earth surface on scroll ---------- */
+.hero__ground {
+  position: absolute; z-index: 4; inset-inline: 0; inset-block-end: -1px;
+  height: var(--ground-h); pointer-events: none;
+  transform: translate3d(0, 100%, 0);
+}
+.hero__ground svg { display: block; width: 100%; height: 100%; overflow: visible; }
+/* cream like the band the roots section opens with (it is painted explicitly, not by the page bg) */
+.hero__ground-fill { fill: var(--cream); }
+.hero__ground-edge { fill: none; stroke: var(--bark); stroke-width: 1.5; stroke-linecap: round; opacity: .7; }
+.hero__ground-grass { fill: none; stroke: var(--olive); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- reduced motion / static ---------- */
+.hero[data-entrance='static'] .hero__cue { display: none; }
+.hero[data-entrance='static'] .hero__ground { transform: translate3d(0, 76%, 0); }
+
+/* ---------- tablet ---------- */
+@media (max-width: 1100px) {
+  .hero__content { grid-template-columns: minmax(0, 1fr); row-gap: 26px; }
+  .hero__actions { grid-column: 1; justify-items: start; }
+  .hero__buttons { justify-content: flex-start; }
+  .hero__cue { display: none; }
+}
+
+/* ---------- phone (390×844 first) ---------- */
+@media (max-width: 768px) {
+  .hero {
+    --hero-pad-b: calc(26px + var(--safe-bottom));
+    --ground-h: clamp(70px, 12vh, 120px);
+    min-height: 600px;
+  }
+  .hero__shade {
+    background:
+      linear-gradient(to top, rgb(var(--moss-rgb) / .9) 0%, rgb(var(--moss-rgb) / .62) 36%, rgb(var(--moss-rgb) / .18) 62%, rgb(var(--moss-rgb) / 0) 76%),
+      linear-gradient(to bottom, rgb(var(--moss-rgb) / .5) 0%, rgb(var(--moss-rgb) / 0) 22%);
+  }
+  .hero__content { inset-inline: 20px; row-gap: 0; }
+  .hero__greet { font-size: 13px; }
+  .hero__title { font-size: clamp(84px, 27vw, 128px); line-height: .9; margin-block: 8px 16px; text-wrap: wrap; }
+  .hero__word { display: block; width: fit-content; }
+  .hero__word + .hero__word { margin-inline-start: 0; }
+  .hero__subtitle { font-size: 21px; }
+  .hero__text { margin-block-start: 10px; font-size: 15.5px; line-height: 1.6; }
+  .hero__actions {
+    margin-block-start: 22px; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
+    justify-items: stretch; column-gap: 14px; row-gap: 10px;
+  }
+  .hero__buttons { display: contents; }
+  .hero__cta { grid-column: 1 / -1; width: 100%; min-height: 56px; font-size: 17px; }
+  .hero__more { grid-column: 1; min-height: 50px; padding-inline: 18px; font-size: 15.5px; }
+  .hero__more .icon { width: 18px; height: 18px; }
+  .hero__gift { grid-column: 2; font-size: 15.5px; }
+  .hero__corner { inset-inline: 20px; justify-content: space-between; gap: 10px; }
+  .hero__count { font-size: 13px; padding: 8px 14px 8px 12px; }
+  .hero__count-num { font-size: 16px; }
+}
+@media (max-width: 768px) and (max-height: 700px) {
+  .hero__text { display: none; }
+}

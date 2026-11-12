@@ -1,2 +1,69 @@
-<!-- site footer — owned by the home footer agent -->
-<footer class="site-footer" id="footer"></footer>
+<!-- site footer (every page) — owned by the "lower" agent. Behaviour: src/components/footer.ts (+ footer.css).
+     The words "בואו לנטוע" stand on the soil like grass and sway from the cursor (each letter turns on its base);
+     a seed can be dragged into the ground (or pressed / tapped) → a sprout grows and "נוטעים עץ משלכם" appears.
+     Without JS: the button is simply there, the letters are still. -->
+<footer class="site-footer" id="footer" data-bg="cream">
+  <!-- a cream outline for line art that crosses the giant letters (the dog) -->
+  <svg class="site-footer__defs" width="0" height="0" aria-hidden="true" focusable="false"><filter id="sf-halo" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB"><feMorphology in="SourceAlpha" operator="dilate" radius="2.2" result="d"/><feFlood flood-color="#FBF1E6"/><feComposite in2="d" operator="in" result="h"/><feMerge><feMergeNode in="h"/><feMergeNode in="SourceGraphic"/></feMerge></filter></svg>
+  <div class="site-footer__top">
+    <div class="site-footer__brand" data-reveal="fade">
+      <a class="site-footer__logo" href="/" data-he="brand">היער שלנו</a>
+      <p class="site-footer__tagline" data-he="hero.subtitle">מקום לצמוח, להתחבר ולהעמיק שורשים</p>
+    </div>
+    <nav class="site-footer__nav" aria-label="קישורים בתחתית העמוד" data-reveal="fade">
+      <ul class="site-footer__links" role="list">
+        <li><a href="/#story" data-he="nav.story">הסיפור שלנו</a></li>
+        <li><a href="/#directions" data-he="nav.whatAwaits">מה מחכה לכם ביער?</a></li>
+        <li><a href="/business" data-he="nav.partners">בואו להיות שותפים</a></li>
+        <li><a href="/#contact" data-he="nav.contact">צרו קשר</a></li>
+      </ul>
+      <ul class="site-footer__links" role="list">
+        <li><a href="/plant" data-he="cta.plant">נוטעים עץ משלכם</a></li>
+        <li><a href="/plant?gift=1" data-he="cta.gift">עץ במתנה</a></li>
+        <li><a href="/business" data-he="cta.business">לחברות וארגונים</a></li>
+        <li><a href="/#map">מפת היער</a></li>
+      </ul>
+    </nav>
+    <div class="site-footer__reach" data-reveal="fade">
+      <a class="btn btn--outline btn--sm site-footer__wa" href="https://wa.me/972500000000" data-wa target="_blank" rel="noopener">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 11.4a7.9 7.9 0 0 1-11.5 7.1L4 20l1.4-4.2A7.9 7.9 0 1 1 20 11.4Z"/><path d="M8.6 11.6h.01M12 11.6h.01M15.4 11.6h.01"/></svg>
+        <span data-he="cta.whatsapp">וואטסאפ</span>
+      </a>
+      <p class="site-footer__place">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="10" r="3"/><path d="M12 21c-4.4-4.6-6.6-8.3-6.6-11a6.6 6.6 0 0 1 13.2 0c0 2.7-2.2 6.4-6.6 11Z"/></svg>
+        <span>יער מאכל · <span data-he="place">מושב פדיה</span></span>
+      </p>
+    </div>
+  </div>
+
+  <div class="site-footer__field" data-footer-field>
+    <div class="site-footer__seedbox" data-footer-seedbox>
+      <div class="site-footer__ask" data-footer-ask hidden>
+        <button class="site-footer__seed" type="button" data-footer-seed data-cursor="גררו" aria-label="זורעים את הזרע באדמה">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4.2c3.1 0 5.2 3.5 5.2 7.8s-2.1 7.8-5.2 7.8-5.2-3.5-5.2-7.8 2.1-7.8 5.2-7.8Z"/><path d="M10.9 8.3c1.4 2.4 1.4 5 0 7.4"/></svg>
+        </button>
+        <p class="site-footer__hint" data-footer-hint aria-hidden="true">גררו את הזרע אל האדמה</p>
+      </div>
+      <a class="btn btn--fruit btn--lg site-footer__cta" href="/plant" data-footer-cta data-cursor="שתלו" data-cursor-fill="fruit" data-magnetic>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21v-8"/><path d="M12 13c0-4 2.6-6.6 7-7 0 4.2-2.8 7-7 7Z"/><path d="M12 15.5c0-3-2-5-5.5-5.3 0 3.2 2.2 5.3 5.5 5.3Z"/><path d="M7.5 21h9"/></svg>
+        <span data-he="cta.plant">נוטעים עץ משלכם</span>
+      </a>
+    </div>
+    <h2 class="site-footer__big" data-footer-big><span data-he="footer.big">בואו לנטוע</span></h2>
+    <p class="visually-hidden" role="status" aria-live="polite" data-footer-status></p>
+  </div>
+
+  <div class="site-footer__soil" data-footer-soil>
+    <svg class="site-footer__surface" viewBox="0 0 1440 48" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0 20C120 17 214 23 336 20S566 16 700 19 930 24 1062 20 1300 16 1440 20V48H0Z"/></svg>
+    <svg class="site-footer__under" data-footer-under aria-hidden="true" focusable="false"></svg>
+    <div class="site-footer__legal">
+      <ul class="site-footer__legal-links" role="list">
+        <li><a href="/legal/terms" data-he="footer.terms">תקנון</a></li>
+        <li><a href="/legal/privacy" data-he="footer.privacy">מדיניות פרטיות</a></li>
+        <li><a href="/legal/accessibility" data-he="footer.accessibility">הצהרת נגישות</a></li>
+      </ul>
+      <p class="site-footer__rights">© <bdi data-footer-year>2026</bdi> <span data-he="brand">היער שלנו</span>. <span data-he="footer.rights">כל הזכויות שמורות</span></p>
+      <a class="site-footer__credit" href="/credits">קרדיטים: צילומים, גופנים וקוד פתוח</a>
+    </div>
+  </div>
+</footer>

@@ -7,14 +7,142 @@
 <meta property="og:title" content="הצהרת נגישות — היער שלנו">
 <meta property="og:description" content="הצהרת הנגישות של האתר.">
 <meta property="og:type" content="website">
-<!--#include partials/seo/legal.html -->
+<!--#include partials/seo/legal-accessibility.html -->
 </head>
 <body data-page="legal">
 <a class="skip-link" href="#main">דלגו לתוכן</a>
 
 <!--#include partials/header.html -->
-<main id="main" tabindex="-1">
-<!-- accessibility statement — owned by the business/static agent -->
+<main id="main" tabindex="-1" class="doc">
+  <header class="doc__head" data-bg="cream">
+    <nav class="doc__crumbs" aria-label="מיקום באתר">
+      <a href="/">היער שלנו</a>
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
+      <span>מסמכים</span>
+    </nav>
+    <p class="eyebrow">מסמכים</p>
+    <h1 class="doc__title">הצהרת נגישות</h1>
+    <p class="doc__lead">יער שמחבר בין אנשים צריך להיות פתוח לכולם — גם באתר וגם בשביל. כאן מפורט מה עשינו, מה עוד לא מושלם ולמי פונים.</p>
+    <dl class="doc__meta">
+      <div><dt>עודכן לאחרונה:</dt><dd><bdi>12.11.2026</bdi></dd></div>
+      <div><dt>רמת יעד:</dt><dd><bdi>WCAG 2.1 AA</bdi> · ת״י 5568</dd></div>
+    </dl>
+    <aside class="doc__draft" role="note">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.8 19.5h18.4Z"/><path d="M12 9.5v4.5M12 16.8h.01"/></svg>
+      <p><strong>טיוטת הדגמה.</strong> ההצהרה נכתבה לאתר ההדגמה ועדיין לא עברה בדיקה של מורשה נגישות או של עורך דין. פרטים שמסומנים <span class="of-todo of-todo--chip">לאישור</span> עוד צריכים השלמה.</p>
+    </aside>
+    <div class="doc__tools">
+      <button class="btn btn--sm btn--outline" type="button" data-doc-print>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V3.5h10V9"/><rect x="3.5" y="9" width="17" height="8" rx="2"/><path d="M7 14.5h10v6H7Z"/></svg>
+        <span>הדפסה</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="doc__body">
+    <nav class="doc__toc" aria-labelledby="toc-title">
+      <details class="doc__toc-box">
+        <summary id="toc-title"><span>תוכן העניינים</span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <ol class="doc__toc-list" role="list">
+          <li><a href="#commitment">המחויבות שלנו</a></li>
+          <li><a href="#standard">רמת הנגישות</a></li>
+          <li><a href="#done">מה עשינו באתר</a></li>
+          <li><a href="#panel">כפתור הנגישות</a></li>
+          <li><a href="#limits">מגבלות ידועות</a></li>
+          <li><a href="#physical">נגישות ביער עצמו</a></li>
+          <li><a href="#coordinator">פניות בנושא נגישות</a></li>
+          <li><a href="#updated">עדכון ההצהרה</a></li>
+        </ol>
+      </details>
+    </nav>
+
+    <article class="doc__article">
+      <section id="commitment" aria-labelledby="h-commitment">
+        <h2 id="h-commitment">המחויבות שלנו</h2>
+        <p>״היער שלנו״ נולד כדי שכל אדם שמגיע אליו ירגיש שהמקום שלו. אנחנו פועלים כדי שהאתר יהיה נוח לשימוש לאנשים עם מוגבלות: בראייה, בשמיעה, בתנועה, בקשב ובקוגניציה, וגם למי שגולש מטלפון ביד אחת.</p>
+      </section>
+
+      <section id="standard" aria-labelledby="h-standard">
+        <h2 id="h-standard">רמת הנגישות</h2>
+        <p>האתר נבנה לפי תקן ישראלי ת״י 5568 (המבוסס על הנחיות <bdi lang="en">WCAG 2.0</bdi> ברמה <bdi>AA</bdi>), ובהתאם לתקנה 35 לתקנות שוויון זכויות לאנשים עם מוגבלות (התאמות נגישות לשירות), התשע״ג–2013. היעד שלנו גבוה מעט יותר: <bdi lang="en">WCAG 2.1</bdi> ברמה <bdi>AA</bdi>.</p>
+        <p>האתר נבדק בכלי בדיקה אוטומטיים ובניווט מלא במקלדת, בטלפון ובמחשב. <span class="of-todo">לאישור: בדיקה עם קוראי מסך (NVDA, VoiceOver, TalkBack) ובדיקה של מורשה נגישות שירות.</span></p>
+      </section>
+
+      <section id="done" aria-labelledby="h-done">
+        <h2 id="h-done">מה עשינו באתר</h2>
+        <ul>
+          <li><strong>מקלדת</strong> — אפשר להגיע לכל קישור, כפתור ושדה בטאב, לפי סדר הקריאה. בכל עמוד יש קישור ״דלגו לתוכן״.</li>
+          <li><strong>פוקוס ברור</strong> — מסגרת בצורת עלה מסמנת את הרכיב שבו נמצאים.</li>
+          <li><strong>מבנה</strong> — כותרות לפי סדר, אזורי ניווט מסומנים, שפת העמוד עברית וכיוון מימין לשמאל.</li>
+          <li><strong>תמונות</strong> — לתמונות שמוסרות מידע יש טקסט חלופי, ותמונות קישוטיות מוסתרות מקוראי מסך.</li>
+          <li><strong>ניגודיות</strong> — טקסט רגיל בניגודיות של <bdi>4.5:1</bdi> לפחות. כפתורים עם טקסט לבן בצבע זית כהה.</li>
+          <li><strong>תנועה</strong> — האתר מכבד את ההגדרה ״הפחתת תנועה״ של המכשיר: בלי אזורים נעוצים, בלי תלת־ממד ובלי פרלקסה, רק הופעות פשוטות. אין הבזקים.</li>
+          <li><strong>צלילים</strong> — כבויים כברירת מחדל, ונדלקים רק בלחיצה.</li>
+          <li><strong>מפת היער</strong> — מלבד המפה המצוירת יש רשימת עצים בטקסט, ואפשר לבחור מקום גם מהמקלדת.</li>
+          <li><strong>פעולות</strong> — לכל מחווה (גרירה, לחיצה ארוכה, השקיה) יש גם כפתור רגיל, ואירועים חשובים מוצגים גם בטקסט.</li>
+          <li><strong>טפסים</strong> — לכל שדה יש תווית, והודעות שגיאה כתובות במילים ולא רק בצבע.</li>
+          <li><strong>הגדלה</strong> — אפשר להגדיל את הטקסט עד <bdi>200%</bdi> בלי לאבד תוכן.</li>
+        </ul>
+      </section>
+
+      <section id="panel" aria-labelledby="h-panel">
+        <h2 id="h-panel">כפתור הנגישות</h2>
+        <p>בראש כל עמוד יש כפתור נגישות. אפשר להגדיל טקסט (שתי דרגות), להפעיל ניגודיות גבוהה ולעצור את כל האנימציות. ההגדרות נשמרות בדפדפן שלכם. הכפתור הוא תוספת: האתר עצמו בנוי נגיש גם בלעדיו.</p>
+      </section>
+
+      <section id="limits" aria-labelledby="h-limits">
+        <h2 id="h-limits">מגבלות ידועות</h2>
+        <ul>
+          <li>העץ התלת־ממדי בעמוד העץ הוא חוויה חזותית. כל המידע שבו מוצג גם בטקסט.</li>
+          <li>תמונות באתר ההדגמה הן תמונות זמניות, והטקסט החלופי שלהן עוד יעודכן.</li>
+          <li>תוכן של צד שלישי, כמו WhatsApp ודף התשלום של ספק הסליקה, אינו בשליטתנו.</li>
+        </ul>
+        <p>מצאתם משהו שלא עובד? נשמח לשמוע ולתקן.</p>
+      </section>
+
+      <section id="physical" aria-labelledby="h-physical">
+        <h2 id="h-physical">נגישות ביער עצמו</h2>
+        <p>היער עדיין בהקמה, וחלק מהשבילים הם שבילי עפר. ספרו לנו מראש על צרכים מיוחדים, ונתאים את הביקור והפעילות.</p>
+        <ul>
+          <li>חניה: <span class="of-todo">לאישור היער</span></li>
+          <li>שבילים ומשטחים: <span class="of-todo">לאישור היער</span></li>
+          <li>שירותים נגישים: <span class="of-todo">לאישור היער</span></li>
+          <li>מקומות ישיבה ומנוחה בצל: <span class="of-todo">לאישור היער</span></li>
+          <li>כלבי שירות: <span class="of-todo">לאישור היער</span></li>
+        </ul>
+      </section>
+
+      <section id="coordinator" aria-labelledby="h-coordinator">
+        <h2 id="h-coordinator">פניות בנושא נגישות</h2>
+        <p>נתקלתם בקושי או רוצים להציע שיפור? פנו לרכז/ת הנגישות שלנו. כדאי לציין את העמוד, מה ניסיתם לעשות ובאיזה מכשיר ודפדפן השתמשתם.</p>
+        <div class="doc__contact">
+          <span>רכז/ת נגישות: <span class="of-todo">לאישור — שם</span></span>
+          <span>טלפון: <span class="of-todo">לאישור</span></span>
+          <span>דוא״ל: <span class="of-todo">לאישור</span></span>
+          <a class="btn btn--sm" href="https://wa.me/972500000000" data-wa="שלום, יש לי פנייה בנושא נגישות" data-track="accessibility" target="_blank" rel="noopener">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.4a7.9 7.9 0 0 1-11.5 7.1L4 20l1.4-4.2A7.9 7.9 0 1 1 20 11.4Z"/><path d="M8.6 11.6h.01M12 11.6h.01M15.4 11.6h.01"/></svg>
+            <span>וואטסאפ</span>
+          </a>
+        </div>
+        <p>נחזור אליכם בהקדם. <span class="of-todo">לאישור: זמן מענה מתחייב.</span></p>
+      </section>
+
+      <section id="updated" aria-labelledby="h-updated">
+        <h2 id="h-updated">עדכון ההצהרה</h2>
+        <p>ההצהרה עודכנה ב־<bdi>12.11.2026</bdi>. נעדכן אותה בכל שינוי משמעותי באתר או ביער.</p>
+      </section>
+    </article>
+  </div>
+
+  <nav class="doc__more" aria-labelledby="doc-more-title">
+    <p class="doc__more-title" id="doc-more-title">מסמכים נוספים</p>
+    <ul class="doc__more-list" role="list">
+      <li><a href="/legal/terms"><span>תקנון</span><svg class="icon arrow-fwd" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5"/><path d="m11 6-6 6 6 6"/></svg></a></li>
+      <li><a href="/legal/privacy"><span>מדיניות פרטיות</span><svg class="icon arrow-fwd" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5"/><path d="m11 6-6 6 6 6"/></svg></a></li>
+      <li><a href="/legal/accessibility"><span>הצהרת נגישות</span><svg class="icon arrow-fwd" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5"/><path d="m11 6-6 6 6 6"/></svg></a></li>
+      <li><a href="/credits"><span>קרדיטים</span><svg class="icon arrow-fwd" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5"/><path d="m11 6-6 6 6 6"/></svg></a></li>
+    </ul>
+  </nav>
 </main>
 <!--#include partials/footer.html -->
 <!--#include partials/chrome-overlays.html -->

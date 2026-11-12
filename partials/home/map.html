@@ -1,1 +1,55 @@
-<!-- home/map — owned by its section agent -->
+<!-- home/map — section 5 "Forest map — the checkout". Owned by the map agent.
+     Script: src/sections/home/map.ts (+ map.css). The map itself is src/components/forest-map.ts
+     (also the spot picker in /plant), data: src/data/trees.json.
+     Without JS: the heading and the four participation cards with prices still work. -->
+<section class="mapsec" id="map" data-bg="sand" aria-labelledby="mapsec-title">
+  <header class="mapsec__head container">
+    <h2 class="mapsec__title" id="mapsec-title" data-reveal="lines" data-he="map.title">איך אפשר להיות חלק בהקמה של היער?</h2>
+    <p class="mapsec__sub" data-reveal="fade" data-he="map.subtitle">כל נקודה במפה היא סיפור. הנקודות שזוהרות מחכות לסיפור שלכם.</p>
+  </header>
+
+  <div class="mapsec__map">
+    <div class="mapsec__mount" data-forest-map></div>
+  </div>
+
+  <div class="mapsec__parts container">
+    <ul class="mapsec__cards" role="list">
+      <li class="mapsec__item" data-reveal="fade">
+        <a class="mapsec__card" href="/plant?product=tree">
+          <span class="mapsec__ico" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" focusable="false"><path d="M12 21v-8M12 13c0-3.6-2.6-6.1-6.5-6.1 0 3.7 2.7 6.1 6.5 6.1ZM12 15.6c0-3.1 2.3-5.4 5.8-5.4 0 3.2-2.4 5.4-5.8 5.4ZM7 21h10"/></svg></span>
+          <h3 class="mapsec__card-t" data-he="participate.cards.0.title">נוטעים עץ עם משמעות</h3>
+          <p class="mapsec__card-x" data-he="participate.cards.0.text">עץ לציון לידה, זוגיות, אירוע משמעותי או לזכר אדם אהוב</p>
+          <p class="mapsec__card-p" data-price="tree">החל מ־<bdi class="price">540&nbsp;₪</bdi></p>
+          <span class="mapsec__more"><span data-he="participate.more">מידע נוסף</span><svg class="icon arrow-fwd" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></span>
+        </a>
+      </li>
+      <li class="mapsec__item" data-reveal="fade">
+        <a class="mapsec__card" href="/plant?product=bench">
+          <span class="mapsec__ico" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" focusable="false"><path d="M4 13.5h16M5.5 13.5V19M18.5 13.5V19M5.5 9.8h13M5.5 6.6h13M6.6 6.6v6.9M17.4 6.6v6.9"/></svg></span>
+          <h3 class="mapsec__card-t" data-he="participate.cards.1.title">נגרות עם הקדשה</h3>
+          <p class="mapsec__card-x" data-he="participate.cards.1.text">קונים ליער ספסל, שולחן, פינת מדורה, מטבח, כיתת חוץ ועוד</p>
+          <p class="mapsec__card-p" data-price="bench">החל מ־<bdi class="price">4,800&nbsp;₪</bdi></p>
+          <span class="mapsec__more"><span data-he="participate.more">מידע נוסף</span><svg class="icon arrow-fwd" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></span>
+        </a>
+      </li>
+      <li class="mapsec__item" data-reveal="fade">
+        <a class="mapsec__card" href="/plant?product=workshop">
+          <span class="mapsec__ico" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" focusable="false"><path d="M8.5 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3.5 19.5c.4-3 2.4-5 5-5s4.6 2 5 5M15.8 10.4a2.6 2.6 0 1 0 0-5.2M15.6 13.8c2.6.3 4.4 2.3 4.8 5.2"/></svg></span>
+          <h3 class="mapsec__card-t" data-he="participate.cards.2.title">מגיעים לסדנה ביער</h3>
+          <p class="mapsec__card-x" data-he="participate.cards.2.text">סדנת נגרות, כלבנות, גינון ועוד. יום חוויות לקבוצות</p>
+          <p class="mapsec__card-p" data-price="workshop">החל מ־<bdi class="price">150&nbsp;₪</bdi></p>
+          <span class="mapsec__more"><span data-he="participate.more">מידע נוסף</span><svg class="icon arrow-fwd" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></span>
+        </a>
+      </li>
+      <li class="mapsec__item" data-reveal="fade">
+        <a class="mapsec__card" href="/plant?product=corner">
+          <span class="mapsec__ico" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" focusable="false"><path d="M7 21V9.5M5 9.5h4l-.6-3H5.6ZM7 6.5V4.8M12 21h8.5M16.5 21v-3.6M16.5 17.4c0-2.4-1.7-4.2-4.2-4.2 0 2.4 1.7 4.2 4.2 4.2ZM16.5 18.8c0-2.2 1.5-3.8 3.7-3.8 0 2.2-1.5 3.8-3.7 3.8Z"/></svg></span>
+          <h3 class="mapsec__card-t" data-he="participate.cards.3.title">מאמצים פינה ביער</h3>
+          <p class="mapsec__card-x" data-he="participate.cards.3.text">מרכיבים פינה משלכם עם עץ, תבלינים, ישיבה, תאורה ועוד</p>
+          <p class="mapsec__card-p" data-price="corner">החל מ־<bdi class="price">18,000&nbsp;₪</bdi></p>
+          <span class="mapsec__more"><span data-he="participate.more">מידע נוסף</span><svg class="icon arrow-fwd" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></span>
+        </a>
+      </li>
+    </ul>
+  </div>
+</section>

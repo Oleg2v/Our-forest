@@ -1,0 +1,18 @@
+/* "To be confirmed by the forest" marks — visible, honest placeholders for the client.
+   Used on /business (FAQ) and in the legal drafts. Not a price, so never --fruit. */
+.of-todo {
+  padding: 2px 9px 3px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 9px 0 9px 0;
+  background: rgb(var(--soil-rgb) / 0.045);
+  color: var(--bark);
+  font-family: var(--font-body);
+  font-size: 0.86em;
+  font-weight: 500;
+  line-height: 1.9;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.of-todo--chip { display: inline-block; line-height: 1.5; white-space: nowrap; }
+[data-theme='dark'] .of-todo:not(.biz-form__panel *) { color: var(--sage); background: rgb(var(--cream-rgb) / 0.06); }
+@media print { .of-todo { border-style: dashed; background: none; } }

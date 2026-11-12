@@ -7,6 +7,7 @@
    ========================================================================== */
 import { gsap } from '../core/gsap';
 import { env } from '../core/env';
+import { bus } from '../core/bus';
 import { isDarkAt, qs } from './util';
 
 const root = document.documentElement;
@@ -37,6 +38,8 @@ export function initFocus() {
   }));
   document.addEventListener('pointerdown', () => hide(), true);
   window.addEventListener('resize', () => visible && place(false), { passive: true });
+  // the page colour changed under the ring (focus scrolled into a dark/light section)
+  bus.on('theme:section', () => { if (visible) setTimeout(() => visible && place(false), 40); });
 }
 
 function show() {
@@ -87,11 +90,17 @@ function place(animate: boolean, quiet = false) {
   last = key;
   const radius = quiet ? (ring.style.borderRadius || shapeFor(target, w, h, pad)) : shapeFor(target, w, h, pad);
   if (!quiet) {
-    // probe just outside the element for the colour under the ring
-    const probeX = Math.min(window.innerWidth - 2, Math.max(2, r.left - pad - 3));
-    const probeY = Math.min(window.innerHeight - 2, Math.max(2, r.top + r.height / 2));
-    const dark = isDarkAt(probeX, probeY, (n) => !!n.closest('.focus-ring, .cursor'));
-    ring.dataset.tone = dark ? 'light' : 'dark';
+    // probe just outside the ring (above, below, both sides) — majority wins
+    const W = window.innerWidth, H = window.innerHeight;
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const pts: [number, number][] = [[cx, r.top - pad - 2], [cx, r.bottom + pad + 2], [r.left - pad - 2, cy], [r.right + pad + 2, cy]];
+    const skipRing = (n: Element) => !!n.closest('.focus-ring, .cursor') || n === target || target!.contains(n);
+    let dark = 0, n = 0;
+    for (const [px, py] of pts) {
+      if (px < 1 || py < 1 || px > W - 1 || py > H - 1) continue;
+      n++; if (isDarkAt(px, py, skipRing)) dark++;
+    }
+    ring.dataset.tone = (n ? dark / n > 0.5 : document.documentElement.dataset.theme === 'dark') ? 'light' : 'dark';
   }
   if (animate && env.motionAllowed()) {
     gsap.to(ring, { x, y, width: w, height: h, borderRadius: radius, duration: 0.5, ease: 'expo.out', overwrite: 'auto' });

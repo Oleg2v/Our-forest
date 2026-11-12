@@ -35,7 +35,7 @@ function stampSvg(year: number, memorial: boolean): string {
     <defs>
       <filter id="cert-ink" x="-10%" y="-10%" width="120%" height="120%">
         <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="n"/>
-        <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.4 1.25" result="m"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -0.9 1.18" result="m"/>
         <feComposite in="SourceGraphic" in2="m" operator="in"/>
       </filter>
       <path id="cert-ring" d="M60 60 m-44 0 a44 44 0 1 1 88 0 a44 44 0 1 1 -88 0"/>
@@ -43,9 +43,9 @@ function stampSvg(year: number, memorial: boolean): string {
     <g filter="url(#cert-ink)">
       <circle cx="60" cy="60" r="56" fill="none" stroke="currentColor" stroke-width="2.4"/>
       <circle cx="60" cy="60" r="35" fill="none" stroke="currentColor" stroke-width="1.2"/>
-      <text font-size="9.6" letter-spacing="0.6" fill="currentColor" font-family="Heebo, sans-serif" font-weight="500"><textPath href="#cert-ring" startOffset="0">${ring}</textPath></text>
+      <text direction="ltr" font-size="9.6" letter-spacing="0.6" fill="currentColor" font-family="Heebo, sans-serif" font-weight="500"><textPath href="#cert-ring" startOffset="0">${ring}</textPath></text>
       <g transform="translate(36 30) scale(2)" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="${memorial ? 'M12 21v-9M12 12c0-3.5-2.5-6-6-6 0 3.5 2.5 6 6 6zM12 14c0-3 2-5 5.5-5 0 3-2 5-5.5 5z' : 'M12 21v-7M12 14l-3-3M12 15.5l3-3M12 3a6 6 0 0 0-6 6 4 4 0 0 0 3 4h6a4 4 0 0 0 3-4 6 6 0 0 0-6-6z'}"/>
+        <path d="${memorial ? 'M5 19C5 11 10 5 19 5c0 9-6 14-14 14zM5 19l8-8' : 'M12 21v-9M12 12c0-3.5-2.5-6-6-6 0 3.5 2.5 6 6 6zM12 14c0-3 2-5 5.5-5 0 3-2 5-5.5 5zM8 21h8'}"/>
       </g>
       <text x="60" y="88" text-anchor="middle" font-size="11" fill="currentColor" font-family="'Frank Ruhl Libre', serif" font-weight="500">${year}</text>
     </g>
@@ -63,7 +63,7 @@ export function treeHref(s: PlantState): string {
 export interface DoneView { el: HTMLElement; play(): Promise<void> }
 
 export function createDoneView(ctx: Ctx, s: PlantState, buyer: BuyerDetails, plaqueUrl: string | null): DoneView {
-  const memorial = s.occasion === 'memorial';
+  const memorial = s.occasion === 'memorial' && s.product !== 'workshop';
   const now = new Date();
   const treeNo = s.spotMode === 'map' && s.spot ? s.spot : DEMO_TREE_ID;
   const ws = WORKSHOPS.find((w) => w.id === s.ws)!;
@@ -86,8 +86,9 @@ export function createDoneView(ctx: Ctx, s: PlantState, buyer: BuyerDetails, pla
     if (s.gift && s.giftTo) facts.push(['מתנה', escapeHtml(`ל${s.giftTo.replace(/^ל/, '')}`)]);
   }
 
+  const when = s.giftWhen === 'now' ? 'עכשיו' : s.giftWhen === 'tubishvat' ? giftWhenText(s) : `ב־${giftWhenText(s)}`;
   const lead = s.gift
-    ? `הברכה תישלח ל${escapeHtml(s.giftTo.replace(/^ל/, ''))} ${s.giftWhen === 'now' ? 'עכשיו' : `ב־${giftWhenText(s).replace(/^ב/, '')}`}, ב${s.giftVia === 'wa' ? he.cta.whatsapp : 'אימייל'}.`
+    ? `הברכה תישלח ל${escapeHtml(s.giftTo.replace(/^ל/, ''))} ${when}, ב${s.giftVia === 'wa' ? he.cta.whatsapp : 'אימייל'}.`
     : `התעודה נשלחת אליכם${buyer.email ? ' באימייל' : ' בוואטסאפ'}. שולם <bdi>${ils(pricing.total)}</bdi>.`; // micro-copy
 
   const el = document.createElement('section');
@@ -115,8 +116,8 @@ export function createDoneView(ctx: Ctx, s: PlantState, buyer: BuyerDetails, pla
             </header>
             <h3 class="cert__title">${certTitle}</h3>
             <p class="cert__no">${isWs ? escapeHtml(ws.title) : he.tree.number(treeNo)}</p>
-            <div class="cert__art">${isWs ? `<span class="cert__ws-ico">${icon(({ carpentry: 'saw', dogs: 'dog', garden: 'sprout' } as const)[s.ws])}</span>` : treeSvg(s.product === 'bench' ? 'olive' : s.species, { roots: true, className: 'cert__tree' })}</div>
-            ${!isWs && plaqueUrl ? `<img class="cert__plaque" src="${plaqueUrl}" alt="${escapeHtml(s.text.trim() ? `השלט: ${s.text.trim()}` : 'השלט')}">` : ''}
+            <div class="cert__art">${isWs ? `<span class="cert__ws-ico">${icon(({ carpentry: 'bench', dogs: 'dog', garden: 'sprout' } as const)[s.ws])}</span>` : treeSvg(s.product === 'bench' ? 'olive' : s.species, { roots: true, className: 'cert__tree', viewBox: '0 36 240 222' })}
+            ${!isWs && plaqueUrl ? `<img class="cert__plaque" src="${plaqueUrl}" alt="${escapeHtml(s.text.trim() ? `השלט: ${s.text.trim()}` : 'השלט')}">` : ''}</div>
             <dl class="cert__facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
             ${isWs ? '' : `<p class="cert__promise">${icon('guarantee')}<span>${he.plant.includes.items[5]}</span></p>`}
             <footer class="cert__foot">

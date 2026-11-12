@@ -36,6 +36,8 @@ export interface TreeSceneState {
   greetings: GreetingLeaf[];  // glowing leaves with initials on the crown
   hasNews: boolean;           // soft blinking dot above the crown
   quality: 0 | 1 | 2 | 3;     // device tier (leaves 3–5k desktop / 1–2k phone via instancing; hatching+shadows only on strong)
+  /** (added by tree-scene, optional) 7.11 "עץ אח": the sibling tree's spot on the island, dashed --fruit */
+  siblingSpot?: boolean;
 }
 
 export interface Hotspot {

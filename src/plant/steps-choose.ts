@@ -77,7 +77,7 @@ export function itemStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): StepView
 
 /* ---------------- workshop: which ---------------- */
 const WS_IMG = { carpentry: 'wsCarpentry', dogs: 'wsDogs', garden: 'wsGarden' } as const;
-const WS_ICON: Record<WorkshopId, IconName> = { carpentry: 'saw', dogs: 'dog', garden: 'sprout' };
+const WS_ICON: Record<WorkshopId, IconName> = { carpentry: 'bench', dogs: 'dog', garden: 'sprout' };
 export function workshopStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): StepView {
   const titleId = el.querySelector('h2')!.id;
   body.innerHTML = `
@@ -211,12 +211,14 @@ export function locationStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): Step
     </div>
     <div class="pcs-mapwrap" data-open="false">
       <div class="pcs-mapwrap__inner">
-        <div class="pcs-map" data-lenis-prevent></div>
+        <div class="pcs-map" data-lenis-prevent hidden></div>
+        <div class="pcs-map pcs-map--mini" hidden></div>
         <p class="pcs-spot" aria-live="polite"></p>
       </div>
     </div>`;
   const wrap = body.querySelector<HTMLElement>('.pcs-mapwrap')!;
-  const mapEl = body.querySelector<HTMLElement>('.pcs-map')!;
+  const mapEl = body.querySelector<HTMLElement>('.pcs-map:not(.pcs-map--mini)')!;
+  const miniEl = body.querySelector<HTMLElement>('.pcs-map--mini')!;
   const spotOut = body.querySelector<HTMLElement>('.pcs-spot')!;
   let map: ForestMapHandle | null = null;
   let fallback: ReturnType<typeof radioGroup> | null = null;
@@ -225,19 +227,25 @@ export function locationStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): Step
     tick();
     ctx.store.set({ spot: id, spotMode: 'map' });
   };
+  let mo: MutationObserver | null = null;
+  const useRealMap = () => {
+    mapEl.hidden = false; miniEl.hidden = true;
+    mo?.disconnect(); mo = null;
+  };
   const ensureMap = () => {
     if (map || fallback) return;
     const initial = ctx.store.get().spot || undefined;
     try {
       map = createForestMap(mapEl, { mode: 'picker', initialSpotId: initial, onSelect: (spot) => onSpot(spot.id) });
     } catch (e) { console.warn('[plant] forest map failed, using the mini plan', e); map = null; }
-    // the map is built in parallel by another agent — if it renders nothing, draw our own mini plan
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      if (mapEl.childElementCount === 0) { map?.destroy(); map = null; buildFallback(); }
-    }));
+    // the real map is built by another agent (maybe async); until it renders something, our own mini plan works
+    if (map && mapEl.childElementCount > 0) { useRealMap(); return; }
+    buildFallback();
+    if (map) { mo = new MutationObserver(() => { if (mapEl.childElementCount > 0) useRealMap(); }); mo.observe(mapEl, { childList: true }); }
   };
   const buildFallback = () => {
-    mapEl.classList.add('pcs-map--mini');
+    miniEl.hidden = false;
+    const mapEl = miniEl;
     const rows = 5, cols = 9;
     const status = (r: number, c: number) => {
       const h = (r * 31 + c * 17 + r * c * 7) % 11;
@@ -265,10 +273,7 @@ export function locationStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): Step
     const g = mapEl.querySelector<SVGGElement>('.pmini__dots')!;
     fallback = radioGroup(g as unknown as HTMLElement, (v) => onSpot(v));
     g.setAttribute('aria-label', he.map.legend.free);
-    const s = ctx.store.get();
-    const first = g.querySelector<SVGGElement>('[role="radio"]')?.dataset.value ?? '';
-    fallback.set(s.spot || '');
-    if (!s.spot && s.spotMode === 'map' && first) {/* wait for a choice */}
+    fallback.set(ctx.store.get().spot || '');
   };
 
   const optGroup = body.querySelector<HTMLElement>('.pcs-loc')!;

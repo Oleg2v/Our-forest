@@ -1,0 +1,167 @@
+/* ==========================================================================
+   Home 8 — "צרו קשר" (contact). Page bg → cream. Editorial: a huge title,
+   a quiet aside (WhatsApp, address) and a sand leaf panel with underline fields.
+   After sending: a seed falls into the ground and sprouts (contact.ts).
+   ========================================================================== */
+.contact { position: relative; padding-block: var(--section-pad); color: var(--ink); }
+.contact__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  column-gap: clamp(40px, 6vw, 120px);
+  align-items: start;
+}
+.contact__aside { display: grid; gap: 18px; justify-items: start; position: sticky; inset-block-start: calc(var(--header-h) + 32px); }
+.contact__title {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(64px, 9.4vw, 160px);
+  line-height: 0.92;
+  letter-spacing: -0.025em;
+  color: var(--bark);
+  margin-block-end: clamp(8px, 1.4vw, 20px);
+}
+.contact__sub {
+  font-family: var(--font-display);
+  font-size: clamp(26px, 2.3vw, 36px);
+  line-height: 1.15;
+  color: var(--bark);
+  max-width: 18ch;
+  text-wrap: balance;
+}
+.contact__text { font-size: clamp(18px, 1.35vw, 20px); color: var(--ink-soft); max-width: 32ch; }
+.contact__direct {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: 14px 26px;
+  margin-block-start: clamp(18px, 3vh, 36px);
+  padding-block-start: 26px;
+  border-block-start: 1px solid var(--line);
+  width: 100%;
+}
+.contact__place {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 44px;
+  color: var(--ink); font-size: 16px; text-decoration: none;
+  border-block-end: 1px solid transparent;
+  transition: border-color var(--t-ui) var(--ease-out);
+}
+.contact__place .icon { width: 20px; height: 20px; color: var(--olive); }
+.contact__place:hover > span { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.25em; }
+
+/* ---------------------------------------------------------------- panel + fields */
+.contact__panel {
+  position: relative;
+  padding: clamp(28px, 4.2vw, 68px) clamp(24px, 4.2vw, 68px) clamp(28px, 3.6vw, 56px);
+  border-radius: var(--leaf);
+  background: var(--sand);
+  color: var(--soil);
+}
+.contact__form { display: grid; gap: clamp(22px, 2.4vw, 34px); }
+.contact__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(22px, 2.4vw, 34px) clamp(18px, 2.4vw, 36px); }
+.contact__field { position: relative; display: grid; gap: 6px; align-content: start; }
+.contact__field label { font-size: var(--fs-small); color: rgb(var(--soil-rgb) / 0.72); }
+.contact__star { color: var(--bark); margin-inline-start: 3px; }
+.contact__field :is(input, textarea, select) {
+  width: 100%;
+  min-height: 50px;
+  padding: 8px 2px 10px;
+  border: 0;
+  border-block-end: 1.5px solid rgb(var(--soil-rgb) / 0.3);
+  border-radius: 0;
+  background: linear-gradient(var(--olive-deep), var(--olive-deep)) no-repeat right bottom / 0% 2px;
+  color: var(--soil);
+  font-size: 19px;
+  line-height: 1.4;
+  transition: background-size var(--t-ui) var(--ease-out), border-color var(--t-micro);
+  appearance: none;
+  -webkit-appearance: none;
+}
+.contact__field :is(input, textarea, select):hover { border-block-end-color: rgb(var(--soil-rgb) / 0.5); }
+.contact__field :is(input, textarea, select):focus { background-size: 100% 2px; outline: none; }
+.contact__field :is(input, textarea, select):focus-visible { outline: none; }
+.contact__field input[dir='ltr'] { text-align: right; }
+.contact__field input[dir='ltr']:focus, .contact__field input[dir='ltr']:not(:placeholder-shown) { text-align: left; }
+.contact__field textarea { min-height: 96px; resize: vertical; padding-block-start: 10px; }
+.contact__field :is(input, textarea, select)[aria-invalid='true'] { border-block-end-color: var(--bark); border-block-end-width: 2px; }
+.contact__select { position: relative; }
+.contact__select select { padding-inline-end: 34px; cursor: pointer; }
+.contact__select select:invalid, .contact__select select.is-empty { color: rgb(var(--soil-rgb) / 0.55); }
+.contact__select .icon { position: absolute; inset-inline-end: 2px; inset-block-start: 50%; width: 20px; height: 20px; margin-block-start: -12px; color: var(--olive-deep); pointer-events: none; }
+.contact__err {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 14.5px; font-weight: 500; color: var(--bark);
+}
+.contact__err::before {
+  content: ''; flex: none; width: 16px; height: 16px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7.5v5.5M12 16.5h.01'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7.5v5.5M12 16.5h.01'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* consent */
+.contact__consent { position: relative; display: grid; gap: 6px; }
+.contact__box { position: absolute; opacity: 0; width: 26px; height: 26px; margin: 0; inset-block-start: 1px; inset-inline-start: 0; cursor: pointer; }
+.contact__consent-label { display: flex; align-items: flex-start; gap: 12px; font-size: 15px; line-height: 1.55; color: rgb(var(--soil-rgb) / 0.78); cursor: pointer; }
+.contact__consent-label a { color: var(--olive-deep); font-weight: 500; }
+.contact__tick {
+  flex: none; display: grid; place-items: center;
+  width: 26px; height: 26px; margin-block-start: 0;
+  border: 1.5px solid rgb(var(--soil-rgb) / 0.34); border-radius: 9px 0 9px 0;
+  background: rgb(var(--cream-rgb) / 0.5);
+  transition: background-color var(--t-micro), border-color var(--t-micro), border-radius var(--t-ui) var(--ease-out);
+}
+.contact__tick .icon { width: 17px; height: 17px; color: var(--cream); opacity: 0; transform: scale(0.5) rotate(-8deg); transition: opacity var(--t-micro), transform var(--t-ui) var(--ease-out); }
+.contact__box:checked + .contact__consent-label .contact__tick { background: var(--olive-deep); border-color: var(--olive-deep); border-radius: 0 9px 0 9px; }
+.contact__box:checked + .contact__consent-label .contact__tick .icon { opacity: 1; transform: none; }
+.contact__box:focus-visible + .contact__consent-label .contact__tick { outline: 2px solid var(--fruit); outline-offset: 3px; }
+.contact__box[aria-invalid='true'] + .contact__consent-label .contact__tick { border-color: var(--bark); border-width: 2px; }
+
+/* submit */
+.contact__submit { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 22px; margin-block-start: 6px; }
+.contact__send { min-width: 168px; }
+.contact__send .contact__seed-ico { transform: rotate(-32deg); transition: transform var(--t-ui) var(--ease-out); }
+.contact__send:hover .contact__seed-ico { transform: translateY(3px) rotate(-8deg); }
+.contact__send[aria-busy='true'] { pointer-events: none; }
+.contact__send[aria-busy='true'] .contact__seed-ico { animation: contact-wobble 0.7s var(--ease-inout) infinite alternate; }
+@keyframes contact-wobble { from { transform: rotate(-12deg); } to { transform: rotate(12deg) translateY(2px); } }
+.contact__note { font-size: 13.5px; color: rgb(var(--soil-rgb) / 0.62); }
+
+/* ---------------------------------------------------------------- done: the seed and the sprout */
+.contact__done { display: grid; justify-items: start; gap: 10px; outline: none; }
+.contact__art { width: min(100%, 380px); height: auto; overflow: visible; margin-block-end: 4px; margin-inline-start: -14px; }
+.contact__art path { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.contact__ground { stroke: var(--bark); }
+.contact__specks path, .contact__mound { stroke: rgb(var(--soil-rgb) / 0.45); }
+.contact__seed path { stroke: var(--bark); }
+.contact__seed path:first-child { fill: rgb(var(--cream-rgb) / 0.7); }
+.contact__stem, .contact__leaf { stroke: var(--olive-deep); }
+.contact__leaf[data-art='leaf'] { fill: rgb(201 207 160 / 0.35); }
+.contact__done-title { font-family: var(--font-display); font-weight: 300; font-size: clamp(38px, 3.6vw, 56px); line-height: 1.05; color: var(--bark); }
+.contact__done-text { font-size: 18.5px; color: rgb(var(--soil-rgb) / 0.8); max-width: 34ch; }
+.contact__done-demo { font-size: 14px; color: rgb(var(--soil-rgb) / 0.62); }
+.contact__done-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin-block-start: 14px; }
+.contact__again {
+  min-height: 44px; padding: 0 2px;
+  font-size: 15.5px; font-weight: 500; color: var(--olive-deep);
+  text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.3em;
+}
+
+/* ---------------------------------------------------------------- tablet / phones */
+@media (max-width: 1100px) and (min-width: 769px) {
+  .contact__grid { grid-template-columns: 1fr; row-gap: 56px; }
+  .contact__aside { position: static; }
+}
+@media (max-width: 768px) {
+  .contact__grid { grid-template-columns: 1fr; row-gap: 40px; }
+  .contact__aside { position: static; gap: 14px; }
+  .contact__title { font-size: clamp(64px, 19vw, 84px); }
+  .contact__sub { font-size: 25px; }
+  .contact__text { font-size: 17.5px; }
+  .contact__direct { padding-block-start: 20px; gap: 10px 22px; }
+  .contact__panel { margin-inline: calc(var(--gutter) * -0.5); padding: 30px 22px 30px; }
+  .contact__row { grid-template-columns: 1fr; }
+  .contact__field :is(input, textarea, select) { font-size: 18px; }
+  .contact__submit { flex-direction: column; align-items: stretch; }
+  .contact__send { width: 100%; }
+  .contact__note { text-align: center; }
+  .contact__art { margin-inline-start: -8px; }
+}

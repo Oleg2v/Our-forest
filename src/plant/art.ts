@@ -114,10 +114,10 @@ export const SPECIES_ART: Record<SpeciesId, SpeciesArt> = {
 };
 
 /** Static grown tree (cards, certificate). */
-export function treeSvg(id: SpeciesId, opts: { className?: string; details?: number; ground?: boolean; roots?: boolean; title?: string } = {}): string {
+export function treeSvg(id: SpeciesId, opts: { className?: string; details?: number; ground?: boolean; roots?: boolean; title?: string; viewBox?: string } = {}): string {
   const a = SPECIES_ART[id];
   const det = a.details.slice(0, opts.details ?? a.details.length);
-  const vb = opts.roots ? TREE_VB : '20 36 200 186';
+  const vb = opts.viewBox ?? (opts.roots ? TREE_VB : '20 36 200 186');
   return `<svg viewBox="${vb}" class="${opts.className ?? ''}" ${opts.title ? `role="img" aria-label="${opts.title}"` : 'aria-hidden="true" focusable="false"'}>
     ${opts.roots ? `<path class="art-roots" d="${ROOTS}" vector-effect="non-scaling-stroke"/>` : ''}
     ${opts.ground !== false ? `<path class="art-ground" d="${GROUND}" vector-effect="non-scaling-stroke"/>` : ''}

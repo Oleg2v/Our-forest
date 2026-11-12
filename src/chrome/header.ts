@@ -61,9 +61,10 @@ export function initHeader(page: PageName) {
   bus.on('menu:close', () => { menuOpen = false; });
   bus.on<{ visible: boolean }>('header:force', ({ visible }) => { forcedVisible = Math.max(0, forcedVisible + (visible ? 1 : -1)); onScroll(); });
   update();
-  // re-probe once media and webfonts have settled
+  // re-probe while intro animations, media and webfonts settle (no polling loop)
   window.addEventListener('load', () => setTimeout(tone, 60), { once: true });
-  setTimeout(tone, 400);
+  [400, 1200, 2400, 4000].forEach((ms) => setTimeout(tone, ms));
+  bus.on('preloader:done', () => setTimeout(tone, 300));
 
   markCurrent(page);
 }

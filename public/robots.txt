@@ -1,0 +1,7 @@
+# היער שלנו — robots.txt
+# Production origin: https://ourforest.kikkey.com (change here, in public/sitemap.xml and partials/seo/*.html if the domain changes)
+User-agent: *
+Allow: /
+Disallow: /404.html
+
+Sitemap: https://ourforest.kikkey.com/sitemap.xml

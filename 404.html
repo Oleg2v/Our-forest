@@ -13,8 +13,47 @@
 <a class="skip-link" href="#main">דלגו לתוכן</a>
 
 <!--#include partials/header.html -->
-<main id="main" tabindex="-1">
-<!-- 404 — owned by the business/static agent -->
+<main id="main" tabindex="-1" class="nf">
+  <section class="nf__stage" data-bg="cream" data-nf aria-labelledby="nf-title">
+    <div class="nf__copy">
+      <p class="eyebrow nf__eyebrow"><bdi class="nf__code">404</bdi><span aria-hidden="true">·</span><span>העמוד לא נמצא</span></p>
+      <h1 class="nf__title" id="nf-title" data-he="pages.notFound">העלה הזה הלך לאיבוד</h1>
+      <p class="nf__text">אולי הרוח לקחה אותו למקום אחר. מכאן אפשר לחזור לשביל.</p>
+      <div class="nf__actions">
+        <a class="btn btn--lg" href="/" data-magnetic>
+          <span data-he="nav.home">לעמוד הבית</span>
+          <svg class="icon arrow-fwd" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5"/><path d="m11 6-6 6 6 6"/></svg>
+        </a>
+        <a class="btn btn--lg btn--outline" href="/plant" data-he="cta.plant">נוטעים עץ משלכם</a>
+      </div>
+      <ul class="nf__links" role="list" aria-label="עוד מקומות ביער">
+        <li><a href="/#map">מפת היער</a></li>
+        <li><a href="/business" data-he="cta.business">לחברות וארגונים</a></li>
+        <li><a href="https://wa.me/972500000000" data-wa="שלום, הגעתי לעמוד שלא קיים באתר" data-track="notfound" target="_blank" rel="noopener" data-he="cta.whatsapp">וואטסאפ</a></li>
+      </ul>
+    </div>
+
+    <!-- the ground the leaf lands on -->
+    <svg class="nf__ground" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true">
+      <path class="nf__soil" d="M0 64C220 50 420 72 720 60S1210 46 1440 62V120H0Z"/>
+      <path class="nf__edge" d="M0 64C220 50 420 72 720 60S1210 46 1440 62"/>
+    </svg>
+    <svg class="nf__grass" viewBox="0 0 1440 60" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M96 56c2-12 6-20 12-26M104 56c0-10-3-17-8-22M318 52c3-10 8-17 14-20M326 52c-1-9-5-15-10-19M1060 50c2-11 7-18 13-22M1068 50c-1-8-4-14-9-18M1250 54c3-12 8-19 15-23M1258 54c0-9-4-16-9-20"/>
+    </svg>
+
+    <!-- the lonely leaf (moved by src/static/notfound.ts) -->
+    <div class="nf__leaf" data-nf-leaf aria-hidden="true">
+      <div class="nf__leaf-turn" data-nf-turn>
+        <svg class="nf__leaf-svg" viewBox="0 0 64 128">
+          <path class="nf__blade" d="M32 6C50 24 56 58 33 110 10 60 13 25 32 6Z"/>
+          <path class="nf__vein" d="M32 12V112M32 34c5 2 9 1 13-3M32 50c6 2 11 1 16-4M32 66c6 2 10 1 14-4M32 82c5 1 8 0 11-3M32 42c-5 2-9 1-13-3M32 58c-6 2-10 1-15-4M32 74c-6 2-9 1-13-3M32 90c-4 1-7 0-9-3"/>
+          <path class="nf__stem" d="M33 110c0 6-1 9-4 13"/>
+        </svg>
+      </div>
+    </div>
+    <p class="nf__hint" data-nf-hint aria-hidden="true">נסו לנשוב עליו</p>
+  </section>
 </main>
 <!--#include partials/footer.html -->
 <!--#include partials/chrome-overlays.html -->

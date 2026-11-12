@@ -13,8 +13,123 @@
 <a class="skip-link" href="#main">דלגו לתוכן</a>
 
 <!--#include partials/header.html -->
-<main id="main" tabindex="-1">
-<!-- credits — owned by the assets agent (photo credits) / business-static agent (page) -->
+<main id="main" tabindex="-1" class="doc credits">
+  <header class="doc__head" data-bg="cream">
+    <nav class="doc__crumbs" aria-label="מיקום באתר">
+      <a href="/">היער שלנו</a>
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
+      <span>מסמכים</span>
+    </nav>
+    <p class="eyebrow">תודה</p>
+    <h1 class="doc__title">קרדיטים</h1>
+    <p class="doc__lead">היער הזה צומח בזכות אנשים שמאמינים בו — וגם האתר. הצלמים, מעצבי הגופנים והקוד הפתוח שעליהם הוא בנוי.</p>
+    <aside class="doc__draft" role="note">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20A16 16 0 0 1 20 4A16 16 0 0 1 4 20Z"/><path d="M3 21L15.5 8.5"/></svg>
+      <p><strong>אתר הדגמה.</strong> הצילומים כאן זמניים, בתנאי הרישיון של כל אחד מהם, עד שיגיעו צילומים אמיתיים של היער ושל האנשים שבו. המחירים, נתוני המפה וההקדשות באתר הם לדוגמה.</p>
+    </aside>
+  </header>
+
+  <div class="doc__body">
+    <nav class="doc__toc" aria-labelledby="toc-title">
+      <details class="doc__toc-box">
+        <summary id="toc-title"><span>תוכן העניינים</span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <ol class="doc__toc-list" role="list">
+          <li><a href="#photos">צילומים</a></li>
+          <li><a href="#fonts">גופנים</a></li>
+          <li><a href="#code">קוד פתוח</a></li>
+          <li><a href="#craft">איורים, צלילים ותנועה</a></li>
+          <li><a href="#about">על האתר</a></li>
+        </ol>
+      </details>
+    </nav>
+
+    <article class="doc__article">
+      <section id="photos" aria-labelledby="h-photos">
+        <h2 id="h-photos">צילומים</h2>
+        <p data-credits-summary>הצילומים באתר והרישיונות שלהם.</p>
+        <ul class="credits__photos" role="list" data-credits-photos></ul>
+        <noscript><p>רשימת הצילומים מוצגת כש־JavaScript פעיל.</p></noscript>
+      </section>
+
+      <section id="fonts" aria-labelledby="h-fonts">
+        <h2 id="h-fonts">גופנים</h2>
+        <ul class="credits__list" role="list">
+          <li class="credits__row">
+            <span class="credits__name credits__name--frank" lang="en"><bdi>Frank Ruhl Libre</bdi></span>
+            <span class="credits__by">עיצוב: <bdi lang="en">Yanek Iontef</bdi>, על בסיס הגופן פרנק־ריהל של רפאל פרנק</span>
+            <span class="credits__lic"><a href="https://openfontlicense.org" lang="en" rel="noopener" target="_blank"><bdi>SIL Open Font License 1.1</bdi></a></span>
+          </li>
+          <li class="credits__row">
+            <span class="credits__name credits__name--heebo" lang="en"><bdi>Heebo</bdi></span>
+            <span class="credits__by">עיצוב: עודד עזר (<bdi lang="en">Oded Ezer</bdi>); האותיות הלטיניות מבוססות על <bdi lang="en">Roboto</bdi></span>
+            <span class="credits__lic"><a href="https://openfontlicense.org" lang="en" rel="noopener" target="_blank"><bdi>SIL Open Font License 1.1</bdi></a></span>
+          </li>
+        </ul>
+        <p class="doc__note">הגופנים מתארחים באתר עצמו (<bdi lang="en">Fontsource</bdi>, קבצי <bdi lang="en">woff2</bdi> בעברית ובלטינית), בלי פנייה לשרתים חיצוניים.</p>
+      </section>
+
+      <section id="code" aria-labelledby="h-code">
+        <h2 id="h-code">קוד פתוח</h2>
+        <ul class="credits__list" role="list">
+          <li class="credits__row">
+            <span class="credits__name" lang="en"><bdi>GSAP 3.15</bdi></span>
+            <span class="credits__by">אנימציות, גלילה וציורי קו (<bdi lang="en">ScrollTrigger, SplitText, DrawSVG, MorphSVG, Flip</bdi>) · <bdi lang="en">GreenSock / Webflow</bdi></span>
+            <span class="credits__lic"><a href="https://gsap.com/standard-license" lang="en" rel="noopener" target="_blank"><bdi>Standard “no charge” license</bdi></a></span>
+          </li>
+          <li class="credits__row">
+            <span class="credits__name" lang="en"><bdi>Lenis 1.3</bdi></span>
+            <span class="credits__by">גלילה רכה במחשב · <bdi lang="en">darkroom.engineering</bdi></span>
+            <span class="credits__lic"><a href="https://github.com/darkroomengineering/lenis/blob/main/LICENSE" lang="en" rel="noopener" target="_blank"><bdi>MIT</bdi></a></span>
+          </li>
+          <li class="credits__row">
+            <span class="credits__name" lang="en"><bdi>Three.js r187</bdi></span>
+            <span class="credits__by">הרוח בצמרת והעץ התלת־ממדי · <bdi lang="en">three.js authors</bdi></span>
+            <span class="credits__lic"><a href="https://github.com/mrdoob/three.js/blob/dev/LICENSE" lang="en" rel="noopener" target="_blank"><bdi>MIT</bdi></a></span>
+          </li>
+          <li class="credits__row">
+            <span class="credits__name" lang="en"><bdi>detect-gpu 5</bdi></span>
+            <span class="credits__by">התאמת האפקטים לכוח המכשיר · <bdi lang="en">pmndrs, Tim van Scherpenzeel</bdi></span>
+            <span class="credits__lic"><a href="https://github.com/pmndrs/detect-gpu/blob/master/LICENSE" lang="en" rel="noopener" target="_blank"><bdi>MIT</bdi></a></span>
+          </li>
+          <li class="credits__row">
+            <span class="credits__name" lang="en"><bdi>qrcode-generator 2</bdi></span>
+            <span class="credits__by">הקוד על השלט שמוביל לעמוד העץ · <bdi lang="en">Kazuhiko Arase</bdi></span>
+            <span class="credits__lic"><a href="https://github.com/kazuhikoarase/qrcode-generator/blob/master/LICENSE" lang="en" rel="noopener" target="_blank"><bdi>MIT</bdi></a></span>
+          </li>
+          <li class="credits__row">
+            <span class="credits__name" lang="en"><bdi>Vite · TypeScript</bdi></span>
+            <span class="credits__by">כלי הבנייה · <bdi lang="en">VoidZero / Evan You · Microsoft</bdi></span>
+            <span class="credits__lic"><bdi lang="en">MIT · Apache-2.0</bdi></span>
+          </li>
+        </ul>
+      </section>
+
+      <section id="craft" aria-labelledby="h-craft">
+        <h2 id="h-craft">איורים, צלילים ותנועה</h2>
+        <ul>
+          <li>האייקונים, השורשים, המפה, העצים והכלב צוירו בקו אחד במיוחד לאתר.</li>
+          <li>צלילי היער (ציפורים, רוח, צרצרים, פכפוך מים) נוצרים בדפדפן בזמן אמת, בלי הקלטות. הם כבויים עד שמדליקים אותם.</li>
+          <li>הצורה שחוזרת בכל מקום — עלה עם שתי פינות מעוגלות — לקוחה מהשפה של היער עצמו.</li>
+        </ul>
+      </section>
+
+      <section id="about" aria-labelledby="h-about">
+        <h2 id="h-about">על האתר</h2>
+        <p>זהו אתר הדגמה ל״היער שלנו״, יער מאכל במושב פדיה. המחירים הם הצעה, נתוני המפה וההקדשות הם לדוגמה, ואין בו תשלום אמיתי. הטקסטים של היער הובאו כלשונם.</p>
+        <p>מצאתם קרדיט חסר או שגוי? <a href="https://wa.me/972500000000" data-wa="שלום, לגבי הקרדיטים באתר" data-track="credits" target="_blank" rel="noopener">כתבו לנו בוואטסאפ</a> ונתקן.</p>
+      </section>
+    </article>
+  </div>
+
+  <nav class="doc__more" aria-labelledby="doc-more-title">
+    <p class="doc__more-title" id="doc-more-title">מסמכים נוספים</p>
+    <ul class="doc__more-list" role="list">
+      <li><a href="/legal/terms"><span>תקנון</span><svg class="icon arrow-fwd" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5"/><path d="m11 6-6 6 6 6"/></svg></a></li>
+      <li><a href="/legal/privacy"><span>מדיניות פרטיות</span><svg class="icon arrow-fwd" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5"/><path d="m11 6-6 6 6 6"/></svg></a></li>
+      <li><a href="/legal/accessibility"><span>הצהרת נגישות</span><svg class="icon arrow-fwd" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5"/><path d="m11 6-6 6 6 6"/></svg></a></li>
+      <li><a href="/credits"><span>קרדיטים</span><svg class="icon arrow-fwd" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5"/><path d="m11 6-6 6 6 6"/></svg></a></li>
+    </ul>
+  </nav>
 </main>
 <!--#include partials/footer.html -->
 <!--#include partials/chrome-overlays.html -->

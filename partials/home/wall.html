@@ -1,1 +1,58 @@
-<!-- home/wall — owned by its section agent -->
+<!-- home/wall — section 7 "the wall of people". Owned by the "lower" agent.
+     Script: src/sections/home/wall.ts (+ wall.css). Dedications come from the map data
+     (src/data/trees.json, public ones only) — two marquees in opposite directions.
+     Testimonials are NOT written: three empty, clearly marked slots wait for real stories. -->
+<section class="wall" id="wall" data-bg="moss" data-header="light" aria-labelledby="wall-title">
+  <div class="wall__head container">
+    <h2 class="wall__title" id="wall-title" data-he="wall.title" data-reveal="lines">היער הזה צומח בזכות אנשים שמאמינים בו</h2>
+    <div class="wall__texts">
+      <p class="wall__text" data-he="wall.text1" data-reveal="words">כל עץ שניטע, כל פינה שנבנית וכל פעילות המתקיימת מקרבים אותנו עוד קצת אל החזון – ליצור מרחב חי שמחבר בין אנשים, טבע, עשייה וקהילה.</p>
+      <p class="wall__text" data-he="wall.text2" data-reveal="words">אפשר לנטוע זיכרון, לבנות מקום שיישאר לשנים, להעניק חוויה לאחרים או פשוט לבחור להיות חלק ממשהו טוב שצומח מהאדמה.</p>
+    </div>
+  </div>
+
+  <div class="wall__band" data-wall-band role="region" aria-labelledby="wall-band-label">
+    <h3 class="visually-hidden" id="wall-band-label">הקדשות מעצי היער</h3>
+    <div class="wall__row wall__row--a" data-wall-row="a"></div>
+    <div class="wall__row wall__row--b" data-wall-row="b"></div>
+    <div class="wall__band-foot container">
+      <p class="wall__band-note">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="10" r="3"/><path d="M12 21c-4.4-4.6-6.6-8.3-6.6-11a6.6 6.6 0 0 1 13.2 0c0 2.7-2.2 6.4-6.6 11Z"/></svg>
+        <span>כל הקדשה היא עץ על <a href="#map">מפת היער</a></span>
+      </p>
+      <button class="wall__pause" type="button" aria-pressed="false" data-wall-pause hidden>
+        <svg class="icon wall__pause-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="wall__pause-bars" d="M9.5 7v10M14.5 7v10"/><path class="wall__pause-play" d="M9 6.8v10.4l8-5.2Z"/></svg>
+        <span class="wall__pause-label" data-wall-pause-label>עצירת התנועה</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="wall__stories container">
+    <p class="visually-hidden">כאן יופיעו בקרוב סיפורים אמיתיים של אנשים מהיער.</p>
+    <ul class="wall__slots" role="list" aria-hidden="true">
+      <li class="wall__slot">
+        <span class="wall__portrait"><svg class="icon" viewBox="0 0 24 24" focusable="false"><path d="M12 20v-7"/><path d="M12 13.4c0-3.2 2.1-5.3 5.3-5.6 0 3.2-2.1 5.3-5.3 5.6Z"/><path d="M12 15.6c0-2.4-1.6-4-4-4.2 0 2.4 1.6 4 4 4.2Z"/><path d="M8.5 20h7"/></svg></span>
+        <span class="wall__quote"><i></i><i></i><i></i><i class="wall__quote-by"></i></span>
+        <span class="wall__slot-label"><span class="wall__slot-num">01</span>כאן יופיע סיפור אמיתי מהיער</span>
+      </li>
+      <li class="wall__slot">
+        <span class="wall__portrait"><svg class="icon" viewBox="0 0 24 24" focusable="false"><path d="M12 20v-7"/><path d="M12 13.4c0-3.2 2.1-5.3 5.3-5.6 0 3.2-2.1 5.3-5.3 5.6Z"/><path d="M12 15.6c0-2.4-1.6-4-4-4.2 0 2.4 1.6 4 4 4.2Z"/><path d="M8.5 20h7"/></svg></span>
+        <span class="wall__quote"><i></i><i></i><i></i><i class="wall__quote-by"></i></span>
+        <span class="wall__slot-label"><span class="wall__slot-num">02</span>כאן יופיע סיפור אמיתי מהיער</span>
+      </li>
+      <li class="wall__slot">
+        <span class="wall__portrait"><svg class="icon" viewBox="0 0 24 24" focusable="false"><path d="M12 20v-7"/><path d="M12 13.4c0-3.2 2.1-5.3 5.3-5.6 0 3.2-2.1 5.3-5.3 5.6Z"/><path d="M12 15.6c0-2.4-1.6-4-4-4.2 0 2.4 1.6 4 4 4.2Z"/><path d="M8.5 20h7"/></svg></span>
+        <span class="wall__quote"><i></i><i></i><i></i><i class="wall__quote-by"></i></span>
+        <span class="wall__slot-label"><span class="wall__slot-num">03</span>כאן יופיע סיפור אמיתי מהיער</span>
+      </li>
+    </ul>
+  </div>
+
+  <div class="wall__cta container">
+    <a class="btn btn--lg wall__talk" href="#contact" data-magnetic><span data-he="wall.button">דברו איתנו</span></a>
+    <a class="btn btn--fruit btn--lg" href="/plant" data-cursor="שתלו" data-cursor-fill="fruit" data-magnetic>
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21v-8"/><path d="M12 13c0-4 2.6-6.6 7-7 0 4.2-2.8 7-7 7Z"/><path d="M12 15.5c0-3-2-5-5.5-5.3 0 3.2 2.2 5.3 5.5 5.3Z"/><path d="M7.5 21h9"/></svg>
+      <span data-he="cta.plant">נוטעים עץ משלכם</span>
+    </a>
+  </div>
+</section>

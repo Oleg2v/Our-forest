@@ -1,0 +1,458 @@
+/* ==========================================================================
+   Home section 4 — "Seasons" (owned by the seasons agent)
+   One inherited number, --sp (0 → 3 = spring → winter), drives the whole section:
+   background, leaves and fruit are CSS formulas of it (see seasons.ts / seasons-branch.ts).
+   Base styles = the static layout (no JS / reduced motion): grid on desktop, swipe carousel
+   on phones. .seasons--pinned switches to the pinned horizontal strip.
+   ========================================================================== */
+@property --sp { syntax: '<number>'; inherits: true; initial-value: 0; }
+
+.seasons {
+  --sp: var(--sp-real, 2);
+  /* our own ink: the page ink may still be the cream of the soil section above */
+  --ink: var(--soil);
+  --ink-soft: rgb(var(--soil-rgb) / 0.72);
+  --line: rgb(var(--soil-rgb) / 0.14);
+  --line-strong: rgb(var(--soil-rgb) / 0.26);
+
+  /* the four seasons, mixed from the palette tokens */
+  --s0: color-mix(in oklab, var(--cream) 52%, var(--sage));                                        /* spring: fresh, pale green */
+  --s1: color-mix(in oklab, color-mix(in oklab, var(--sand) 80%, var(--olive)) 93%, var(--fruit)); /* summer: straw, dry gold */
+  --s2: color-mix(in oklab, color-mix(in oklab, var(--sand) 83%, var(--fruit)) 95%, var(--bark));  /* autumn: pale terracotta */
+  --s3: color-mix(in oklab, color-mix(in oklab, var(--cream) 70%, var(--sage)) 84%, var(--moss));  /* winter: rain-grey green */
+  --season-bg: color-mix(in oklab,
+    color-mix(in oklab,
+      color-mix(in oklab, var(--s0), var(--s1) clamp(0%, var(--sp) * 100%, 100%)),
+      var(--s2) clamp(0%, (var(--sp) - 1) * 100%, 100%)),
+    var(--s3) clamp(0%, (var(--sp) - 2) * 100%, 100%));
+
+  --leaf-young: color-mix(in oklab, var(--olive) 72%, var(--sage));
+  --leaf-full: var(--olive-deep);
+  --leaf-autumn: color-mix(in oklab, var(--bark) 56%, var(--fruit));
+  --fruit-young: color-mix(in oklab, var(--olive) 78%, var(--sage));
+
+  --card-gap: clamp(56px, 7vw, 140px);
+
+  position: relative;
+  isolation: isolate;
+  background: var(--season-bg);
+  color: var(--ink);
+  padding-block: var(--section-pad) 0;
+}
+:root[data-a11y-contrast='high'] .seasons { --ink-soft: var(--soil); --line-strong: rgb(var(--soil-rgb) / 0.5); }
+
+/* the section is one big leaf: rounded top-left and bottom-right corners, painted (not page-bg dependent) */
+.seasons::before, .seasons::after {
+  content: ''; position: absolute; z-index: 5; pointer-events: none;
+  width: var(--leaf-r); height: var(--leaf-r);
+}
+.seasons::before { top: 0; left: 0; background: radial-gradient(circle at 100% 100%, transparent calc(var(--leaf-r) - 0.5px), var(--soil) var(--leaf-r)); }
+.seasons::after { bottom: 0; right: 0; background: radial-gradient(circle at 0 0, transparent calc(var(--leaf-r) - 0.5px), var(--sand) var(--leaf-r)); }
+
+/* ---------------------------------------------------------------- heading + seasonal plaque */
+.seasons__head {
+  width: min(100% - 2 * var(--gutter), var(--maxw));
+  margin-inline: auto;
+  display: grid;
+  gap: 28px 64px;
+  align-items: end;
+}
+.seasons__title {
+  font-size: clamp(42px, 5.4vw, 92px);
+  font-weight: 400;
+  line-height: 0.98;
+  letter-spacing: -0.015em;
+  color: var(--bark);
+}
+.seasons__tl { display: block; overflow: clip; overflow-clip-margin: 0.12em; padding-block-end: 0.06em; }
+.seasons__tl > span { display: block; }
+
+.seasons__plaque {
+  display: block;
+  max-width: 34rem;
+  color: var(--ink);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.seasons__plaque-art { display: none; }
+.seasons__plaque-body {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+  padding: 20px 24px 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--leaf-sm);
+  transition: border-color var(--t-ui) var(--ease-out), background-color var(--t-ui) var(--ease-out);
+}
+.seasons__plaque:hover .seasons__plaque-body, .seasons__plaque:focus-visible .seasons__plaque-body {
+  border-color: var(--ink);
+  background: rgb(var(--cream-rgb) / 0.32);
+}
+.seasons__plaque-ico { width: 30px; height: 30px; color: var(--olive-deep); margin-block-start: 2px; grid-row: span 2; }
+.seasons__plaque-text { font-size: 17px; line-height: 1.5; text-wrap: pretty; }
+.seasons__plaque-foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-block-start: 6px; }
+.seasons__plaque-date { font-size: 15px; color: var(--ink-soft); }
+.seasons__plaque-cta { display: inline-flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 500; }
+.seasons__plaque-cta .icon { width: 20px; height: 20px; transition: transform var(--t-ui) var(--ease-out); }
+.seasons__plaque:hover .seasons__plaque-cta .icon { transform: translateX(-5px); }
+
+/* ---------------------------------------------------------------- the branch (line art) */
+.seasons__branch { color: var(--bark); pointer-events: none; }
+.seasons__branch-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.seasons__branch path { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+.seasons__wood path { stroke-width: calc(1.5 * var(--u, 1)); }
+.seasons__tip { fill: color-mix(in oklab, var(--leaf-young) 20%, transparent) !important; color: var(--leaf-young); }
+.seasons__lf path, .seasons__fr path { stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+
+/* leaves — g: grown (spring → summer), a: turning (autumn), f: falling (winter) */
+.seasons__lf {
+  --g: clamp(0, (var(--sp) + 0.45 - 0.4 * var(--t)) / 0.95, 1);
+  --a: clamp(0, (var(--sp) - 1.45 - 0.5 * var(--o)) / 0.6, 1);
+  --f: clamp(0, (var(--sp) - 2.18 - 0.55 * var(--o)) / 0.42, 1);
+}
+.seasons__lf-fall {
+  transform: translate(calc(var(--f) * var(--dx) * 1px), calc(var(--f) * var(--f) * 96px)) rotate(calc(var(--f) * var(--rot) * 1deg));
+  opacity: calc(1 - var(--f) * var(--f) * var(--f));
+}
+.seasons__lf-grow {
+  transform: scale(calc(var(--in, 1) * (0.3 + 0.7 * var(--g))));
+  color: color-mix(in oklab, color-mix(in oklab, var(--leaf-young), var(--leaf-full) calc(var(--g) * 100%)), var(--leaf-autumn) calc(var(--a) * 100%));
+}
+.seasons__blade { fill: currentColor !important; fill-opacity: 0.13; }
+.seasons__vein { opacity: 0.75; }
+
+/* fruit — r: ripeness (bud → green → ripe --fruit), b: the pomegranate blossom gives way to fruit */
+.seasons__fr {
+  --r: clamp(0, (var(--sp) - 0.3 - 0.75 * var(--t)) / 1.35, 1);
+  --b: clamp(0, (var(--sp) - 0.12 - 0.5 * var(--t)) / 0.5, 1);
+}
+.seasons__fr-grow {
+  transform: scale(calc(var(--in, 1) * (0.26 + 0.74 * var(--r))));
+  color: color-mix(in oklab,
+    color-mix(in oklab, var(--fruit-young), var(--olive-deep) clamp(0%, var(--r) * 200%, 100%)),
+    var(--fruit) clamp(0%, (var(--r) * 2 - 1) * 100%, 100%));
+}
+.seasons__fr-body { fill: currentColor !important; fill-opacity: calc(0.08 + 0.24 * var(--r)); }
+.seasons__fr--pom .seasons__fr-grow { opacity: var(--b); }
+.seasons__bloom { color: var(--fruit); opacity: calc(1 - var(--b)); transform: scale(calc(var(--in, 1) * (1 - 0.35 * var(--b)))); }
+.seasons__bloom path { fill: currentColor !important; fill-opacity: 0.16; }
+
+/* ---------------------------------------------------------------- cards (base = static grid) */
+.seasons__branch { margin-block: clamp(20px, 3vw, 40px) clamp(28px, 4vw, 56px); }
+.seasons__viewport { position: relative; }
+.seasons__track {
+  width: min(100% - 2 * var(--gutter), var(--maxw));
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(28px, 4vw, 72px);
+  align-items: start;
+}
+.seasons__card { position: relative; display: flex; flex-direction: column; min-width: 0; }
+.seasons__card[data-card='gift'] { margin-block-start: clamp(24px, 5vw, 88px); }
+.seasons__card[data-card='events'] { margin-block-start: clamp(12px, 2vw, 32px); }
+
+.seasons__media {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--season-bg) 70%, var(--soil));
+  -webkit-tap-highlight-color: transparent;
+}
+.seasons__img { position: absolute; inset: 0; display: block; overflow: hidden; transform-origin: 50% 60%; }
+.seasons__img picture { display: block; height: 100%; }
+.seasons__photo {
+  display: block;
+  width: 110%; max-width: none; height: 100%;
+  margin-inline-start: -5%;
+  object-fit: cover;
+}
+
+.seasons__body { display: grid; gap: 10px; padding-block-start: 26px; padding-inline-end: 8px; }
+.seasons__idx { font-size: 15px; color: var(--olive-deep); letter-spacing: 0.06em; display: flex; align-items: center; gap: 12px; }
+.seasons__idx::after { content: ''; width: 40px; height: 1px; background: currentColor; opacity: 0.5; }
+.seasons__card-title { font-size: clamp(26px, 2.3vw, 36px); line-height: 1.12; color: var(--bark); }
+.seasons__card-text { font-size: 17px; line-height: 1.55; color: var(--ink-soft); max-width: 32ch; }
+.seasons__buy {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 12px 20px; margin-block-start: 10px; padding-block-start: 16px;
+  border-block-start: 1px solid var(--line);
+}
+.seasons__price { font-size: 16px; color: var(--ink-soft); }
+.seasons__price .price { font-size: 25px; margin-inline-start: 2px; }
+.seasons__unit { font-size: 15px; color: var(--ink-soft); }
+.seasons .btn--outline { --btn-bd: var(--line-strong); }
+.seasons .btn--outline:hover, .seasons .btn--outline:focus-visible { --btn-bg: var(--ink); --btn-fg: var(--cream); --btn-bd: var(--ink); }
+.seasons__cta .icon { transition: transform var(--t-ui) var(--ease-out); }
+.seasons__cta:hover .icon { transform: translateX(-4px); }
+
+/* ruler & dots exist only in the live modes */
+.seasons__ruler, .seasons__dots { display: none; }
+
+/* ---------------------------------------------------------------- desktop: pinned strip */
+.seasons--pinned { padding-block: 0; }
+.seasons--pinned .seasons__pin {
+  --branch-h: clamp(130px, 11.5vw, 200px);
+  --ruler-h: 96px;
+  --img-h: min(49svh, 540px, 30vw);
+  position: relative;
+  height: 100svh;
+  overflow: hidden;
+}
+.seasons--pinned .seasons__branch {
+  position: absolute; inset-inline: 0; top: 0; z-index: 2;
+  margin: 0;
+  height: var(--branch-h);
+}
+.seasons--pinned .seasons__branch-svg { height: 100%; }
+.seasons--pinned .seasons__viewport {
+  position: absolute; inset: 0;
+  display: flex; align-items: center;
+  overflow: clip;
+  padding-block: calc(var(--branch-h) - 12px) var(--ruler-h);
+}
+.seasons--pinned .seasons__track {
+  display: flex; align-items: center;
+  width: max-content; margin: 0;
+  gap: var(--card-gap);
+  padding-inline: var(--gutter) calc(var(--gutter) * 2.4);
+  will-change: transform;
+}
+.seasons--pinned .seasons__intro {
+  flex: none;
+  width: min(36vw, 620px);
+  margin-inline-end: calc(var(--card-gap) * -0.25);
+}
+.seasons--pinned .seasons__head { width: auto; margin: 0; display: grid; gap: clamp(28px, 4.4vh, 48px); }
+.seasons--pinned .seasons__title { font-size: clamp(54px, 5.6vw, 100px); }
+.seasons--pinned .seasons__card { flex: none; width: calc(var(--img-h) * 0.8); }
+.seasons--pinned .seasons__media { aspect-ratio: auto; height: var(--img-h); }
+.seasons--pinned .seasons__card[data-card='teams'] { margin: 0; translate: 0 -2.5svh; }
+.seasons--pinned .seasons__card[data-card='gift'] { margin: 0; translate: 0 4.5svh; }
+.seasons--pinned .seasons__card[data-card='events'] { margin: 0; translate: 0 -1svh; }
+.seasons--pinned .seasons__body { padding-block-start: 22px; gap: 8px; }
+.seasons--pinned .seasons__card-text { font-size: 16.5px; }
+@media (max-height: 760px) {
+  .seasons--pinned .seasons__card-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .seasons--pinned .seasons__pin { --img-h: min(44svh, 30vw); --ruler-h: 80px; }
+}
+
+/* the year as a ruler (= the strip's progress) */
+.seasons--pinned .seasons__ruler {
+  display: block;
+  position: absolute; z-index: 3;
+  inset-inline: var(--gutter);
+  bottom: clamp(18px, 3.4svh, 36px);
+  height: 52px;
+}
+.seasons__ruler-line { position: absolute; inset-inline: 0; top: 22px; height: 1px; background: var(--line-strong); }
+.seasons__ruler-fill {
+  position: absolute; inset: 0; background: var(--ink);
+  transform-origin: 100% 50%;
+  transform: scaleX(calc(var(--sp) / 3));
+}
+.seasons__tick {
+  --near: max(0, 1 - max(var(--sp) - var(--i), var(--i) - var(--sp)));
+  position: absolute; top: 0;
+  inset-inline-start: calc(var(--i) / 3 * 100%);
+  translate: 50% 0;
+  display: grid; justify-items: center; grid-template-rows: 18px 10px auto; row-gap: 4px;
+  min-width: 56px; min-height: 52px; padding: 0 6px;
+  color: var(--ink);
+  font-size: 14px; font-weight: 500; letter-spacing: 0.02em;
+}
+.seasons__tick:first-of-type { translate: 0 0; justify-items: start; padding-inline-start: 0; }
+.seasons__tick:last-of-type { inset-inline-start: auto; inset-inline-end: 0; translate: 0 0; justify-items: end; padding-inline-end: 0; }
+.seasons__tick-dot {
+  grid-row: 2;
+  width: 9px; height: 9px; margin-block-start: -2px; border-radius: 50%;
+  border: 1.5px solid var(--ink);
+  background: color-mix(in oklab, var(--ink) calc(var(--near) * 100%), var(--season-bg));
+  scale: calc(0.8 + 0.4 * var(--near));
+}
+.seasons__tick-name { grid-row: 3; opacity: calc(0.42 + 0.58 * var(--near)); transition: opacity var(--t-micro); }
+.seasons__tick-now {
+  grid-row: 1;
+  font-size: 12px; font-weight: 500; letter-spacing: 0.06em;
+  color: var(--olive-deep);
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.seasons__tick-now::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.seasons__tick:hover .seasons__tick-name { opacity: 1; }
+
+/* ---------------------------------------------------------------- workshops list */
+.seasons__ws { position: relative; padding-block: clamp(96px, 14vh, 180px) calc(var(--section-pad) + 24px); }
+.seasons--pinned .seasons__ws { padding-block-start: clamp(72px, 10vh, 140px); }
+.seasons__ws-title {
+  font-size: clamp(36px, 4.2vw, 68px);
+  line-height: 1.02;
+  color: var(--bark);
+  margin-block-end: clamp(28px, 3.6vw, 56px);
+}
+.seasons__rows { list-style: none; margin: 0; padding: 0; border-block-start: 1px solid var(--line-strong); }
+.seasons__row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(0, 2.5fr) minmax(170px, 1.1fr) minmax(130px, 0.9fr) auto;
+  grid-template-areas: 'when title seats price cta';
+  align-items: center;
+  gap: 16px 28px;
+  padding-block: 26px;
+  border-block-end: 1px solid var(--line-strong);
+}
+.seasons__row::after {
+  content: ''; position: absolute; inset-inline: 0; bottom: -1px; height: 1px;
+  background: var(--ink); transform: scaleX(0); transform-origin: 100% 50%;
+  transition: transform 0.9s var(--ease-out);
+  pointer-events: none;
+}
+.seasons__row:hover::after, .seasons__row:focus-within::after { transform: scaleX(1); }
+.seasons__thumb { grid-area: thumb; display: none; width: 64px; aspect-ratio: 1; border-radius: 22px 0 22px 0; overflow: hidden; background: var(--sage); }
+.seasons__thumb picture { display: block; height: 100%; }
+.seasons__when { grid-area: when; display: grid; line-height: 1.2; gap: 2px; }
+.seasons__wd { font-size: 14px; color: var(--ink-soft); }
+.seasons__date { font-size: 26px; color: var(--bark); font-variant-numeric: lining-nums tabular-nums; }
+.seasons__row-title {
+  grid-area: title;
+  font-size: clamp(22px, 1.9vw, 30px); line-height: 1.2; color: var(--ink);
+  transition: transform var(--t-appear) var(--ease-out);
+}
+.seasons__row:hover .seasons__row-title { transform: translateX(-8px); }
+.seasons__seats { grid-area: seats; display: flex; align-items: center; gap: 8px; font-size: 16px; color: var(--ink-soft); }
+.seasons__seats .icon { width: 20px; height: 20px; color: var(--olive-deep); }
+.seasons__seats.is-few { color: var(--bark); font-weight: 500; }
+.seasons__row-price { grid-area: price; white-space: nowrap; }
+.seasons__row-price .price { font-size: 24px; }
+.seasons__reserve { grid-area: cta; justify-self: end; }
+/* the whole row is the reserve link (one tab stop per row) */
+.seasons__row .seasons__reserve { position: static; }
+.seasons__row .seasons__reserve::after { content: ''; position: absolute; inset: 0; z-index: 1; }
+.seasons__reserve .icon { transition: transform var(--t-ui) var(--ease-out); }
+.seasons__row:hover .seasons__reserve .icon { transform: translateX(-4px); }
+
+.seasons--thumbs .seasons__thumb { display: block; }
+.seasons--thumbs .seasons__row {
+  grid-template-columns: 64px minmax(130px, 0.9fr) minmax(0, 2.4fr) minmax(160px, 1.1fr) minmax(120px, 0.9fr) auto;
+  grid-template-areas: 'thumb when title seats price cta';
+}
+
+/* the floating photo (desktop hover) */
+.seasons__float {
+  position: absolute; left: 0; top: 0; z-index: 4;
+  width: clamp(240px, 21vw, 320px); aspect-ratio: 4 / 3;
+  margin-block-start: -22px;
+  pointer-events: none;
+  visibility: hidden; opacity: 0;
+  border-radius: 64px 0 64px 0;
+  overflow: hidden;
+  clip-path: inset(calc((1 - var(--open, 1)) * 16%) round 64px 0 64px 0);
+  background: var(--sage);
+}
+.seasons__float-img { position: absolute; inset: 0; opacity: 0; }
+.seasons__float-img picture, .seasons__float-img img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* ---------------------------------------------------------------- phones: swipe carousel */
+@media (max-width: 768px) {
+  .seasons { padding-block: clamp(72px, 11svh, 104px) 0; }
+  .seasons__head { gap: 22px; }
+  .seasons__title { font-size: clamp(38px, 11vw, 48px); }
+  .seasons__branch { margin-block: 10px 6px; width: 100%; }
+  .seasons__viewport {
+    overflow-x: auto; overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--gutter);
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .seasons__viewport::-webkit-scrollbar { display: none; }
+  .seasons__track {
+    display: flex; width: max-content; margin: 0;
+    gap: 14px;
+    padding-inline: var(--gutter);
+    padding-block: 8px 4px;
+  }
+  .seasons__card, .seasons__slide {
+    flex: none;
+    width: min(78vw, 360px);
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+  .seasons__card[data-card] { margin: 0; }
+  .seasons__media { aspect-ratio: auto; height: min(46svh, 400px); }
+  .seasons__body { padding-block-start: 18px; gap: 8px; }
+  .seasons__card-title { font-size: 27px; }
+  .seasons__card-text { font-size: 16px; }
+  .seasons__buy { margin-block-start: 6px; padding-block-start: 14px; }
+
+  /* the plaque as the first slide (Tu BiShvat — the trees' new year) */
+  .seasons__slide.seasons__plaque { max-width: none; display: flex; flex-direction: column; }
+  .seasons__slide .seasons__plaque-art {
+    display: block; position: relative;
+    height: min(46svh, 400px);
+    border-radius: var(--leaf);
+    overflow: hidden;
+    background: color-mix(in oklab, var(--cream) 62%, var(--season-bg));
+  }
+  .seasons__slide .seasons__plaque-art svg { position: absolute; inset: 6% 10% 0; width: 80%; height: 94%; }
+  .seasons__slide .seasons__plaque-body {
+    border: 0; border-radius: 0; background: none !important;
+    padding: 18px 0 0; grid-template-columns: 1fr; gap: 12px;
+  }
+  .seasons__slide .seasons__plaque-ico { display: none; }
+  .seasons__slide .seasons__plaque-text { font-family: var(--font-display); font-size: 24px; line-height: 1.25; color: var(--bark); }
+  .seasons__slide .seasons__plaque-foot { padding-block-start: 14px; border-block-start: 1px solid var(--line); margin: 4px 0 0; }
+  .seasons__slide .seasons__plaque-cta {
+    min-height: 44px; padding: 0 20px; border-radius: var(--pill);
+    background: var(--fruit); color: var(--cream); font-size: 15px;
+  }
+
+  .seasons--carousel .seasons__dots {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    width: min(100% - 2 * var(--gutter), var(--maxw)); margin: 18px auto 0;
+  }
+  .seasons__dots-row { display: flex; align-items: center; }
+  .seasons__dot { display: grid; place-items: center; width: 28px; height: 44px; }
+  .seasons__dot span {
+    display: block; width: 8px; height: 8px; border-radius: var(--pill);
+    background: var(--ink); opacity: 0.28;
+    transition: width var(--t-ui) var(--ease-out), opacity var(--t-ui) var(--ease-out);
+  }
+  .seasons__dot[aria-current] span { width: 24px; opacity: 1; }
+  .seasons__dots-season { font-size: 14px; font-weight: 500; letter-spacing: 0.04em; color: var(--ink-soft); }
+
+  /* workshops: three lines per row */
+  .seasons__ws { padding-block: 72px calc(var(--section-pad) * 0.8); }
+  .seasons__row, .seasons--thumbs .seasons__row {
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'thumb when price'
+      'thumb title title'
+      'seats seats cta';
+    gap: 6px 14px;
+    padding-block: 22px;
+  }
+  .seasons__thumb { display: block; align-self: start; margin-block-start: 4px; }
+  .seasons__when { display: flex; align-items: baseline; gap: 8px; }
+  .seasons__date { font-size: 20px; }
+  .seasons__wd { font-size: 13px; }
+  .seasons__row-title { font-size: 21px; }
+  .seasons__row-price { align-self: baseline; }
+  .seasons__row-price .price { font-size: 20px; }
+  .seasons__row-price .seasons__unit { font-size: 13px; }
+  .seasons__seats { font-size: 15px; margin-block-start: 6px; }
+  .seasons__reserve { margin-block-start: 6px; }
+  .seasons__float { display: none; }
+}
+
+/* ---------------------------------------------------------------- reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .seasons__row-title, .seasons__row::after, .seasons__cta .icon { transition: none; }
+}
+html[data-a11y-motion='off'] .seasons__row-title, html[data-a11y-motion='off'] .seasons__row::after { transition: none; }
+
+@media print {
+  .seasons__branch, .seasons__ruler, .seasons__dots, .seasons__float { display: none !important; }
+}

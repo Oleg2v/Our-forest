@@ -1,2 +1,473 @@
-/* Home section: seasons — STUB (owned by its section agent). Markup: partials/home/seasons.html */
-export function initSeasons(): void {}
+/* ==========================================================================
+   Home section 4 — "Seasons": קונים חוויה, יוצרים השפעה + הסדנאות הקרובות.
+   Markup: partials/home/seasons.html · styles: seasons.css · art: seasons-branch.ts
+   · list: seasons-workshops.ts
+
+   The one motion idea: travelling through a year. The whole season lives in ONE inherited
+   CSS custom property on the section, --sp (0 → 3 = spring → summer → autumn → winter):
+   the section's own background, the branch's leaves (young → full → amber → falling) and the
+   figs & pomegranates (blossom → green bud → ripe --fruit) are all CSS formulas of it.
+
+   Modes
+   · 'pinned'   desktop + motion — the strip is pinned and travels right → left (RTL) while you
+                scroll; --sp follows the strip. A ruler of the year marks where you are (click = go there)
+                and the season it really is now in Israel.
+   · 'carousel' phone (≤ 768px) — swipe carousel with scroll-snap and progress dots; the season
+                follows the swipe (continuous while dragging, one season per slide). With reduced
+                motion the palette is the real season and stays put.
+   · 'grid'     desktop with reduced motion — no pin; static cards in a grid; the real season.
+   The global bg system treats the section as data-bg="season" (we paint our own colours);
+   the workshops block carries data-bg="sand" so the page is already sand when the map arrives.
+   ========================================================================== */
+import './seasons.css';
+import { gsap, ScrollTrigger, T, EASE } from '../../core/gsap';
+import { env } from '../../core/env';
+import { bus } from '../../core/bus';
+import { he } from '../../content/he';
+import { prices } from '../../content/prices';
+import { ils, ilDate, seasonOf, daysBetween, type Season } from '../../core/format';
+import { sound } from '../../core/sound';
+import { track } from '../../core/analytics';
+import { scrollTo } from '../../core/scroll';
+import { buildBranch, almondArt, WIDE, COMPACT } from './seasons-branch';
+import { initWorkshops } from './seasons-workshops';
+
+type Mode = 'pinned' | 'carousel' | 'grid';
+
+const SEASONS: Season[] = ['spring', 'summer', 'autumn', 'winter'];
+/** season names (functional micro-copy for the ruler / dots) */
+const NAME: Record<Season, string> = { spring: 'אביב', summer: 'קיץ', autumn: 'סתיו', winter: 'חורף' };
+const NOW_LABEL = 'עכשיו';
+/** Tu BiShvat 2027 (brief: 23 January 2027) */
+const TU_BISHVAT = '2027-01-23';
+
+const qs = <T extends Element = HTMLElement>(s: string, r: ParentNode) => r.querySelector<T>(s)!;
+const qsa = <T extends Element = HTMLElement>(s: string, r: ParentNode) => Array.from(r.querySelectorAll<T>(s));
+
+/** Keep the static markup in sync with the single source of copy (src/content/he.ts). */
+function syncCopy(root: HTMLElement) {
+  qsa<HTMLElement>('[data-he]', root).forEach((el) => {
+    const v = el.dataset.he!.split('.').reduce<unknown>((o, k) => (o == null ? o : (o as Record<string, unknown>)[k]), he);
+    if (typeof v === 'string' && el.textContent !== v) el.textContent = v;
+  });
+  qsa<HTMLElement>('[data-price]', root).forEach((el) => {
+    const v = (prices as Record<string, unknown>)[el.dataset.price!];
+    if (typeof v === 'number') el.textContent = ils(v);
+  });
+}
+
+/** the season it really is in Israel (dev: ?season=winter) */
+function realSeason(): number {
+  let s: Season = seasonOf();
+  if (import.meta.env.DEV) {
+    const q = new URLSearchParams(location.search).get('season') as Season | null;
+    if (q && SEASONS.includes(q)) s = q;
+  }
+  return SEASONS.indexOf(s);
+}
+
+class SeasonsSection {
+  private readonly root: HTMLElement;
+  private readonly pin: HTMLElement;
+  private readonly head: HTMLElement;
+  private readonly plaque: HTMLAnchorElement | null;
+  private readonly branchHost: HTMLElement;
+  private readonly viewport: HTMLElement;
+  private readonly track: HTMLElement;
+  private readonly cards: HTMLElement[];
+  private readonly ruler: HTMLElement;
+  private readonly dots: HTMLElement;
+  private readonly headHome: Comment;
+  private readonly plaqueHome: Comment;
+  private readonly real: number;
+
+  private mode: Mode | null = null;
+  private variant: 'wide' | 'compact' | null = null;
+  private ctx: gsap.Context | null = null;
+  private offs: (() => void)[] = [];
+  private sp = -1;
+  private seasonIdx = -1;
+  private lastSound = 0;
+  private revealed = new WeakSet<Element>();
+  private st: ScrollTrigger | null = null;
+  private tlHold = { start: 0.05, end: 0.07 };
+  private resizeTimer = 0;
+
+  constructor(root: HTMLElement) {
+    this.root = root;
+    this.pin = qs('.seasons__pin', root);
+    this.head = qs('.seasons__head', root);
+    this.plaque = root.querySelector<HTMLAnchorElement>('[data-plaque]');
+    this.branchHost = qs('.seasons__branch', root);
+    this.viewport = qs('.seasons__viewport', root);
+    this.track = qs('.seasons__track', root);
+    this.cards = qsa('.seasons__card', root);
+    this.ruler = qs('.seasons__ruler', root);
+    this.dots = qs('.seasons__dots', root);
+    this.real = realSeason();
+    // anchors to put moved nodes back when the mode changes
+    this.headHome = document.createComment('seasons:head');
+    this.head.before(this.headHome);
+    this.plaqueHome = document.createComment('seasons:plaque');
+    this.plaque?.before(this.plaqueHome);
+
+    syncCopy(root);
+    this.splitTitle();
+    this.setupPlaque();
+    this.setupRuler();
+    this.root.style.setProperty('--sp-real', String(this.real));
+    qsa<HTMLAnchorElement>('[data-track]', root).forEach((a) => a.addEventListener('click', () => {
+      track('select_item', { item_list_id: 'home_experiences', item_id: a.dataset.track });
+    }));
+    const ws = root.querySelector<HTMLElement>('.seasons__ws');
+    if (ws) initWorkshops(root);
+
+    this.build();
+    bus.on('motion:change', () => this.build(true));
+    const onResize = () => {
+      clearTimeout(this.resizeTimer);
+      this.resizeTimer = window.setTimeout(() => { if (this.wantMode() !== this.mode) this.build(true); }, 180);
+    };
+    window.addEventListener('resize', onResize, { passive: true });
+  }
+
+  /* ------------------------------------------------------------ helpers */
+  private wantMode(): Mode {
+    if (env.isMobile()) return 'carousel';
+    return env.motionAllowed() ? 'pinned' : 'grid';
+  }
+
+  /** the only per-frame write: one custom property */
+  private setSp(v: number) {
+    const sp = Math.round(Math.max(0, Math.min(3, v)) * 1000) / 1000;
+    if (sp === this.sp) return;
+    this.sp = sp;
+    this.root.style.setProperty('--sp', String(sp));
+    const idx = Math.round(sp);
+    if (idx !== this.seasonIdx) {
+      const first = this.seasonIdx < 0;
+      this.seasonIdx = idx;
+      this.root.dataset.season = SEASONS[idx];
+      qsa('.seasons__tick', this.ruler).forEach((b, i) => b.toggleAttribute('aria-current', i === idx));
+      if (!first && this.mode !== 'grid') {
+        const now = performance.now();
+        if (now - this.lastSound > 700) { this.lastSound = now; sound.play('rustle', { volume: 0.22 }); }
+      }
+    }
+  }
+
+  /** "קונים חוויה, / יוצרים השפעה" — two lines by design (masks for the entrance) */
+  private splitTitle() {
+    const title = this.head.querySelector<HTMLElement>('.seasons__title');
+    if (!title) return;
+    const parts = he.experiences.title.split(/(?<=,)\s+/);
+    title.innerHTML = parts.map((p) => `<span class="seasons__tl"><span>${p}</span></span>`).join(' ');
+  }
+
+  private headIn(trigger: Element, start: string) {
+    const lines = qsa('.seasons__tl > span', this.head);
+    const plaque = this.plaque && this.head.contains(this.plaque) ? [this.plaque] : [];
+    gsap.set(lines, { yPercent: 108 });
+    gsap.set(plaque, { autoAlpha: 0, y: 28 });
+    ScrollTrigger.create({
+      trigger, start, once: true,
+      onEnter: () => {
+        gsap.to(lines, { yPercent: 0, duration: T.appear, ease: EASE.appear, stagger: T.lineStep });
+        gsap.to(plaque, { autoAlpha: 1, y: 0, duration: T.appear, ease: EASE.appear, delay: 0.35 });
+      },
+    });
+  }
+
+  private setupPlaque() {
+    if (!this.plaque) return;
+    const days = -daysBetween(TU_BISHVAT);
+    // the seasonal plaque lives only in the ~5 months before the holiday
+    if (days < 0 || days > 150) { this.plaque.remove(); return; }
+    const date = this.plaque.querySelector<HTMLElement>('[data-tubishvat]');
+    if (date) date.textContent = ilDate(TU_BISHVAT);
+    const art = this.plaque.querySelector('.seasons__plaque-art svg');
+    if (art) art.innerHTML = almondArt();
+    this.plaque.addEventListener('click', () => track('select_item', { item_list_id: 'home_seasonal', item_id: 'tubishvat' }));
+  }
+
+  private setupRuler() {
+    const frag = document.createDocumentFragment();
+    SEASONS.forEach((s, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'seasons__tick';
+      b.style.setProperty('--i', String(i));
+      b.dataset.i = String(i);
+      b.innerHTML = `<span class="seasons__tick-dot" aria-hidden="true"></span><span class="seasons__tick-name">${NAME[s]}</span>`
+        + (i === this.real ? `<span class="seasons__tick-now">${NOW_LABEL}</span>` : '');
+      b.addEventListener('click', () => this.goToSeason(i));
+      frag.appendChild(b);
+    });
+    this.ruler.appendChild(frag);
+  }
+
+  private renderBranch(variant: 'wide' | 'compact') {
+    if (this.variant === variant) return;
+    this.variant = variant;
+    const o = variant === 'wide' ? WIDE : COMPACT;
+    this.branchHost.innerHTML = `<svg class="seasons__branch-svg" viewBox="0 0 ${o.w} ${o.h}" preserveAspectRatio="xMaxYMin slice" focusable="false">${buildBranch(o)}</svg>`;
+    this.syncUnits();
+  }
+
+  /** stroke widths of the drawn (non-scaled) wood stay 1.5 CSS px at any branch size */
+  private syncUnits() {
+    const svg = this.branchHost.firstElementChild as SVGSVGElement | null;
+    if (!svg) return;
+    const o = this.variant === 'wide' ? WIDE : COMPACT;
+    const wpx = svg.getBoundingClientRect().width || window.innerWidth;
+    const hpx = svg.getBoundingClientRect().height || wpx * (o.h / o.w);
+    const scale = Math.max(wpx / o.w, hpx / o.h); // "slice"
+    svg.style.setProperty('--u', (1 / Math.max(0.2, scale)).toFixed(4));
+  }
+
+  /* ------------------------------------------------------------ build / teardown */
+  private teardown() {
+    this.offs.forEach((fn) => fn());
+    this.offs = [];
+    this.ctx?.revert();
+    this.ctx = null;
+    this.st = null;
+    // put moved nodes back
+    if (this.head.parentElement !== this.headHome.parentElement) this.headHome.after(this.head);
+    if (this.plaque && this.plaque.parentElement !== this.plaqueHome.parentElement) this.plaqueHome.after(this.plaque);
+    this.root.classList.remove('seasons--pinned', 'seasons--carousel', 'seasons--grid', 'seasons--live');
+    this.ruler.hidden = true;
+    this.dots.hidden = true;
+    this.dots.innerHTML = '';
+  }
+
+  private build(rebuild = false) {
+    const mode = this.wantMode();
+    if (rebuild) this.teardown();
+    this.mode = mode;
+    const live = env.motionAllowed();
+    this.root.classList.add(`seasons--${mode}`);
+    this.root.classList.toggle('seasons--live', live && mode !== 'grid');
+    this.renderBranch(mode === 'carousel' ? 'compact' : 'wide');
+    this.sp = -1; this.seasonIdx = -1;
+    this.ctx = gsap.context(() => {
+      if (mode === 'pinned') this.buildPinned();
+      else if (mode === 'carousel') this.buildCarousel(live);
+      else this.setSp(this.real);
+    }, this.root);
+    this.syncUnits();
+    if (rebuild) requestAnimationFrame(() => { ScrollTrigger.sort(); ScrollTrigger.refresh(); });
+  }
+
+  /* ------------------------------------------------------------ entrance (branch + cards) */
+  private branchIn(trigger: Element, start: string) {
+    const svg = this.branchHost.firstElementChild;
+    if (!svg) return;
+    const stem = qsa<SVGPathElement>('.seasons__stem', svg);
+    const twigs = qsa<SVGPathElement>('.seasons__twig, .seasons__stalk', svg);
+    const parts = qsa<SVGGElement>('.seasons__lf, .seasons__fr', svg)
+      .sort((a, b) => Number(getComputedStyle(a).getPropertyValue('--t')) - Number(getComputedStyle(b).getPropertyValue('--t')));
+    gsap.set(stem, { drawSVG: '0%' });
+    gsap.set(twigs, { drawSVG: '0%' });
+    gsap.set(parts, { '--in': 0 });
+    const tl = gsap.timeline({ paused: true });
+    tl.to(stem, { drawSVG: '100%', duration: 1.8, ease: 'power2.inOut' })
+      .to(twigs, { drawSVG: '100%', duration: 0.7, ease: 'power2.out', stagger: 0.05 }, 0.5)
+      .to(parts, { '--in': 1, duration: 0.9, ease: 'back.out(1.6)', stagger: { each: 1.4 / Math.max(1, parts.length) } }, 0.7);
+    ScrollTrigger.create({ trigger, start, once: true, onEnter: () => tl.play() });
+  }
+
+  private hideCard(card: HTMLElement) {
+    const media = card.querySelector('.seasons__media');
+    const img = card.querySelector('.seasons__img');
+    const body = qsa(':scope > .seasons__body > *', card);
+    gsap.set(media, { clipPath: 'inset(24% 16% 24% 16% round 48px 0px 48px 0px)' });
+    gsap.set(img, { scale: 1.2 });
+    gsap.set(body, { autoAlpha: 0, y: 24 });
+  }
+
+  private revealCard(card: HTMLElement, delay = 0) {
+    if (this.revealed.has(card)) return;
+    this.revealed.add(card);
+    const media = card.querySelector<HTMLElement>('.seasons__media')!;
+    const img = card.querySelector('.seasons__img');
+    const body = qsa(':scope > .seasons__body > *', card);
+    const r = parseFloat(getComputedStyle(media).borderTopRightRadius) || 0;
+    const rl = parseFloat(getComputedStyle(media).borderTopLeftRadius) || 0;
+    // RTL leaf: rounded top-left & bottom-right in --leaf (120px 0 120px 0) → clip mirrors the element's own radius
+    const radius = `${rl}px ${r}px ${rl}px ${r}px`;
+    const tl = gsap.timeline({ delay });
+    tl.to(media, { clipPath: `inset(0% 0% 0% 0% round ${radius})`, duration: T.image, ease: EASE.image })
+      .to(img, { scale: 1, duration: T.image, ease: EASE.image }, 0)
+      .to(body, { autoAlpha: 1, y: 0, duration: T.appear, ease: EASE.appear, stagger: T.lineStep }, 0.3)
+      .add(() => gsap.set(media, { clearProps: 'clipPath' }));
+  }
+
+  /* ------------------------------------------------------------ desktop: pinned horizontal strip */
+  private buildPinned() {
+    // the heading becomes the strip's first panel
+    const intro = document.createElement('div');
+    intro.className = 'seasons__intro';
+    intro.appendChild(this.head);
+    this.track.prepend(intro);
+    this.offs.push(() => { intro.remove(); });
+    this.ruler.hidden = false;
+    this.setSp(0);
+
+    let entered = false;
+    const travel = () => Math.max(0, this.track.scrollWidth - this.viewport.clientWidth);
+    const dist = () => Math.max(travel() * 1.75, window.innerHeight * 1.6);
+    const H = this.tlHold;
+    const tl = gsap.timeline({
+      defaults: { ease: 'none' },
+      scrollTrigger: {
+        trigger: this.pin,
+        pin: true,
+        start: 'top top',
+        end: () => `+=${dist()}`,
+        scrub: 0.6,
+        invalidateOnRefresh: true,
+        anticipatePin: 1,
+        onRefresh: () => this.syncUnits(),
+      },
+    });
+    tl.to({}, { duration: H.start })
+      .to(this.track, { x: () => travel(), duration: 1 })
+      .to({}, { duration: H.end });
+    this.st = tl.scrollTrigger ?? null;
+
+    // parallax inside each photo + reveals, all from the same update
+    const imgs = this.cards.map((c) => c.querySelector<HTMLElement>('.seasons__photo'));
+    const setters = imgs.map((im) => (im ? gsap.quickSetter(im, 'xPercent') : null));
+    const update = () => {
+      const tr = travel();
+      const x = Number(gsap.getProperty(this.track, 'x')) || 0;
+      this.setSp(tr > 0 ? (x / tr) * 3 : 0);
+      const vw = window.innerWidth;
+      this.cards.forEach((card, i) => {
+        const b = card.getBoundingClientRect();
+        if (b.right < -40 || b.left > vw + 40) return;
+        const k = gsap.utils.clamp(-1, 1, ((b.left + b.width / 2) - vw / 2) / (vw * 0.7));
+        setters[i]?.(k * -5);
+        if (!this.revealed.has(card) && entered && b.left < vw * 0.92 && b.right > vw * 0.08) this.revealCard(card);
+      });
+    };
+    tl.eventCallback('onUpdate', update);
+
+    // first reveals when the section scrolls into view (the strip is still at its start)
+    this.cards.forEach((c) => this.hideCard(c));
+    this.headIn(this.root, 'top 72%');
+    ScrollTrigger.create({
+      trigger: this.root, start: 'top 62%', once: true,
+      onEnter: () => {
+        entered = true;
+        const vw = window.innerWidth;
+        let n = 0;
+        this.cards.forEach((card) => {
+          const b = card.getBoundingClientRect();
+          if (b.left < vw * 0.92 && b.right > vw * 0.08) this.revealCard(card, 0.25 + 0.12 * n++);
+        });
+      },
+    });
+    this.branchIn(this.root, 'top 75%');
+    update();
+
+    // keyboard: bring the focused card into the middle of the strip
+    const onFocus = (e: FocusEvent) => {
+      const card = (e.target as Element).closest<HTMLElement>('.seasons__card, .seasons__intro');
+      const st = this.st;
+      if (!card || !st) return;
+      const tr = travel();
+      if (tr <= 0) return;
+      const x = Number(gsap.getProperty(this.track, 'x')) || 0;
+      const b = card.getBoundingClientRect();
+      const cx0 = b.left + b.width / 2 - x; // centre with the strip at its start
+      const want = gsap.utils.clamp(0, tr, window.innerWidth / 2 - cx0);
+      const p = (H.start + want / tr) / (H.start + 1 + H.end);
+      scrollTo(st.start + (st.end - st.start) * p, { offset: 0 });
+    };
+    this.track.addEventListener('focusin', onFocus);
+    this.offs.push(() => this.track.removeEventListener('focusin', onFocus));
+  }
+
+  private goToSeason(i: number) {
+    const st = this.st;
+    if (!st) return;
+    const H = this.tlHold;
+    const p = (H.start + i / 3) / (H.start + 1 + H.end);
+    scrollTo(st.start + (st.end - st.start) * p, { offset: 0 });
+  }
+
+  /* ------------------------------------------------------------ phone: swipe carousel */
+  private buildCarousel(live: boolean) {
+    // the seasonal plaque becomes the first slide (Tu BiShvat — the trees' new year)
+    if (this.plaque) {
+      this.plaque.classList.add('seasons__slide');
+      this.track.prepend(this.plaque);
+      this.offs.push(() => this.plaque?.classList.remove('seasons__slide'));
+    }
+    const slides = qsa<HTMLElement>(':scope > .seasons__card, :scope > .seasons__plaque', this.track);
+    const n = slides.length;
+    // progress dots (one per slide) + the season's name
+    this.dots.hidden = false;
+    this.dots.innerHTML = `<span class="seasons__dots-row">${slides.map((_, i) => `<button type="button" class="seasons__dot" data-i="${i}" aria-label="${i + 1} / ${n}"><span></span></button>`).join('')}</span>`
+      + `<span class="seasons__dots-season" aria-hidden="true"></span>`;
+    const dotEls = qsa<HTMLButtonElement>('.seasons__dot', this.dots);
+    const seasonEl = qs('.seasons__dots-season', this.dots);
+    let active = -1;
+    const vp = this.viewport;
+
+    const update = () => {
+      const max = vp.scrollWidth - vp.clientWidth;
+      const p = max > 1 ? Math.min(1, Math.abs(vp.scrollLeft) / max) : 0;
+      if (live) this.setSp(p * 3); else this.setSp(this.real);
+      const i = Math.round(p * (n - 1));
+      if (i !== active) {
+        if (active >= 0 && live) sound.haptic(8);
+        active = i;
+        dotEls.forEach((d, k) => d.toggleAttribute('aria-current', k === i));
+      }
+      const s = SEASONS[Math.round(live ? p * 3 : this.real)];
+      if (seasonEl.textContent !== NAME[s]) seasonEl.textContent = NAME[s];
+      this.dots.style.setProperty('--p', p.toFixed(4));
+    };
+    let raf = 0;
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; update(); }); };
+    vp.addEventListener('scroll', onScroll, { passive: true });
+    this.offs.push(() => { vp.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf); });
+    dotEls.forEach((d) => d.addEventListener('click', () => {
+      const s = slides[Number(d.dataset.i)];
+      const b = s.getBoundingClientRect(), vb = vp.getBoundingClientRect();
+      const pad = parseFloat(getComputedStyle(vp).scrollPaddingInlineStart) || 0;
+      // RTL: align the slide's right edge with the viewport's right edge (minus scroll padding)
+      vp.scrollBy({ left: b.right - (vb.right - pad), behavior: env.motionAllowed() ? 'smooth' : 'auto' });
+    }));
+    update();
+
+    if (live) {
+      this.headIn(this.root, 'top 78%');
+      this.cards.forEach((c) => this.hideCard(c));
+      const plaque = this.plaque && this.track.contains(this.plaque) ? this.plaque : null;
+      if (plaque) gsap.set(plaque, { autoAlpha: 0, y: 32 });
+      ScrollTrigger.create({
+        trigger: vp, start: 'top 82%', once: true,
+        onEnter: () => {
+          let k = 0;
+          if (plaque) gsap.to(plaque, { autoAlpha: 1, y: 0, duration: T.appear, ease: EASE.appear, delay: 0.1 + 0.12 * k++ });
+          this.cards.forEach((c) => this.revealCard(c, 0.1 + 0.12 * k++));
+        },
+      });
+      this.branchIn(this.branchHost, 'top 85%');
+    }
+  }
+}
+
+export function initSeasons(): void {
+  const root = document.querySelector<HTMLElement>('section.seasons');
+  if (!root) return;
+  try {
+    new SeasonsSection(root);
+  } catch (e) {
+    console.error('[seasons]', e);
+  }
+}

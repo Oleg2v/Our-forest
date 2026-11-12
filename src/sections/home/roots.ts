@@ -41,14 +41,15 @@ function syncCopy(root: HTMLElement) {
 
 /* ---------------- desktop timeline layout (in timeline units) ---------------- */
 const TL = {
-  descentAt: 1.2, descentDur: 2.2,
-  netAt: 3.3,
-  branchEvery: 1.0, branchDur: 1.1,
-  tapNetDur: 4.3,          // tap root: from the descent tip down to the deepest node
-  glowAt: 8.7, glowDur: 1.25, branchGlowDur: 0.6,
-  end: 10.5,
-  allLit: 8.3,             // where #directions lands
+  descentAt: 1.5, descentDur: 2.8,   // story hold, then the dive under the ground
+  netAt: 4.2,
+  branchEvery: 0.9, branchDur: 1.0,
+  tapNetDur: 3.8,          // tap root: from the descent tip down to the deepest node
+  glowAt: 9.0, glowDur: 1.3, branchGlowDur: 0.6,
+  end: 10.9,
+  allLit: 8.95,            // where #directions lands (just before the finale)
 };
+const PIN_VH = 2.5;        // pinned scroll distance in viewport heights (section ≈ 350vh)
 
 class Roots {
   s: HTMLElement;
@@ -103,8 +104,8 @@ class Roots {
     this.surface.replaceChildren();
     this.s.classList.remove('roots--pinned', 'roots--static', 'roots--mobile', 'roots--mobile-static');
     this.anchor.removeAttribute('id');
+    this.anchor.removeAttribute('tabindex');
     this.anchor.style.top = '';
-    this.net.id = 'directions';
   }
 
   /** layout fingerprint (transform-independent) — rebuild only when it really changed */
@@ -202,6 +203,19 @@ class Roots {
     });
   }
 
+  /** The fine root that carries on past a node — outwards, clear of the centred label. */
+  tipPath(node: HTMLElement, N: Box, side: number): string {
+    const r = N.w / 2;
+    const label = Math.max(...Array.from(node.querySelectorAll<HTMLElement>('.roots__node-title, .roots__node-text')).map((e) => e.offsetWidth)) / 2;
+    const out = Math.max(r + 60, label + 34);
+    return smoothPath([
+      { x: N.cx + side * r * 0.72, y: N.cy + r * 0.7 },
+      { x: N.cx + side * (r + 34), y: N.cy + r + 6 },
+      { x: N.cx + side * out, y: N.cy + r + 30 },
+      { x: N.cx + side * (out + 16), y: N.cy + r + 96 },
+    ]);
+  }
+
   /* -------- desktop root system (shared by 'pinned' and 'static') -------- */
   buildDesktop() {
     const rand = seeded(427);
@@ -260,10 +274,10 @@ class Roots {
       const path = this.path(d, 'roots__root');
       const { total, samples } = samplePath(path, 6);
       // the root goes on past the node, finer, outwards and down
-      const tip = this.path(smoothPath([{ x: N.cx, y: N.cy }, { x: N.cx + side * 46, y: N.cy + 26 }, { x: N.cx + side * 78, y: N.cy + 74 }, { x: N.cx + side * 84, y: N.cy + 120 }]), 'roots__root roots__root--thin');
+      const tip = i === 1 ? null : this.path(this.tipPath(this.nodes[i], N, side), 'roots__root roots__root--thin');
       return { path, d, total, samples, lenB, B, side, tip };
     });
-    const deepTip = this.path(smoothPath([{ x: deep.cx, y: deep.cy }, { x: deep.cx - 60, y: deep.cy + 22 }, { x: deep.cx - 104, y: deep.cy + 64 }]), 'roots__root roots__root--thin');
+    const deepTip = this.path(this.tipPath(this.nodes[4], deep, -1), 'roots__root roots__root--thin');
 
     // fine rootlets (timed by where they leave their parent)
     const rootlets: { path: SVGPathElement; parent: number; at: number }[] = [];
@@ -321,25 +335,26 @@ class Roots {
     const g = this.buildDesktop();
     const { H, J, net, tap, tapLen, tapS, branches } = g;
     const camNet = net.y + net.h - H;
-    const tipEnd = lengthAtY(tapS, net.y + H * 0.24);
+    const tipEnd = lengthAtY(tapS, net.y + H * 0.5);
     const lenTease = lengthAtY(tapS, H * 0.93);
     const lenTop = lengthAtY(tapS, camNet - H * 0.08);
     const { words } = this.storyReveal(true);
 
     // initial states
-    gsap.set([tap, ...g.sap, ...branches.map((b) => b.path), ...branches.map((b) => b.tip), g.deepTip, ...g.rootlets.map((r) => r.path)], { drawSVG: '0 0' });
+    const tips = branches.map((b) => b.tip).filter((t): t is SVGPathElement => !!t);
+    gsap.set([tap, ...g.sap, ...branches.map((b) => b.path), ...tips, g.deepTip, ...g.rootlets.map((r) => r.path)], { drawSVG: '0 0' });
     gsap.set([g.tapGlow, g.tapGlowSoft], { drawSVG: `${tapLen} ${tapLen}` });
     gsap.set(g.branchGlows.flat(), { drawSVG: '100% 100%' });
     const nodeParts = this.nodes.map((n) => ({
       n,
-      ring: n.querySelector<SVGCircleElement>('.roots__ring circle')!,
+      ring: n.querySelector<SVGPathElement>('.roots__ring path')!,
       icon: n.querySelectorAll<SVGElement>('.roots__icon > *'),
       title: n.querySelector<HTMLElement>('.roots__node-title')!,
       text: n.querySelector<HTMLElement>('.roots__node-text')!,
     }));
     nodeParts.forEach(({ ring, icon, title, text, n }) => {
-      ring.setAttribute('transform', 'rotate(-90 32 32)');
       gsap.set(ring, { drawSVG: '0%' });
+      gsap.set(ring.ownerSVGElement, { autoAlpha: 0 });
       gsap.set(icon, { drawSVG: '0%' });
       gsap.set([title, text], { opacity: 0, y: 18 });
       gsap.set(n, { '--lit': 0, '--glow': 0 });
@@ -357,7 +372,7 @@ class Roots {
     tl.to(this.world, { y: -camNet, duration: TL.descentDur, ease: 'power2.inOut' }, TL.descentAt);
     tl.to(tap, { drawSVG: `0 ${tipEnd}`, duration: TL.descentDur, ease: 'power1.inOut' }, TL.descentAt);
     tl.to(this.copy, { y: -H * 0.08, duration: TL.descentDur, ease: 'power1.in' }, TL.descentAt);
-    tl.to(netSplit.lines, { yPercent: 0, duration: 0.7, stagger: 0.12, ease: 'power3.out' }, TL.netAt - 0.5);
+    tl.to(netSplit.lines, { yPercent: 0, duration: 0.8, stagger: 0.12, ease: 'power3.out' }, TL.descentAt + TL.descentDur * 0.55);
     // 3 · the five directions
     tl.to(tap, { drawSVG: `0 ${tapLen}`, duration: TL.tapNetDur }, TL.netAt);
     const tapTimeAt = (l: number) => (l <= lenTease ? (l / Math.max(1, lenTease)) * TL.descentAt
@@ -366,7 +381,8 @@ class Roots {
     const ignite: number[] = [];
     const lightNode = (i: number, at: number) => {
       const { n, ring, icon, title, text } = nodeParts[i];
-      tl.to(ring, { drawSVG: '100%', duration: 0.55, ease: 'power2.out' }, at)
+      tl.set(ring.ownerSVGElement, { autoAlpha: 0.9 }, at)
+        .to(ring, { drawSVG: '100%', duration: 0.55, ease: 'power2.out' }, at)
         .to(n, { '--lit': 1, duration: 0.6, ease: 'power2.out' }, at)
         .to(icon, { drawSVG: '100%', duration: 0.7, stagger: 0.06, ease: 'power2.inOut' }, at + 0.1)
         .to(title, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, at + 0.15)
@@ -377,7 +393,7 @@ class Roots {
       const start = Math.max(TL.netAt + i * TL.branchEvery, tapTimeAt(b.lenB) + 0.05);
       tl.to(b.path, { drawSVG: '0 100%', duration: TL.branchDur, ease: 'power1.inOut' }, start);
       lightNode(i, start + TL.branchDur - 0.05);
-      tl.to(b.tip, { drawSVG: '0 100%', duration: 0.7, ease: 'power1.out' }, start + TL.branchDur + 0.1);
+      if (b.tip) tl.to(b.tip, { drawSVG: '0 100%', duration: 0.7, ease: 'power1.out' }, start + TL.branchDur + 0.1);
     });
     const deepAt = TL.netAt + TL.tapNetDur;
     lightNode(4, deepAt);
@@ -398,10 +414,21 @@ class Roots {
     tl.to({}, { duration: Math.max(0, TL.end - tl.duration()) });
 
     // pin: ~320vh in total; #directions lands where all five nodes are lit
-    const dist = () => Math.round(window.innerHeight * 2.3);
+    const dist = () => Math.round(window.innerHeight * PIN_VH);
     const placeAnchor = () => { this.anchor.style.top = `${Math.round((TL.allLit / tl.duration()) * dist())}px`; };
-    this.net.removeAttribute('id');
+    // The pinned net never sits at its own document position, so links to #directions resolve to a marker
+    // placed at that scroll offset. The marker precedes the net in the DOM (getElementById finds it first);
+    // the net keeps its id so observers that grabbed it earlier (header "you are here") still work.
     this.anchor.id = 'directions';
+    this.anchor.removeAttribute('aria-hidden');
+    this.netTitle.setAttribute('tabindex', '-1');
+    const toHeading = () => this.netTitle.focus({ preventScroll: true });
+    this.anchor.addEventListener('focus', toHeading);
+    this.disposers.push(() => {
+      this.anchor.removeEventListener('focus', toHeading);
+      this.anchor.setAttribute('aria-hidden', 'true');
+      this.netTitle.removeAttribute('tabindex');
+    });
     placeAnchor();
     ScrollTrigger.create({
       trigger: this.s,
@@ -456,14 +483,15 @@ class Roots {
     this.drawSoil(rand, W, Hw, ground.y, [copy, frame, this.box(this.netTitle, wr), ...this.nodes.map((n) => this.box(n, wr))], 14);
 
     const O: P = { x: frame.cx + 2, y: frame.bottom - 10 };
+    const reach = Math.max(O.y + 104, copy.y + 96);
     const pts: P[] = [
       O,
-      { x: O.x + 4, y: O.y + 30 },
-      { x: O.x + (colX - O.x) * 0.55, y: O.y + 62 },
-      { x: colX - 2, y: copy.y + 64 },
+      { x: O.x + 3, y: O.y + 34 },
+      { x: O.x + (colX - O.x) * 0.56, y: O.y + (reach - O.y) * 0.66 },
+      { x: colX - 3, y: reach },
     ];
     // down beside the story, then through every node
-    let y = copy.y + 64;
+    let y = reach;
     for (const d of dots) {
       while (d.cy - y > 170) { y += 150; pts.push({ x: colX + rand.range(-5, 5), y }); }
       pts.push({ x: colX, y: d.cy });
@@ -497,16 +525,17 @@ class Roots {
     gsap.set(g.sap, { drawSVG: '0%' });
 
     const parts = this.nodes.map((n, i) => {
-      const ring = n.querySelector<SVGCircleElement>('.roots__ring circle')!;
-      ring.setAttribute('transform', 'rotate(-90 32 32)');
+      const ring = n.querySelector<SVGPathElement>('.roots__ring path')!;
       const icon = n.querySelectorAll<SVGElement>('.roots__icon > *');
       const title = n.querySelector<HTMLElement>('.roots__node-title')!;
       const text = n.querySelector<HTMLElement>('.roots__node-text')!;
       gsap.set(ring, { drawSVG: '0%' });
+      gsap.set(ring.ownerSVGElement, { autoAlpha: 0 });
       gsap.set(icon, { drawSVG: '0%' });
       gsap.set([title, text], { opacity: 0.2 });
       gsap.set(n, { '--lit': 0 });
       const tl = gsap.timeline({ paused: true })
+        .set(ring.ownerSVGElement, { autoAlpha: 0.9, immediateRender: false }, 0.001)
         .to(ring, { drawSVG: '100%', duration: 0.6, ease: 'power2.out' }, 0)
         .to(n, { '--lit': 1, duration: 0.8, ease: 'power2.out' }, 0)
         .to(icon, { drawSVG: '100%', duration: 0.8, stagger: 0.06, ease: 'power2.inOut' }, 0.1)

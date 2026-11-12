@@ -1,0 +1,87 @@
+/* ==========================================================================
+   Home 5 — "איך אפשר להיות חלק בהקמה של היער?" — the forest map is the checkout.
+   Heading → the paper plan (nearly full-bleed, leaf corners) → four ways to
+   take part with prices. Section bg is transparent (page bg → sand).
+   ========================================================================== */
+.mapsec { position: relative; padding-block: var(--section-pad); }
+
+.mapsec__head { display: grid; gap: 18px 48px; margin-block-end: clamp(32px, 4.4vw, 64px); }
+.mapsec__title { font-size: var(--fs-h2); font-weight: 400; line-height: 1.02; letter-spacing: -0.015em; color: var(--bark); max-width: 15ch; }
+.mapsec__sub { font-size: clamp(19px, 1.45vw, 22px); line-height: 1.55; color: var(--ink-soft); max-width: 34ch; }
+@media (min-width: 1024px) {
+  .mapsec__head { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); align-items: end; }
+  .mapsec__sub { padding-block-end: 0.45em; justify-self: end; }
+}
+
+/* the map */
+.mapsec__mount { --fm-h: clamp(560px, 84vh, 920px); }
+html.js .mapsec__mount:not(.fmap) { min-height: calc(var(--fm-h) + 62px); }
+.mapsec .fmap__bar { width: min(100% - 2 * var(--gutter), var(--maxw)); margin-inline: auto; }
+.mapsec .fmap__slot { margin-inline: clamp(8px, 1.4vw, 24px); }
+
+/* four ways to take part */
+.mapsec__parts { margin-block-start: clamp(48px, 6.4vw, 104px); }
+.mapsec__cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.mapsec__item { position: relative; }
+.mapsec__item + .mapsec__item { border-inline-start: 1px solid var(--line); }
+.mapsec__card {
+  position: relative; isolation: isolate; height: 100%;
+  display: grid; grid-template-rows: auto auto 1fr auto auto; gap: 12px;
+  padding: 26px clamp(20px, 2.2vw, 36px) 30px;
+  color: inherit; text-decoration: none;
+}
+.mapsec__card::before {
+  content: ''; position: absolute; inset: 0 6px; z-index: -1;
+  background: var(--cream); border-radius: var(--leaf-sm);
+  opacity: 0; transform: scale(0.97);
+  transition: opacity var(--t-ui) var(--ease-out), transform var(--t-appear) var(--ease-out), border-radius var(--t-appear) var(--ease-out);
+}
+.mapsec__card:hover::before, .mapsec__card:focus-visible::before { opacity: 1; transform: none; border-radius: 0 32px 0 32px; }
+.mapsec__ico { color: var(--olive); margin-block-end: 6px; }
+.mapsec__ico .icon { width: 44px; height: 44px; stroke-width: 1.2; }
+.mapsec__card-t { font-size: clamp(24px, 2vw, 30px); line-height: 1.12; color: var(--bark); }
+.mapsec__card-x { font-size: 16px; line-height: 1.55; color: var(--ink-soft); max-width: 30ch; }
+.mapsec__card-p { margin-block-start: 10px; font-family: var(--font-display); font-size: 17px; color: var(--ink-soft); }
+.mapsec__card-p .price { font-size: clamp(26px, 2.2vw, 32px); font-weight: 400; }
+.mapsec__more { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 500; color: var(--olive-deep); }
+.mapsec__more .icon { width: 20px; height: 20px; transition: transform var(--t-ui) var(--ease-out); }
+.mapsec__card:hover .mapsec__more .icon, .mapsec__card:focus-visible .mapsec__more .icon { transform: translateX(-5px); }
+.mapsec__card:focus-visible { outline-offset: -4px; }
+
+@media (max-width: 1100px) and (min-width: 769px) {
+  .mapsec__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mapsec__item:nth-child(3) { border-inline-start: 0; }
+  .mapsec__item:nth-child(n + 3) { border-block-start: 1px solid var(--line); }
+}
+
+/* phones: the map is the whole screen; the cards become a calm list */
+@media (max-width: 768px) {
+  .mapsec__title { font-size: clamp(36px, 10vw, 44px); max-width: 12ch; }
+  .mapsec__sub { font-size: 17.5px; }
+  .mapsec__mount { --fm-h: max(480px, calc(100svh - 128px)); }
+  html.js .mapsec__mount:not(.fmap) { min-height: calc(var(--fm-h) + 112px); }
+  .mapsec .fmap__slot { margin-inline: 0; }
+  .mapsec .fmap__frame { --fm-radius: 0; }
+  .mapsec .fmap--home .fmap__frame::after { border-radius: 0; }
+  .mapsec__cards { grid-template-columns: 1fr; }
+  .mapsec__item + .mapsec__item { border-inline-start: 0; border-block-start: 1px solid var(--line); }
+  .mapsec__card {
+    grid-template-columns: 52px minmax(0, 1fr) auto; grid-template-rows: none;
+    grid-template-areas: 'ico t t' 'ico x x' 'ico p more';
+    gap: 6px 14px; padding: 22px 4px 24px;
+  }
+  .mapsec__card::before { inset: 0 -10px; }
+  .mapsec__ico { grid-area: ico; margin: 2px 0 0; }
+  .mapsec__ico .icon { width: 40px; height: 40px; }
+  .mapsec__card-t { grid-area: t; font-size: 24px; }
+  .mapsec__card-x { grid-area: x; font-size: 15.5px; }
+  .mapsec__card-p { grid-area: p; margin: 6px 0 0; align-self: end; }
+  .mapsec__card-p .price { font-size: 26px; }
+  .mapsec__more { grid-area: more; align-self: end; padding-block-end: 4px; }
+}
+
+/* dev-only picker test box (?mappicker=1) */
+.mapsec__dev { margin-block: 48px 0; display: grid; gap: 12px; }
+.mapsec__dev-t { font-size: 13px; color: var(--ink-soft); }
+.mapsec__dev-map { height: clamp(300px, 40vh, 380px); max-width: 640px; border-radius: var(--leaf-sm); overflow: hidden; background: var(--sand); }
+.mapsec__dev-out { font-size: 15px; }

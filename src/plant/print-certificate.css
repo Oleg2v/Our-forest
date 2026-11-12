@@ -1,0 +1,30 @@
+/* ==========================================================================
+   Print: the certificate fills one A4 page (portrait). Everything else hides.
+   Before payment, printing the page gives a clean configurator summary.
+   ========================================================================== */
+@media print {
+  @page { size: A4 portrait; margin: 0; }
+  html[data-page='plant'] { background: #fff !important; }
+  html[data-page='plant'] body { background: #fff !important; min-height: 0; }
+  html[data-page='plant'] .pc-bar,
+  html[data-page='plant'] .pc__grab,
+  html[data-page='plant'] .pc__nav,
+  html[data-page='plant'] .pst__cta { display: none !important; }
+
+  /* after payment: only the certificate */
+  html.pc-has-cert body > :not(main) { display: none !important; }
+  html.pc-has-cert .plant-main > :not(.plant-root),
+  html.pc-has-cert .pc,
+  html.pc-has-cert .pdone__copy,
+  html.pc-has-cert .pdone__slot { display: none !important; }
+  html.pc-has-cert .pdone { display: block; width: auto; min-height: 0; margin: 0; padding: 0; }
+  html.pc-has-cert .plant-main, html.pc-has-cert .plant-root { background: #fff !important; padding: 0 !important; margin: 0 !important; }
+  html.pc-has-cert .pdone__printer { width: 210mm !important; max-width: none; margin: 0; padding: 0; }
+  html.pc-has-cert .pdone__feed { overflow: visible; margin: 0; padding: 0; }
+  html.pc-has-cert .cert {
+    width: 210mm; height: 296mm; aspect-ratio: auto; border: 0; transform: none !important; translate: none !important;
+    break-inside: avoid; page-break-inside: avoid;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  html.pc-has-cert .cert__stamp { opacity: 0.92 !important; transform: rotate(-9deg) !important; }
+}

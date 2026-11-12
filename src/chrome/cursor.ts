@@ -28,6 +28,7 @@ let dotY: gsap.QuickToFunc | null = null;
 let px = -100, py = -100;
 let shown = false;
 let lastTone = 0;
+let toneTimer = 0;
 let target: Element | null = null;
 let iconMarkup = '';
 const cleanup: (() => void)[] = [];
@@ -70,6 +71,8 @@ function enable() {
     magnetMove();
     const now = performance.now();
     if (now - lastTone > 220) { lastTone = now; tone(); }
+    clearTimeout(toneTimer);
+    toneTimer = window.setTimeout(() => { lastTone = performance.now(); tone(); }, 140);
   });
   on(document, 'pointerover', (e) => resolve(e.target as Element));
   on(document, 'pointerdown', (e) => {

@@ -1,0 +1,85 @@
+/* Tree scene layers (owned by the tree-scene agent). The container is the UI's element;
+   the scene fills it. Exposes --tree-scene-bg and data-scene-tone="light|dark" on the container. */
+.ts {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  contain: layout paint size;
+  isolation: isolate;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: grab;
+}
+.ts:active { cursor: grabbing; }
+.ts-bg,
+.ts-host,
+.ts-fx,
+.ts-ov,
+.ts-fog,
+.ts-haze {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.ts-bg { background: var(--cream); }
+.ts-pglow {
+  position: absolute;
+  inset-block-start: 0;
+  left: 0; /* screen-space: positioned by the projection (x from the left edge), not by text direction */
+  width: 200px;
+  height: 200px;
+  opacity: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(246 206 140 / 0.85), rgb(242 194 126 / 0.42) 45%, rgb(242 194 126 / 0) 100%);
+  will-change: transform, opacity;
+}
+.ts[data-tone='dark'] .ts-pglow {
+  background: radial-gradient(closest-side, rgb(250 214 150 / 0.7), rgb(246 200 130 / 0.28) 45%, rgb(246 200 130 / 0) 100%);
+}
+.ts-host > * {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.ts-ov { overflow: visible; }
+.ts-ov text { paint-order: stroke; }
+.ts-fog {
+  opacity: 0;
+  background:
+    radial-gradient(60% 42% at 30% 62%, rgb(var(--cream-rgb) / 0.95), rgb(var(--cream-rgb) / 0) 70%),
+    radial-gradient(55% 40% at 72% 42%, rgb(var(--cream-rgb) / 0.95), rgb(var(--cream-rgb) / 0) 72%),
+    radial-gradient(80% 60% at 50% 50%, rgb(var(--cream-rgb) / 0.9), rgb(var(--cream-rgb) / 0.55) 75%);
+  will-change: opacity, transform;
+}
+.ts[data-tone='dark'] .ts-fog {
+  background:
+    radial-gradient(60% 42% at 30% 62%, rgb(201 207 160 / 0.32), rgb(201 207 160 / 0) 70%),
+    radial-gradient(80% 60% at 50% 50%, rgb(var(--moss-rgb) / 0.95), rgb(var(--moss-rgb) / 0.7) 75%);
+}
+.ts-haze {
+  opacity: 0;
+  background:
+    radial-gradient(90% 70% at 50% 35%, rgb(240 214 168 / 0.15), rgb(232 196 140 / 0.55) 100%),
+    linear-gradient(180deg, rgb(238 206 150 / 0.35), rgb(238 206 150 / 0.1) 60%, rgb(214 168 104 / 0.35));
+  mix-blend-mode: multiply;
+}
+/* SVG renderer: three stacked layers; the wrapper (float) and the tree layer (sway) move as composited layers */
+.ts-svgwrap { will-change: transform; }
+.ts-svgwrap > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.ts-svgwrap > .ts-svg-t { will-change: transform; }
+.ts[data-motion='off'] .ts-svgwrap,
+.ts[data-motion='off'] .ts-svgwrap > .ts-svg-t { will-change: auto; }

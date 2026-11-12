@@ -1,0 +1,251 @@
+/* ==========================================================================
+   Home 6 — "מחברים את העסק לשורשים" (companies). Section bg is transparent
+   (page bg → sand). Two layouts on the same DOM:
+   · static (default — no JS, reduced motion): title, leaf photo, packages
+   · stage (.companies--stage): the photo fills a stage and opens from a small
+     leaf (clip-path) — pinned with CSS sticky on desktop (.companies--pin),
+     scrubbed in place on phones (.companies--scrub).
+   ========================================================================== */
+.companies { position: relative; }
+
+/* ---------------------------------------------------------------- banner: static */
+.companies__banner { padding-block-start: var(--section-pad); }
+.companies__stage {
+  width: min(100% - 2 * var(--gutter), var(--maxw));
+  margin-inline: auto;
+  display: grid;
+  gap: clamp(28px, 4vw, 56px);
+}
+.companies__copy { display: grid; gap: clamp(16px, 2vw, 28px); }
+.companies__eyebrow {
+  display: inline-flex; align-items: center; gap: 14px;
+  font-size: var(--fs-eyebrow); font-weight: 500; letter-spacing: 0.04em; color: var(--olive-deep);
+}
+.companies__eyebrow-line { width: 44px; height: 1px; background: currentColor; opacity: 0.7; }
+.companies__title {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(50px, 8.6vw, 156px);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  color: var(--bark);
+  text-wrap: initial;
+}
+.companies__line { display: block; overflow: hidden; padding-block: 0.06em 0.1em; margin-block: -0.06em -0.1em; }
+.companies__line-in { display: inline-block; will-change: transform; }
+.companies__line + .companies__line { text-align: end; }
+.companies__photo {
+  position: relative;
+  margin: 0;
+  aspect-ratio: 16 / 8;
+  border-radius: var(--leaf);
+  overflow: hidden;
+  background: #6F7251;
+}
+.companies__media { position: absolute; inset: 0; transform-origin: 50% 55%; }
+.companies__img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.companies__media picture { display: block; width: 100%; height: 100%; }
+.companies__scrim { display: none; }
+
+/* ---------------------------------------------------------------- banner: stage */
+.companies--stage .companies__banner { padding: 0; }
+.companies--stage .companies__stage {
+  position: relative;
+  width: 100%;
+  display: block;
+  overflow: hidden;
+  contain: layout paint;
+}
+.companies--pin .companies__banner { height: 260vh; }
+.companies--pin .companies__stage { position: sticky; inset-block-start: 0; height: 100vh; }
+.companies--scrub .companies__banner { padding-block-start: clamp(40px, 8vh, 72px); }
+.companies--scrub .companies__stage { height: 86svh; min-height: 520px; }
+
+.companies--stage .companies__copy {
+  position: absolute; inset: 0; z-index: 1;
+  display: flex; flex-direction: column; justify-content: center;
+  gap: clamp(18px, 2.4vw, 34px);
+  padding-inline: max(var(--gutter), calc((100% - var(--maxw)) / 2));
+  pointer-events: none;
+}
+.companies--stage .companies__photo {
+  position: absolute; inset: 0; z-index: 2;
+  aspect-ratio: auto;
+  border-radius: 0;
+  clip-path: inset(30% 38% round 80px 0 80px 0);
+  will-change: clip-path;
+}
+.companies--stage .companies__media { will-change: transform; }
+.companies--stage .companies__scrim {
+  display: block;
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(180deg, rgb(var(--moss-rgb) / 0.18) 0%, rgb(var(--moss-rgb) / 0.32) 55%, rgb(var(--moss-rgb) / 0.58) 100%),
+    rgb(var(--moss-rgb) / 0.16);
+}
+/* the cream twin of the title, inside the clipped photo — the colour flips exactly at the leaf's edge */
+.companies__copy--clone { z-index: 3; color: var(--cream); }
+.companies__copy--clone .companies__title { color: var(--cream); }
+.companies__copy--clone .companies__eyebrow { color: var(--cream); }
+
+/* ---------------------------------------------------------------- body */
+.companies__body { padding-block: clamp(72px, 10vw, 148px) var(--section-pad); }
+.companies__intro {
+  display: grid;
+  gap: 20px 64px;
+  margin-block-end: clamp(48px, 6vw, 96px);
+}
+.companies__sub {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(32px, 3.6vw, 56px);
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  color: var(--bark);
+  max-width: 17ch;
+  text-wrap: balance;
+}
+.companies__text { font-size: clamp(18px, 1.35vw, 21px); line-height: 1.65; color: var(--ink-soft); max-width: 42ch; }
+@media (min-width: 1024px) {
+  .companies__intro { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: end; }
+  .companies__text { justify-self: end; padding-block-end: 0.4em; }
+}
+
+/* packages */
+.companies__packs {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-block: 1px solid var(--line);
+}
+.companies__pack { position: relative; }
+.companies__pack + .companies__pack { border-inline-start: 1px solid var(--line); }
+.companies__card {
+  position: relative; isolation: isolate; height: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'ico num' 't t' 'x x' 'p p' 'more more';
+  grid-template-rows: auto auto 1fr auto auto;
+  gap: 14px;
+  padding: clamp(28px, 3vw, 44px) clamp(22px, 2.6vw, 44px) clamp(28px, 3vw, 40px);
+  color: inherit; text-decoration: none;
+}
+.companies__card::before {
+  content: ''; position: absolute; inset: 10px 8px; z-index: -1;
+  background: var(--cream);
+  border-radius: var(--leaf-sm);
+  opacity: 0; transform: scale(0.965);
+  transition: opacity var(--t-ui) var(--ease-out), transform var(--t-appear) var(--ease-out), border-radius var(--t-appear) var(--ease-out);
+}
+.companies__card:hover::before, .companies__card:focus-visible::before { opacity: 1; transform: none; border-radius: 0 32px 0 32px; }
+.companies__card:focus-visible { outline-offset: -6px; }
+.companies__num { grid-area: num; font-family: var(--font-display); font-size: 15px; color: var(--ink-soft); font-variant-numeric: lining-nums tabular-nums; letter-spacing: 0.06em; }
+.companies__ico { grid-area: ico; width: 46px; height: 46px; color: var(--olive); stroke-width: 1.15; margin-block-end: 10px; }
+.companies__card-t { grid-area: t; font-size: clamp(26px, 2.2vw, 34px); font-weight: 400; line-height: 1.1; color: var(--bark); }
+.companies__card-x { grid-area: x; font-size: 16.5px; line-height: 1.6; color: var(--ink-soft); max-width: 30ch; }
+.companies__price {
+  grid-area: p;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px;
+  margin-block-start: 18px;
+  font-size: 16px; color: var(--ink-soft);
+}
+.companies__price .price { font-size: clamp(36px, 3.2vw, 50px); font-weight: 400; line-height: 1; letter-spacing: -0.01em; }
+.companies__price .of-cur, .companies__cur { font-size: 0.62em; }
+.companies__from, .companies__unit { font-size: 16px; }
+.companies__more {
+  grid-area: more;
+  display: inline-flex; align-items: center; gap: 8px; justify-self: start;
+  margin-block-start: 6px;
+  font-size: 15px; font-weight: 500; color: var(--olive-deep);
+}
+.companies__more .icon { width: 20px; height: 20px; transition: transform var(--t-ui) var(--ease-out); }
+.companies__card:hover .companies__more .icon, .companies__card:focus-visible .companies__more .icon { transform: translateX(-6px); }
+
+/* partner logos — neutral placeholders */
+.companies__logos {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 18px clamp(28px, 4vw, 64px);
+  margin-block-start: clamp(56px, 6vw, 96px);
+}
+.companies__logos-label {
+  font-size: var(--fs-eyebrow); font-weight: 500; letter-spacing: 0.04em; color: var(--ink-soft);
+  display: inline-flex; align-items: center; gap: 14px;
+}
+.companies__logos-label::after { content: ''; width: 44px; height: 1px; background: currentColor; opacity: 0.6; }
+.companies__marks {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: center;
+  gap: 12px clamp(16px, 2vw, 32px);
+}
+.companies__mark { display: grid; place-items: center; min-height: 64px; color: var(--ink-soft); opacity: 0.62; }
+.companies__mark svg {
+  width: 100%; max-width: 132px; height: auto;
+  fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;
+  transform: scaleX(-1); /* the symbol sits at the reading start (right) */
+}
+.companies__yours {
+  opacity: 1;
+  min-height: 56px; padding: 8px 18px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 22px 0 22px 0;
+  color: var(--olive-deep);
+  font-size: 15px; font-weight: 500; text-align: center; text-decoration: none; line-height: 1.3;
+  transition: border-radius var(--t-appear) var(--ease-out), border-color var(--t-ui) var(--ease-out), background-color var(--t-ui) var(--ease-out);
+}
+.companies__yours:hover, .companies__yours:focus-visible { border-radius: 0 22px 0 22px; border-color: var(--olive-deep); background: rgb(var(--cream-rgb) / 0.6); }
+
+/* buttons */
+.companies__cta {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 14px;
+  margin-block-start: clamp(56px, 6vw, 96px);
+}
+.companies__btn .icon { transition: transform var(--t-ui) var(--ease-out); }
+.companies__btn:hover .icon { transform: translateX(-4px); }
+
+/* ---------------------------------------------------------------- tablet */
+@media (max-width: 1100px) and (min-width: 769px) {
+  .companies__card { padding-inline: 20px; }
+  .companies__marks { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ---------------------------------------------------------------- phones */
+@media (max-width: 768px) {
+  .companies__banner { padding-block-start: clamp(72px, 12vh, 112px); }
+  .companies__title { font-size: clamp(44px, 12.2vw, 64px); }
+  .companies__photo { aspect-ratio: 4 / 5; }
+  .companies--stage .companies__copy { justify-content: center; gap: 16px; }
+  .companies--stage .companies__line + .companies__line { text-align: end; }
+
+  .companies__body { padding-block-start: 64px; }
+  .companies__sub { font-size: clamp(30px, 8.4vw, 38px); }
+  .companies__text { font-size: 17.5px; }
+
+  .companies__packs { grid-template-columns: 1fr; border-block-end: 0; }
+  .companies__pack + .companies__pack { border-inline-start: 0; border-block-start: 1px solid var(--line); }
+  .companies__pack:last-child { border-block-end: 1px solid var(--line); }
+  .companies__card {
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+    grid-template-areas: 'ico t num' 'ico x x' 'ico p p' 'ico more more';
+    grid-template-rows: auto;
+    gap: 6px 16px;
+    padding: 26px 2px 26px;
+  }
+  .companies__card::before { inset: 4px -12px; }
+  .companies__ico { width: 40px; height: 40px; margin: 2px 0 0; }
+  .companies__card-t { font-size: 25px; }
+  .companies__card-x { font-size: 15.5px; }
+  .companies__price { margin-block-start: 10px; }
+  .companies__price .price { font-size: 34px; }
+  .companies__more { margin-block-start: 4px; min-height: 32px; }
+
+  .companies__logos { grid-template-columns: 1fr; margin-block-start: 56px; }
+  .companies__marks { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 18px; }
+  .companies__mark { min-height: 56px; }
+  .companies__yours { min-height: 52px; padding-inline: 10px; font-size: 14px; }
+
+  .companies__cta { flex-direction: column; align-items: stretch; margin-block-start: 48px; }
+  .companies__cta .btn { width: 100%; }
+}

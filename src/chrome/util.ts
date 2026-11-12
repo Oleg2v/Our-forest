@@ -40,21 +40,31 @@ export function makeModal(dialog: HTMLElement, opts: { onEscape: () => void; kee
     }
     node = parent;
   }
-  const onKey = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); opts.onEscape(); return; }
-    if (e.key !== 'Tab') return;
-    const list = focusables(dialog);
-    if (!list.length) { e.preventDefault(); return; }
-    const first = list[0], last = list[list.length - 1];
-    const active = document.activeElement as HTMLElement | null;
-    if (e.shiftKey && (active === first || !dialog.contains(active))) { e.preventDefault(); last.focus(); }
-    else if (!e.shiftKey && (active === last || !dialog.contains(active))) { e.preventDefault(); first.focus(); }
-  };
-  document.addEventListener('keydown', onKey, true);
+  const entry: ModalEntry = { dialog, onEscape: opts.onEscape };
+  stack.push(entry);
+  if (stack.length === 1) document.addEventListener('keydown', onModalKey, true);
   return () => {
-    document.removeEventListener('keydown', onKey, true);
+    const i = stack.indexOf(entry);
+    if (i > -1) stack.splice(i, 1);
+    if (!stack.length) document.removeEventListener('keydown', onModalKey, true);
     touched.forEach((el) => { el.inert = false; });
   };
+}
+
+/* one key handler for all modals: only the topmost (a11y panel over the menu) reacts */
+interface ModalEntry { dialog: HTMLElement; onEscape: () => void }
+const stack: ModalEntry[] = [];
+function onModalKey(e: KeyboardEvent) {
+  const top = stack[stack.length - 1];
+  if (!top) return;
+  if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); top.onEscape(); return; }
+  if (e.key !== 'Tab') return;
+  const list = focusables(top.dialog);
+  if (!list.length) { e.preventDefault(); return; }
+  const first = list[0], last = list[list.length - 1];
+  const active = document.activeElement as HTMLElement | null;
+  if (e.shiftKey && (active === first || !top.dialog.contains(active))) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && (active === last || !top.dialog.contains(active))) { e.preventDefault(); first.focus(); }
 }
 
 /* ---------------------------------------------------------------- colour */
@@ -84,13 +94,13 @@ export function isDarkAt(x: number, y: number, skip: (el: Element) => boolean): 
       if (v === 'dark') return false;
     }
     if (el instanceof HTMLImageElement || el instanceof HTMLVideoElement || el instanceof HTMLCanvasElement || el.tagName === 'PICTURE') return true;
-    const cs = getComputedStyle(el);
-    const c = parseRGB(cs.backgroundColor);
+    const c = parseRGB(getComputedStyle(el).backgroundColor);
     if (c && c[3] > 0.5) return luminance(c) < 0.22;
-    const bgAttr = (el as HTMLElement).dataset?.bg;
-    if (bgAttr && bgAttr !== 'season') return DARK_BG.has(bgAttr);
   }
-  return document.documentElement.dataset.theme === 'dark';
+  // transparent all the way down → the page background (target theme, not a mid-tween colour)
+  const theme = document.documentElement.dataset.theme;
+  if (theme) return theme === 'dark';
+  return DARK_BG.has(document.documentElement.dataset.bg ?? '');
 }
 
 export const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));

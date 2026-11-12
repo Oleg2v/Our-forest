@@ -76,6 +76,7 @@ export function initChrome(opts: { page: PageName }): void {
   safe('images', () => scanImages(document));
   safe('magnetic', () => scanMagnetic(document));
   hold.then(() => requestAnimationFrame(() => document.documentElement.classList.add('chrome-ready')));
+  if (import.meta.env.DEV) (window as any).__ofChromeDev = { refreshChrome, navigate };
 }
 
 /** Re-scan a subtree for data-reveal / data-magnetic / data-cursor after dynamic DOM changes. */

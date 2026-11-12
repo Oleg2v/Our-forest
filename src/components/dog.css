@@ -31,6 +31,6 @@
   stroke-linejoin: round;
   transform-origin: 30% 85%;
 }
-.dog__svg path { stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.dog__svg path { stroke-width: 1.5; }
 .dog__far { opacity: 0.5; }
 .dog__dot { fill: currentColor; stroke: none; }

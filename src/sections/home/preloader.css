@@ -1,0 +1,11 @@
+/* Home 0 — preloader. The critical, first-paint CSS lives inline in partials/home/preloader.html;
+   this file only holds what the JS-driven opening needs. */
+
+/* the hero rises above the ring layer, seen through a circular window centred on the pith */
+.hero.hero--intro {
+  position: relative;
+  z-index: calc(var(--z-preloader) + 1);
+  clip-path: circle(var(--win-r, 0px) at var(--win-x, 50%) var(--win-y, 50%));
+}
+.preloader.is-opening { pointer-events: none; }
+.preloader.is-opening .preloader__disc { will-change: transform; }

@@ -66,7 +66,7 @@ function hoverSounds() {
   let last: Element | null = null;
   document.addEventListener('pointerover', (e) => {
     if (e.pointerType !== 'mouse' || !sound.isOn()) return;
-    const t = (e.target as Element | null)?.closest?.('a[href], button:not([disabled]), [data-sound-hover], [role="button"], [role="switch"], summary, .chip');
+    const t = (e.target as Element | null)?.closest?.('a[href], button:not([disabled]), [data-sound-hover], [role="button"], [role="switch"], summary, .chip') ?? null;
     if (t === last) return;
     last = t;
     if (t && !t.closest('[data-sound-hover="off"]')) sound.play('hover');

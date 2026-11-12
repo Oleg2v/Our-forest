@@ -21,10 +21,10 @@ w.__ofLeaf=leaf;
 w.addEventListener('pagereveal',function(ev){w.__ofRevealed=1;var vt=ev.viewTransition;if(!vt)return;
 if(!h.classList.contains('motion')){vt.skipTransition();return}
 if(!w.__ofPT)return;
-h.classList.remove('pt-in');h.classList.add('pt-vt');w.__ofPTvt=1;
+h.classList.remove('pt-in');h.classList.add('pt-vt');w.__ofPTvt=1;var an=null;
 vt.ready.then(function(){var W=innerWidth,H=innerHeight,S=Math.hypot(W,H)*1.03+8;
-h.animate({clipPath:[leaf(W/2,H/2,1),leaf(W/2,H/2,S)]},{duration:1000,easing:'cubic-bezier(.65,0,.35,1)',fill:'both',pseudoElement:'::view-transition-new(root)'})}).catch(function(){});
-vt.finished.finally(function(){h.classList.remove('pt-vt')});});
+an=h.animate({clipPath:[leaf(W/2,H/2,1),leaf(W/2,H/2,S)]},{duration:1000,easing:'cubic-bezier(.65,0,.35,1)',fill:'both',pseudoElement:'::view-transition-new(root)'})}).catch(function(){});
+vt.finished.finally(function(){h.classList.remove('pt-vt');if(an)an.cancel()});});
 })(window,document);
 </script>
 <style>

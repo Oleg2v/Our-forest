@@ -1,1 +1,13 @@
-<!-- home head extras (hero image preload etc.) — owned by the hero agent -->
+<!-- home head extras — owned by the hero agent.
+     The hero photo is the LCP element: preload exactly the candidate the <picture> in partials/home/hero.html will pick
+     (same media queries, same srcset/sizes, AVIF first) so it starts before CSS/JS. Digits of the preloader counter
+     use the Latin subset of Frank Ruhl Libre 300 — preload it so the 0→100 never swaps fonts mid-count. -->
+<link rel="preload" as="image" type="image/avif" fetchpriority="high"
+      media="(max-width: 900px) and (orientation: portrait)"
+      imagesrcset="/img/heroPortrait-480.avif 480w, /img/heroPortrait-800.avif 800w, /img/heroPortrait-1200.avif 1200w"
+      imagesizes="100vw">
+<link rel="preload" as="image" type="image/avif" fetchpriority="high"
+      media="not all and (max-width: 900px) and (orientation: portrait)"
+      imagesrcset="/img/hero-480.avif 480w, /img/hero-800.avif 800w, /img/hero-1200.avif 1200w, /img/hero-1600.avif 1600w, /img/hero-2400.avif 2400w"
+      imagesizes="100vw">
+<link rel="preload" href="/fonts/frank-ruhl-libre-latin-300.woff2" as="font" type="font/woff2" crossorigin>

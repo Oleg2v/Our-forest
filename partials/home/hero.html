@@ -1,1 +1,79 @@
-<!-- home/hero — owned by its section agent -->
+<!-- home/hero "Crown" — owned by the hero agent. Behaviour: src/sections/home/hero.ts (+ hero.css), WebGL: src/gl/**.
+     The photo is the LCP element (preloaded in partials/home/head-hero.html with the same media/srcset/sizes).
+     Art direction: a portrait crop of the same photo on portrait phones/tablets. The wind shader, the pollen/leaves,
+     the phone video loop and the ground wave are layered on top by JS; without JS or with reduced motion this is a
+     complete, static first screen. -->
+<style>
+/* Pre-entrance states. First visit: the copy paints at once under the ring layer (so the largest text is an
+   early LCP candidate — a full-viewport photo is not one), and hides only while the ring window opens.
+   Repeat visit (no preloader): hidden until the entrance runs; CSS failsafe shows it after 4.5 s. */
+html.js.motion.pl-skip .hero[data-entrance='pending'] .hero__content,
+html.js.motion.pl-skip .hero[data-entrance='pending'] .hero__corner { visibility: hidden; animation: hero-failsafe 0s linear 4.5s forwards; }
+.hero.hero--intro[data-entrance='pending'] .hero__content,
+.hero.hero--intro[data-entrance='pending'] .hero__corner { visibility: hidden; }
+@keyframes hero-failsafe { to { visibility: visible; } }
+</style>
+<section class="hero" id="top" data-bg="cream" data-header="light" data-entrance="pending" aria-labelledby="hero-title">
+  <div class="hero__media" data-hero-media>
+    <div class="hero__zoom" data-hero-zoom>
+      <picture class="hero__picture">
+        <source media="(max-width: 900px) and (orientation: portrait)" type="image/avif" srcset="/img/heroPortrait-480.avif 480w, /img/heroPortrait-800.avif 800w, /img/heroPortrait-1200.avif 1200w" sizes="100vw">
+        <source media="(max-width: 900px) and (orientation: portrait)" type="image/webp" srcset="/img/heroPortrait-480.webp 480w, /img/heroPortrait-800.webp 800w, /img/heroPortrait-1200.webp 1200w" sizes="100vw">
+        <source media="(max-width: 900px) and (orientation: portrait)" srcset="/img/heroPortrait-480.jpg 480w, /img/heroPortrait-800.jpg 800w, /img/heroPortrait-1200.jpg 1200w" sizes="100vw">
+        <source type="image/avif" srcset="/img/hero-480.avif 480w, /img/hero-800.avif 800w, /img/hero-1200.avif 1200w, /img/hero-1600.avif 1600w, /img/hero-2400.avif 2400w" sizes="100vw">
+        <source type="image/webp" srcset="/img/hero-480.webp 480w, /img/hero-800.webp 800w, /img/hero-1200.webp 1200w, /img/hero-1600.webp 1600w, /img/hero-2400.webp 2400w" sizes="100vw">
+        <img class="hero__img" data-hero-img src="/img/hero-1600.jpg" srcset="/img/hero-480.jpg 480w, /img/hero-800.jpg 800w, /img/hero-1200.jpg 1200w, /img/hero-1600.jpg 1600w, /img/hero-2400.jpg 2400w" sizes="100vw"
+             width="2400" height="1500" alt="חורשת זיתים בשעת השקיעה: אור זהוב מסתנן בין הענפים ונופל על שביל עשב בין הגזעים" loading="eager" fetchpriority="high" decoding="sync"
+             style="background-color:#313226;background-image:url(data:image/webp;base64,UklGRn4AAABXRUJQVlA4IHIAAADQAwCdASoYAA8APt1cpkyopSOiMAgBEBuJYwAARJM2kyKG3xsHkMAA3mNXOEzu/dJZO69TCF0cyuCBELm1h4vRMmgOMCKiFiZWHD45gPd/3mXCor0jLTrMK3qQFRffJKRVYI55ncNBtfnrFkcLx/YIAAA=);background-size:cover;background-position:center">
+      </picture>
+    </div>
+    <div class="hero__shade" aria-hidden="true"></div>
+    <div class="hero__dim" data-hero-dim aria-hidden="true"></div>
+  </div>
+
+  <div class="hero__content" data-hero-content>
+    <p class="hero__greet" data-hero-greet>
+      <svg class="icon hero__greet-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-hero-greet-icon></svg>
+      <span data-hero-greet-text></span><span class="hero__greet-sep" aria-hidden="true"></span><span data-he="place">מושב פדיה</span>
+    </p>
+    <h1 class="hero__title" id="hero-title">
+      <span class="visually-hidden" data-he="hero.title">היער שלנו</span>
+      <span class="hero__word" aria-hidden="true"><span class="hero__word-in">היער</span></span>
+      <span class="hero__word" aria-hidden="true"><span class="hero__word-in">שלנו</span></span>
+    </h1>
+    <div class="hero__body">
+      <p class="hero__subtitle" data-he="hero.subtitle">מקום לצמוח, להתחבר ולהעמיק שורשים</p>
+      <p class="hero__text" data-he="hero.text">יער מאכל במושב פדיה שמחבר בין אנשים, אדמה וכלבים. מקום לצמיחה, ריפוי והתפתחות אישית וקהילתית – שבו עבודת אדמה, מפגש עם בעלי חיים, יצירה ועשייה משותפת הופכים לחוויה עם ערך אמיתי.</p>
+    </div>
+    <div class="hero__actions">
+      <div class="hero__buttons">
+        <a class="btn btn--fruit btn--lg hero__cta" href="/plant" data-magnetic data-cursor="שתלו" data-cursor-fill="fruit">
+          <span data-he="cta.plant">נוטעים עץ משלכם</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20.5v-8"/><path d="M12 12.5c0-4 2.6-6.6 7-7 0 4.2-2.8 7-7 7Z"/><path d="M12 15c0-3-2-5-5.5-5.3 0 3.2 2.2 5.3 5.5 5.3Z"/></svg>
+        </a>
+        <a class="btn btn--ghost-light btn--lg hero__more" href="#story">
+          <span data-he="hero.button">הכירו את היער שלנו</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4.5v15"/><path d="m6.5 14 5.5 5.5 5.5-5.5"/></svg>
+        </a>
+      </div>
+      <a class="hero__gift" href="/plant?gift=1">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 11.5h14v8.5H5z"/><path d="M3.8 8h16.4v3.5H3.8z"/><path d="M12 8v12"/><path d="M12 8C10.6 4.6 6.8 4.4 6.8 6.6 6.8 8 9.2 8 12 8Zm0 0c1.4-3.4 5.2-3.6 5.2-1.4 0 1.4-2.4 1.4-5.2 1.4Z"/></svg>
+        <span data-he="cta.gift">עץ במתנה</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="hero__corner" data-hero-corner>
+    <p class="hero__count">
+      <span class="hero__pulse" aria-hidden="true"></span>
+      <span data-hero-count><bdi class="hero__count-num" data-hero-count-num>127</bdi> משפחות כבר נטעו כאן</span>
+    </p>
+    <button class="hero__tilt" type="button" aria-pressed="false" aria-label="הזזת התמונה בהטיית הטלפון" data-hero-tilt hidden>
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 4h4a1.6 1.6 0 0 1 1.6 1.6v12.8A1.6 1.6 0 0 1 14 20h-4a1.6 1.6 0 0 1-1.6-1.6V5.6A1.6 1.6 0 0 1 10 4Z"/><path d="M4.6 9.2a7.4 7.4 0 0 0 0 5.6"/><path d="M19.4 9.2a7.4 7.4 0 0 1 0 5.6"/><path d="M11 17h2"/></svg>
+      <span class="hero__tilt-label">הטיה</span>
+    </button>
+  </div>
+
+  <div class="hero__cue" aria-hidden="true"><span class="hero__cue-line"></span></div>
+  <div class="hero__ground" data-hero-ground aria-hidden="true"></div>
+</section>

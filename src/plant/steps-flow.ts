@@ -44,6 +44,22 @@ export function plaqueStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): StepVi
     paintCount();
   });
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); ctx.next(); } });
+  // phones: while typing, the stage folds away and the sheet scrolls so the plaque sits right above the field —
+  // the keyboard never covers the engraving (the "next" action stays in the bar above the keyboard)
+  const slot = body.querySelector<HTMLElement>('[data-plaque-slot]')!;
+  const keepPlaqueVisible = () => {
+    const sc = ctx.root.querySelector<HTMLElement>('.pc__scroll');
+    if (!sc || !ctx.mobile()) return;
+    const top = sc.scrollTop + slot.getBoundingClientRect().top - sc.getBoundingClientRect().top - 10;
+    sc.scrollTo({ top, behavior: 'auto' });
+  };
+  input.addEventListener('focus', () => {
+    if (!ctx.mobile()) return;
+    ctx.root.classList.add('is-plaque-typing');
+    [60, 320, 650].forEach((ms) => setTimeout(keepPlaqueVisible, ms));
+  });
+  input.addEventListener('blur', () => ctx.root.classList.remove('is-plaque-typing'));
+  window.visualViewport?.addEventListener('resize', () => { if (document.activeElement === input) keepPlaqueVisible(); });
   again.addEventListener('click', () => { tick(); ctx.engraver().burnAll({ duration: Math.max(1.2, input.value.length * 0.09) }); });
   paintCount();
   return {
@@ -123,13 +139,14 @@ export function giftStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): StepView
   let opened = false;
   const playOpen = () => {
     const paper = card.querySelector('.pcard__paper')!, flap = card.querySelector('.pcard__flap')!;
-    if (!ctx.motion()) { gsap.set(flap, { rotateX: 180, zIndex: 0 }); gsap.set(paper, { yPercent: -58 }); return; }
+    // closed flap = rotateX(180) (folded down over the pocket), open = 0 (standing up behind the card)
+    if (!ctx.motion()) { gsap.set(flap, { rotateX: 0, zIndex: 1 }); gsap.set(paper, { yPercent: -58 }); return; }
     const sp = ctx.speed();
     gsap.timeline()
-      .set(paper, { yPercent: 0 }).set(flap, { rotateX: 0, zIndex: 4 })
+      .set(paper, { yPercent: 0 }).set(flap, { rotateX: 180, zIndex: 4 })
       .fromTo(card, { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 * sp, ease: EASE.appear })
-      .to(flap, { rotateX: 180, duration: 0.6 * sp, ease: 'power3.inOut' }, '-=0.15')
-      .set(flap, { zIndex: 0 }, '-=0.3')
+      .to(flap, { rotateX: 0, duration: 0.7 * sp, ease: 'power3.inOut' }, '-=0.15')
+      .set(flap, { zIndex: 1 }, '-=0.35')
       .to(paper, { yPercent: -58, duration: 1.1 * sp, ease: EASE.appear }, '-=0.1')
       .add(() => sound.play('paper'), '<');
   };
@@ -223,6 +240,7 @@ export function includesFor(s: PlantState): string[] {
 export function summaryStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): StepView {
   body.innerHTML = `
     <div class="pcs-sum">
+      <p class="pcs-sum__season">${icon('calendar')}<span>${he.seasonalBanner}</span></p>
       <div class="pcs-sum__inc">
         <h3 class="pcs-sum__h">${he.plant.includes.title}</h3>
         <ul class="pcs-sum__list"></ul>

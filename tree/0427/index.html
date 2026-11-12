@@ -8,13 +8,119 @@
 <meta property="og:description" content="עץ תאנה שניטע ב־14.2.2026 ביער שלנו במושב פדיה. מה שלום העץ?">
 <meta property="og:type" content="website">
 <!--#include partials/seo/tree.html -->
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="העץ שלכם">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 </head>
 <body data-page="tree">
 <a class="skip-link" href="#main">דלגו לתוכן</a>
 
 <!--#include partials/header.html -->
-<main id="main" tabindex="-1">
-<!-- /tree/0427 living tree — owned by the tree-ui agent -->
+<main id="main" tabindex="-1" class="tree" data-tree>
+  <!-- ================= the stage: the living tree ================= -->
+  <section class="tree-stage" data-stage aria-labelledby="tree-title" data-header="dark">
+    <div class="tree-stage__scene" data-scene data-cursor="גררו"></div>
+    <canvas class="tree-fx" data-fx aria-hidden="true"></canvas>
+    <div class="tree-stage__veil" data-veil aria-hidden="true"></div>
+    <div class="tree-hs" data-hotspots role="group" aria-label="נקודות על העץ"></div>
+
+    <div class="tree-stage__ui" data-ui>
+      <header class="tree-head" data-head>
+        <p class="tree-head__eyebrow">
+          <span data-f="number">עץ מס׳ <bdi>0427</bdi></span>
+          <span class="tree-head__dot" aria-hidden="true"></span>
+          <span data-f="species">תאנה</span>
+        </p>
+        <h1 class="tree-head__title" id="tree-title">העץ שלכם</h1>
+        <p class="tree-head__dedication" data-f="dedication">לכבוד הולדת נועה</p>
+        <button class="tree-news" type="button" data-news hidden>
+          <span class="tree-news__dot" aria-hidden="true"></span>
+          <span data-news-text>יש חדש אצל העץ</span>
+        </button>
+      </header>
+
+      <div class="tree-panel" data-panel>
+        <!-- filled by src/tree/ui/water.ts (or the memorial candle / the planting countdown) -->
+      </div>
+    </div>
+
+    <p class="tree-caption" data-caption><span data-f="note">התאנה נכנסת למנוחת חורף</span></p>
+    <aside class="tree-cond" data-cond aria-label="מה קובע את המראה של העץ עכשיו"></aside>
+    <div class="tree-dock" data-dock></div>
+    <div class="tree-tl" data-timeline></div>
+    <button class="tree-demo-btn" type="button" data-demo-open aria-expanded="false" aria-controls="tree-demo">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h8"/><path d="M17 7h2"/><circle cx="15" cy="7" r="2"/><path d="M5 17h2"/><path d="M11 17h8"/><circle cx="9" cy="17" r="2"/></svg>
+      <span>דמו</span>
+    </button>
+    <p class="visually-hidden" data-a11y-desc>עץ תאנה, בן 9 חודשים, מתכונן לחורף, הושקה היום</p>
+  </section>
+
+  <!-- ================= about the tree (7.17) ================= -->
+  <section class="tree-sec tree-about" id="about" aria-labelledby="about-title">
+    <div class="tree-about__grid container">
+      <div class="tree-label" data-label data-reveal="leaf">
+        <p class="tree-sec__eyebrow">כרטיס העץ</p>
+        <h2 class="tree-label__title" id="about-title"><span data-f="number2">עץ מס׳ <bdi>0427</bdi></span></h2>
+        <dl class="tree-label__list" data-facts>
+          <div><dt>מין</dt><dd>תאנה</dd></div>
+          <div><dt>תאריך הנטיעה</dt><dd><bdi>14.2.2026</bdi></dd></div>
+          <div><dt>הקדשה</dt><dd>לכבוד הולדת נועה</dd></div>
+          <div><dt>נטעו</dt><dd>משפחת כהן</dd></div>
+        </dl>
+        <div class="tree-label__qr">
+          <div class="tree-label__qr-code" data-qr aria-hidden="true"></div>
+          <p>הקוד על השלט מוביל לכאן</p>
+        </div>
+      </div>
+
+      <div class="tree-how" data-how>
+        <h2 class="tree-how__title" data-reveal="lines">מה שלום העץ?</h2>
+        <ul class="tree-how__list" data-how-list role="list" data-reveal="fade"></ul>
+        <p class="tree-how__honest">את ההשקיה האמיתית עושה הצוות שלנו, לפי מה שהעץ צריך</p>
+      </div>
+    </div>
+
+    <div class="tree-actions container" data-actions data-reveal="fade">
+      <!-- 7.17 buttons: באים לבקר · מצטרפים לשומרי העץ · משתפים · נוטעים עץ נוסף · מוסיפים למסך הבית -->
+    </div>
+  </section>
+
+  <!-- ================= the tree feed + greeting leaves (7.7) ================= -->
+  <section class="tree-sec tree-feed" id="feed" aria-labelledby="feed-title" data-feed>
+    <div class="container tree-feed__grid">
+      <div class="tree-feed__intro">
+        <p class="tree-sec__eyebrow" data-feed-eyebrow>יומן העץ</p>
+        <h2 class="tree-sec__title" id="feed-title" data-feed-title>כל ברכה הופכת לעלה</h2>
+        <p class="tree-feed__lead" data-feed-lead></p>
+        <div class="tree-feed__ctas" data-feed-ctas></div>
+      </div>
+      <ol class="tree-feed__list" data-feed-list role="list"></ol>
+    </div>
+  </section>
+
+  <!-- ================= herbarium (7.9) ================= -->
+  <section class="tree-sec tree-herb" id="herbarium" aria-labelledby="herb-title" data-herb>
+    <div class="container">
+      <header class="tree-herb__head">
+        <p class="tree-sec__eyebrow">בכל עונה שבה באים לעץ, נכנס עלה לספר</p>
+        <h2 class="tree-sec__title" id="herb-title" data-reveal="lines">ההרבריום שלי</h2>
+      </header>
+      <div class="tree-herb__book" data-herb-book></div>
+    </div>
+  </section>
+
+  <!-- ================= calm additions (7.11) ================= -->
+  <section class="tree-sec tree-more" id="more" aria-labelledby="more-title" data-more>
+    <div class="container">
+      <h2 class="tree-sec__title tree-sec__title--sm" id="more-title" data-reveal="lines">עוד דברים טובים לעץ</h2>
+      <ul class="tree-more__list" data-more-list role="list" data-reveal="fade"></ul>
+    </div>
+  </section>
+
+  <div class="visually-hidden" aria-live="polite" aria-atomic="true" data-live></div>
+  <div class="visually-hidden" aria-live="assertive" aria-atomic="true" data-live-urgent></div>
 </main>
 <!--#include partials/footer.html -->
 <!--#include partials/chrome-overlays.html -->

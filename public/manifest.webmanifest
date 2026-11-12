@@ -1,0 +1,24 @@
+{
+  "name": "העץ שלכם — היער שלנו",
+  "short_name": "העץ שלכם",
+  "description": "העץ שלכם ביער שלנו במושב פדיה: משקים פעם ביום, רואים אותו גדל, משאירים ברכות.",
+  "lang": "he",
+  "dir": "rtl",
+  "id": "/tree/0427/",
+  "start_url": "/tree/0427/?source=pwa",
+  "scope": "/tree/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#232E1C",
+  "background_color": "#FBF1E6",
+  "categories": ["lifestyle"],
+  "icons": [
+    { "src": "/icons/icon-96.png", "sizes": "96x96", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "משקים את העץ", "short_name": "משקים", "url": "/tree/0427/?source=pwa-water", "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }] }
+  ]
+}
