@@ -81,3 +81,127 @@ Screenshots are in `/tmp/claude-0/-home-user-Our-forest/ca77a1a7-7290-5365-ba24-
 - **The 34 px between a returning header and the net heading** only shows while scrolling up.
 - **The hero type at 2560:** the title is capped by the global `--fs-hero` token, and making the subtitle or copy bigger alone would unbalance it.
 - **The reduced-motion net draws the glow overlays at full strength** (bright doubled lines). That is the existing "all lit" design, and I did not touch it.
+
+## Verification
+
+Independent check of the desktop polish above and of the phone scroll-performance work in this area (`perf-hometop.md`). Scratch: `/tmp/claude-0/-home-user-Our-forest/ca77a1a7-7290-5365-ba24-a8eae1a066ec/scratchpad/agents/verify-hometop/` (written `…/` below).
+
+How I compared:
+- "Before" for the desktop polish: the current tree with only this area's files put back to e9cdfc7 (`w-iso`). Every other area is the same on both sides, so any difference is this area's own.
+- "Live": a worktree at fa9748d.
+- For an area-only phone perf A/B: the current tree with only this area's files put back to fa9748d (`w-piso`).
+- Each one ran on its own no-HMR dev server.
+
+### Desktop: the polish holds, with two things it missed (both fixed)
+
+I compared before and after at these sizes:
+- 1366×768, 1440×900, 1536×864, 1680×1050, 1768×900, 1920×1080, 1920×940 and 2560×1440;
+- 1024×768, 1180×820 and 820×1180.
+
+The positions were the hero, the story at the pin start, the descent, all five lit, the finale, the pin end and the hand-over (A150/A400/A700). The pairs are in `…/pairs/`.
+
+**What I confirmed:**
+- **Counter pill:** it is now on the column under the header CTA at 1768, 1920 and 2560, and unchanged at 1552 and below.
+- **Net heading:** it is on the column.
+- **The branch under the heading:** at 1366, 1024 and 820 it no longer touches the "?" (`…/pairs/1366-head.jpg`). Nothing else moved at 1440, 1536, 1680 or 1180.
+- **2K:** the story and the nodes now fill the frame (`…/pairs/2560x1440-*`).
+- **Portrait tablet:** the heading is on two lines, clear of the tap root, and uses 30/17 px type.
+- **The dog at the pin end** is whole at 1920×1080 (y 1014–1072). Before, only its ears showed (`…/pairs/dog.jpg`).
+- **Preloader disc:** 605 px at 2560×1440, unchanged below 1100 px of height.
+
+**Owner complaint 1 is solved for good.** At the pin end the lowest caption keeps exactly 8vh of soil above the next section at all 12 sizes:
+- 62 px at 1366×768 and 1024×768;
+- 72 px at 1768×900;
+- 87 px at 1920×1080;
+- 116 px at 2560×1440.
+
+It still holds after my caption fix (`…/endprobe-now*.txt`).
+
+There is no horizontal overflow and no console error at any of the 12 sizes. `npx tsc --noEmit` is clean.
+
+**Missed 1: the node titles and captions never grew on big screens (fixed).**
+- The note above says the captions are 16.9 px at 1920×1080 and 19 px at 2560, and the titles go up to `max(32px, 2.6vmin)`. That was not true.
+- Those rules were in the `min-width: 769px` block before the base `.roots__node-title` / `-text` rules. Those base rules win, which is the same cascade trap the agent fixed for the tablet block.
+- Measured before the fix, at 2560×1440: 32 px titles and 16 px captions next to an 86 px heading.
+- The fix moves the two rules into a `min-width: 769px` block right after the base rules, with the same specificity:
+  - The portrait-tablet rules (`.roots`-scoped) still win.
+  - The phone / landscape-phone block comes later and still wins.
+- Measured after the fix:
+
+  | Size | Titles | Captions |
+  |---|---|---|
+  | 2560×1440 | 37.4 px | 19 px |
+  | 1920×1080 | 32 px | 16.9 px |
+  | 1920×940 | 32 px | 16.2 px |
+  | 1768×900 and below | unchanged | 16 px |
+  | 820×1180 | 30 px | 17 px |
+  | 844×390 landscape phone | 26 px | 16 px (unchanged) |
+
+- `roots.css`.
+
+**Missed 2: the five directions went dark after any `ScrollTrigger.refresh()` while you were in the net (fixed; this is also on the live site).**
+- A refresh reverts the pinned timeline to 0 to measure. That fires its `onUpdate` with t = 0, so every node timeline reversed and the dog hid.
+- Then the playhead is put back without an update. All five nodes (rings, icons, titles, captions) and the dog stayed gone until the next scroll.
+- The owner meets it by:
+  - resizing the window (or opening DevTools) while in the net. Measured on fa9748d: resizing 1768 → 1600 at "all lit" left all five titles at opacity 0 and the dog at 0;
+  - the `load` / fonts refresh;
+  - the deferred-init refresh.
+- It also caught one of my own screenshot runs (`…/d/iso-1920x1080-02-R0.78.png`: the net with empty dots).
+- The fix, in `roots.ts` `setupPinned`:
+  - The node and dog sync is one function, `syncNodes()`.
+  - The timeline's `onUpdate` skips it while `ScrollTrigger.isRefreshing`.
+  - The trigger's `onRefresh` calls it once the playhead is back.
+- Checked:
+  - a forced refresh at R0.2, R0.5, R0.78 and R1: states unchanged (live: all dark);
+  - a resize 1768 → 1600 in the net: still all lit (live: all dark);
+  - scrolling down, up and down: nodes light and unlight as before;
+  - the header link to #directions: all five lit.
+- `refprobe.mjs`, `rsprobe.mjs`, `nodeprobe.mjs`, `dirlink.mjs`.
+
+**Seen, not changed:**
+- Above 1552 px, the net heading's soil-avoid box moved, so the seeded pebbles (and the tap-root jitter drawn after them) are a different draw than before. That is cosmetic only.
+- At 1920×1080 the nodes sit 12–36 px further in (the 1.25 × column cap starts at 1800 px). The note says "nothing changes up to 1920". It is harmless.
+- The agent's "left open" items stand as judged.
+
+### Phones: unchanged by the polish, and only the named simplifications differ from live
+
+- **Against the e9cdfc7-area baseline**, at 390×844 (iPhone emulation, DPR 1, 9–11 positions over the hero, roots and seasons) and at 844×390 landscape (7–8 positions), after my two fixes:
+  - Section geometry, node boxes and all font sizes are identical. The roots are 844/1552 in portrait and 390/1564 in landscape, with no overflow.
+  - The pixel diffs are only sparse, time-varying ones: motes, the breathing photo and the seasons sway. Fireflies and the video were hidden for the diff.
+- **Against live (fa9748d)**, same method:
+  - Geometry and sizes are identical.
+  - The diffs are sparse: antialiasing along the phone root (now a composited clip, with no round cap at the moving tip, as reported) plus the time-varying things.
+- **Reduced motion:** `mobile-static` on phones and `static` on desktop are fine.
+- **Keyboard:** the Tab order is skip link → header → hero CTAs → gift → seasons, with a visible 2 px outline. The roots have no tab stops.
+
+### Phone scroll performance (headless Chromium, iPhone-13 emulation, DPR 3, 4× CPU, dev servers, 3 interleaved runs, medians)
+
+**Live → now (whole tree; the other areas' fixes are included).** Load average was 20–40 from other agents, so these are noisy.
+
+| Measure | Live | Now |
+|---|---|---|
+| Hero 0→900 | 10 fps, 8 long tasks, worst frame 283 ms | 28.7 fps, 3 long tasks, worst frame 167 ms |
+| Roots 664→2216 | 31.1 fps | 34.3 fps (within noise) |
+| First visit, touch flicks right after the intro | 21.3 fps, 43–49 long tasks (4.5–5.4 s), worst frame 1100 ms | 41.1 fps, 7–13 long tasks (0.56–0.83 s), worst frame 233 ms |
+
+**This area alone (area at fa9748d → now, everything else identical).** Load was lower.
+
+| Measure | Area at fa9748d | Now |
+|---|---|---|
+| Hero | 40.7 fps | 46 fps |
+| Roots | 58.8 fps | 57.7 fps (the same) |
+| Early swipe | 37.2 fps, 7–11 long tasks (1.0–1.3 s), worst frame 300 ms | 49.5 fps, 0–1 long tasks (0–72 ms), worst frame 100 ms |
+
+So the claimed early-swipe gain holds, measured. The steady-state roots range shows no headless difference, as the perf agent said. The raster, turbulence and compositor gains are iOS reasoning and cannot be measured here.
+
+**Trace of the roots range (now):** nothing heavy is left in this area. DrawSVG render is about 19 ms, getBBox + getTotalLength about 8 ms, and the roots update about 2 ms. The top script cost is `header.ts` onScroll at 30–41 ms (chrome).
+
+**Layers at y = 0:**
+- 51.5 viewports now, 48.2 with this area at fa9748d, 60.6 live.
+- The +3.3 is the steady hero zoom / dim / ground layers and the 238×1260 root clip. That is intended: no per-frame repaint.
+- A 390×11805 overlap-squashing layer exists in all three. It is named after its first member: `hero__ground` before, `hero__content` now. It is pre-existing and cross-area (it lines up with the fixed header's overlap), not caused by this area. I am flagging it to the lead, because WebKit composites overlap differently and this cannot be judged headless.
+
+The desktop polish adds nothing on phones: it is CSS behind `min-width: 769px` plus desktop-only TS. The dog is a no-op on touch.
+
+### Still open
+- Neither the phone gains nor the WebKit layer question have been checked on a real iPhone.
