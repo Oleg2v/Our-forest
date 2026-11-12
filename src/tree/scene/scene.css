@@ -57,8 +57,10 @@
     radial-gradient(60% 42% at 30% 62%, rgb(var(--cream-rgb) / 0.95), rgb(var(--cream-rgb) / 0) 70%),
     radial-gradient(55% 40% at 72% 42%, rgb(var(--cream-rgb) / 0.95), rgb(var(--cream-rgb) / 0) 72%),
     radial-gradient(80% 60% at 50% 50%, rgb(var(--cream-rgb) / 0.9), rgb(var(--cream-rgb) / 0.55) 75%);
-  will-change: opacity, transform;
+  /* no permanent will-change: the fog only lives through the visit intro (~0.9 s); index.ts promotes it while it is
+     on screen (data-live) — idle, at opacity 0, it was a stage-sized layer that drew nothing */
 }
+.ts-fog[data-live] { will-change: opacity, transform; }
 .ts[data-tone='dark'] .ts-fog {
   background:
     radial-gradient(60% 42% at 30% 62%, rgb(201 207 160 / 0.32), rgb(201 207 160 / 0) 70%),

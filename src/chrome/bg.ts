@@ -2,7 +2,8 @@
    Section background system.
    Sections declare data-bg="cream|sand|soil|moss|season". When a section crosses the
    reading line (55% of the viewport) the page background and, for dark ones,
-   --ink / --ink-soft / --line tween to it (CSS transition .9s on body, base.css).
+   --ink / --ink-soft / --line tween to it (CSS transition .9s on body, base.css; on touch screens only
+   the background fades — the text colour switches at once).
    "season" sections paint their own colours — the page bg is left as it was.
    Sections without data-bg count as cream. Emits bus 'theme:section' {bg, dark}.
 

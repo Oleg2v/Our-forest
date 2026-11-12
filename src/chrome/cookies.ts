@@ -225,7 +225,14 @@ export function initCookies(page: PageName, hold: Promise<unknown>) {
     setFloor(floor); // a bar under the card came or went: it slides (CSS transition)
   };
   const later = () => { clearTimeout(settle); settle = window.setTimeout(place, 260); };
-  const onScroll = () => { lastScroll = Date.now(); later(); };
+  // Any scroll pauses the re-check loop: the page's own (then it re-checks once the scroll settles) and, through
+  // the capture phase, a scroll inside an element — the /plant phone sheet, lists, the map list — which used to
+  // run the survey (rects of every candidate + a measure pass) in the middle of a swipe.
+  const onScroll = (e: Event) => {
+    lastScroll = Date.now();
+    if (e.target === document || e.target === window) later();
+  };
+  const SCROLL_OPTS: AddEventListenerOptions = { passive: true, capture: true };
 
   const show = () => {
     if (state !== 'idle') return;
@@ -235,29 +242,48 @@ export function initCookies(page: PageName, hold: Promise<unknown>) {
     card.setAttribute('data-wait', '');
     card.hidden = false;
     place();
-    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('scroll', onScroll, SCROLL_OPTS);
     window.addEventListener('resize', later, { passive: true });
     const loop = () => {
+      if (state !== 'wait' && state !== 'open') return; // dismissed (here or in another tab): the loop ends
       if (!document.hidden && Date.now() - lastScroll > 500) place();
       if (state === 'wait' || state === 'open') tick = window.setTimeout(loop, state === 'wait' ? 700 : 1500);
     };
     tick = window.setTimeout(loop, 700);
   };
-  const decide = (v: Choice) => {
-    storage.set('consent', { v, t: Date.now() });
-    announce(v);
-    sound.play('click');
+  /** the card is done with: no loop, no listeners, no observer left behind */
+  const stop = () => {
     state = 'gone';
     mo.disconnect();
     clearTimeout(settle);
     clearTimeout(tick);
-    window.removeEventListener('scroll', onScroll);
+    window.removeEventListener('scroll', onScroll, SCROLL_OPTS);
     window.removeEventListener('resize', later);
+    window.removeEventListener('storage', onStorage);
+  };
+  const hide = () => {
     const hadFocus = card.contains(document.activeElement);
     card.removeAttribute('data-shown');
     setTimeout(() => { card.hidden = true; }, env.motionAllowed() ? 600 : 0);
     if (hadFocus) document.getElementById('main')?.focus({ preventScroll: true });
   };
+  const decide = (v: Choice) => {
+    storage.set('consent', { v, t: Date.now() });
+    announce(v);
+    sound.play('click');
+    stop();
+    hide();
+  };
+  // answered in another tab: this one stops asking too
+  const onStorage = (e: StorageEvent) => {
+    if (e.key !== 'of:consent' || state === 'gone') return;
+    const v = storage.get<{ v: Choice } | null>('consent', null)?.v;
+    if (!v) return;
+    announce(v);
+    stop();
+    if (!card.hidden) hide();
+  };
+  window.addEventListener('storage', onStorage);
   card.querySelector('[data-cookie-accept]')?.addEventListener('click', () => decide('all'));
   card.querySelector('[data-cookie-decline]')?.addEventListener('click', () => decide('necessary'));
   // the phone bar appearing/disappearing changes what is under the card

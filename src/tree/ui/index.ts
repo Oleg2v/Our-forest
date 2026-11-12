@@ -42,6 +42,23 @@ export function initTreePage(main: HTMLElement) {
   const sceneEl = stage.querySelector<HTMLElement>('[data-scene]')!;
   const fxCanvas = stage.querySelector<HTMLCanvasElement>('[data-fx]')!;
   const { demo: fromUrl, flags } = readDemo();
+  /** an arrival (birth, gift) hides the stage UI ([data-intro] in tree.css: visibility hidden; the caption only fades
+   *  while it plays). On wide screens the hidden parts below and beside the scene are also inert meanwhile: the cookie
+   *  card's placement skips [inert] (src/chrome/cookies.ts). It used to count the hidden timeline, readout, 'דמו' button,
+   *  hotspots and caption as present and took the top-left over the moon and the 'דמו' button on a first visit. The
+   *  panel column (title, watering, share) keeps counting while hidden: it is where the page appears when the arrival
+   *  ends, so the card settles where it will stay clear of it — the bottom corner on the far side, as on a return
+   *  visit. Hidden is hidden for the eye, the keyboard and the screen reader alike, so nothing else changes.
+   *  Phones and landscape phones keep their placement as it was. */
+  const INTRO_HIDDEN = '.tree-tl, .tree-cond, .tree-demo-btn, .tree-hs';
+  const wideMQ = matchMedia('(min-width: 769px) and (min-height: 561px)');
+  const setIntroAttr = (phase: '' | '1' | 'caption') => {
+    stage.dataset.intro = phase;
+    const wide = wideMQ.matches;
+    const mark = (n: HTMLElement, on: boolean) => { if (n.inert !== on) n.inert = on; };
+    stage.querySelectorAll<HTMLElement>(INTRO_HIDDEN).forEach((n) => mark(n, wide && !!phase));
+    stage.querySelectorAll<HTMLElement>('.tree-caption').forEach((n) => mark(n, wide && phase === '1'));
+  };
 
   /* ---------------- data */
   const base: TreeRecord = { ...TREE, greetings: [...TREE.greetings], events: [...TREE.events] };
@@ -103,7 +120,7 @@ export function initTreePage(main: HTMLElement) {
     hotspots: () => hotspots,
     stageRect: () => stage.getBoundingClientRect(),
     setIntro(on) {
-      if (on) stage.dataset.intro = '1'; else if (stage.dataset.intro) { stage.dataset.intro = ''; revealUi(); }
+      if (on) setIntroAttr(on === 'caption' ? 'caption' : '1'); else if (stage.dataset.intro) { setIntroAttr(''); revealUi(); }
     },
     run: (f) => runFlow(f),
     focusWater() {
@@ -474,7 +491,7 @@ export function initTreePage(main: HTMLElement) {
   herb.render();
   about.render();
   push();
-  stage.dataset.intro = flow === 'birth' || flow === 'gift' ? '1' : '';
+  setIntroAttr(flow === 'birth' || flow === 'gift' ? '1' : '');
   const boot = async () => {
     // a birth (or the gift envelope before it) opens on empty paper → the soil close-up, never on the grown tree
     await scene.mount(sceneEl, { birth: flow === 'birth' || flow === 'gift' });

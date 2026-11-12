@@ -84,6 +84,11 @@ body::after {
 @media (hover: none) and (pointer: coarse) {
   body::after { mix-blend-mode: normal; opacity: 0.04; }
   *, *::before, *::after { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  /* Only the page colour fades on a light ↔ dark turn; the text colour switches at once (with the ink
+     variables). A 0.9 s `color` transition on <body> changed the inherited colour on every frame, which
+     restyled every element that does not set its own colour — the whole page, every frame, for 0.9 s,
+     in the middle of a swipe. */
+  body { transition: background-color var(--t-page) var(--ease-inout); }
 }
 
 /* ---------- layout helpers ---------- */

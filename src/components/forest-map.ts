@@ -26,7 +26,7 @@ import {
 import { envArt, plotArt, labelArt, ROAD_TOP } from './forest-map/art';
 import { spotInner, type SpotGeom } from './forest-map/spots';
 import { Camera, type CamState, type Rect } from './forest-map/camera';
-import { PLAN, type Pt } from './forest-map/plan';
+import { PLAN, PLAN_LABELS, type Pt } from './forest-map/plan';
 import { icon, speciesIcon } from './forest-map/icons';
 import { hull, inflate, resample, wobble, smooth, rng } from './forest-map/sketch';
 import { ils } from '../core/format';
@@ -366,7 +366,8 @@ export function createForestMap(el: HTMLElement, opts: ForestMapOptions = { mode
   function fitPlan(): CamState {
     const pad = fitPad();
     const fit = cam.fitState(PLAN_RECT, pad);
-    const legend = picker ? null : el.querySelector<HTMLElement>('.fmap__legend');
+    if (picker) return pickerFit(fit, pad);
+    const legend = el.querySelector<HTMLElement>('.fmap__legend');
     if (!legend || el.classList.contains('is-list')) return fit;
     const fr = frame.getBoundingClientRect(), lr = legend.getBoundingClientRect();
     if (!lr.height) return fit;
@@ -391,6 +392,46 @@ export function createForestMap(el: HTMLElement, opts: ForestMapOptions = { mode
       }
     }
     return res;
+  }
+  /** the picker on a desktop-sized screen: its legend sits over the frame's bottom-left corner, which is where the
+      outdoor classroom's label 'כיתת חוץ' falls. The plan moves up (if the fit left room above it) and then shrinks
+      around its top just enough for the label to clear the legend — at most 15 %. The title keeps its place at the
+      top; the hover hint takes the title's place there (forest-map.css). Phones, landscape phones and a portrait
+      (rotated) frame fit as before. */
+  const deskMq = window.matchMedia('(min-width: 769px) and (min-height: 561px)');
+  const CLASS_LABEL = PLAN_LABELS.find((q) => q.id === 'class')!;
+  function pickerFit(fit: CamState, pad: number): CamState {
+    if (!deskMq.matches || full || cam.rot !== 0) return fit;
+    const legend = el.querySelector<HTMLElement>('.fmap__legend');
+    const text = el.querySelector<SVGTextElement>('.fmap__label--class .fmap__label-t');
+    if (!legend || !text) return fit;
+    const fr = frame.getBoundingClientRect(), lr = legend.getBoundingClientRect();
+    if (!lr.height) return fit;
+    let bb: DOMRect;
+    try { bb = text.getBBox(); } catch { return fit; }
+    if (!bb.height) return fit;
+    // the label keeps its on-screen size at every zoom (scale 1/k); its cream halo adds 2 px around it
+    const gap = 6, halo = 2;
+    const legTop = lr.top - fr.top - gap, legL = lr.left - fr.left - gap, legR = lr.right - fr.left + gap;
+    const over = (st: CamState) => {
+      const x = st.x + st.k * CLASS_LABEL.x;
+      return x + bb.x + bb.width + halo > legL && x + bb.x - halo < legR;
+    };
+    const below = (st: CamState) => st.y + st.k * CLASS_LABEL.y + bb.y + bb.height + halo - legTop;
+    let need = below(fit);
+    if (need <= 0 || !over(fit)) return fit;
+    const l = cam.layoutRect(PLAN_RECT);
+    const top = fit.y + fit.k * l.y0;
+    const up = Math.min(need, Math.max(0, top - pad));
+    const res = { ...fit, y: fit.y - up };
+    need -= up;
+    if (need <= 0) return res;
+    const top2 = top - up;
+    let k = Math.max(fit.k * 0.85, (legTop - top2 - (bb.y + bb.height + halo)) / (CLASS_LABEL.y - l.y0));
+    // a plan that showed its trees one by one keeps doing so (the groves gather below thr × 0.94, see render())
+    if (fit.k >= thr * 0.94) k = Math.max(k, thr * 0.94 + 0.0005);
+    if (!(k < fit.k)) return res;
+    return { k, x: cam.w / 2 - k * (l.x0 + (l.x1 - l.x0) / 2), y: top2 - k * l.y0 };
   }
   function initialState(fit: CamState): CamState {
     const want = pendingId ?? selectedId ?? opts.initialSpotId;

@@ -406,6 +406,14 @@ a.fmap__li:hover { background: rgb(var(--fruit-rgb) / 0.05); }
 .fmap--picker .fmap__key { width: 16px; height: 16px; }
 .fmap--picker .fmap__zoom { gap: 4px; }
 .fmap--picker .fmap__hint { inset-block-end: auto; inset-block-start: var(--fm-pad); inset-inline-start: 50%; translate: 50% 0; font-size: 13px; padding: 7px 14px; }
+/* desktop picker: the hint stands at the top centre, right over the plan's title cartouche. While the hint shows
+   (pointer over the map, a flash, or a touch screen's standing hint) the title steps back and the hint takes its
+   place; they cross-fade (both use --t-ui). The legend's side is handled by the fit (forest-map.ts, pickerFit). */
+@media (min-width: 769px) and (min-height: 561px) {
+  .fmap--picker.is-hover:not(.is-active) .fmap__label--title .fmap__label-t,
+  .fmap--picker.fmap--touch:not(.is-active) .fmap__label--title .fmap__label-t,
+  .fmap--picker:has(.fmap__hint.is-flash) .fmap__label--title .fmap__label-t { opacity: 0; }
+}
 
 /* reduced motion: still, fully drawn */
 html.no-motion .fmap__g { animation: none !important; opacity: 0; }

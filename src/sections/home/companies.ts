@@ -143,6 +143,7 @@ export function initCompanies(): void {
         // pin: open over the first 72% of the run, then hold full-screen
         const e = easeOpen(gsap.utils.clamp(0, 1, pin ? p / 0.72 : p));
         const w0 = pin ? Math.min(W * 0.25, 380) : W * 0.42;
+        // (pin: companies.css pulls the banner up by this leaf's empty top, 50vh − min(22vh, 210px) — keep in step)
         const h0 = pin ? Math.min(H * 0.44, 420) : H * 0.34;
         const w = w0 + (W - w0) * e;
         const hh = h0 + (H - h0) * e;

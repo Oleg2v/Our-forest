@@ -241,6 +241,23 @@ html[data-theme='dark'] .companies {
   .companies__yours { justify-self: center; }
 }
 @media (min-width: 769px) and (min-height: 561px) {
+  /* map → companies hand-over. The pinned stage centres its leaf and title in a full screen, so its first
+     content (the leaf, (100vh − leaf) / 2 down) sat 215px (768) … 510px (1440) under the stage's top, on top of
+     the map's own section-pad: a 320–690px band of empty sand where every other hand-over is 2 × section-pad.
+     The banner slides up under the map's bottom padding by the part of that empty top beyond one section-pad
+     (the leaf's top = 50vh − min(22vh, 210px), the same formula as render() in companies.ts), so the leaf lands
+     2 × section-pad under the cards at every height. Pin, scrub and opening are measured on the banner itself:
+     they run exactly as before, only that much earlier on the page. flow-root keeps the section's own box where
+     it was (the margin does not collapse through it onto the map). */
+  .companies--pin { display: flow-root; }
+  .companies--pin .companies__banner { margin-block-start: min(0px, var(--section-pad) - 50vh + min(22vh, 210px)); }
+  /* above ~950px of height the banner's empty top now lies over the bottom of the map cards as the pin starts
+     (28px at 1080, 150px at 1440), and it paints above them (inside the positioned section): the pointer goes
+     through to the cards. The leaf stays a hit target (its clip-path is its hit area) — the header, cursor and
+     cookie probes read the photo under them with elementsFromPoint. Nothing else in the banner takes input. */
+  .companies--pin .companies__banner { pointer-events: none; }
+  .companies--pin .companies__photo { pointer-events: auto; }
+
   /* the eyebrow stands over a full-screen photo beside a ~150px title: 14px got lost on a big screen.
      It grows with the viewport (14px up to ~1470px, 17px at 1768, 18px from 1900) and never drops under the a11y-scaled token */
   .companies__eyebrow { font-size: clamp(var(--fs-eyebrow), 0.95vw, 18px); }

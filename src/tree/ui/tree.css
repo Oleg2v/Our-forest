@@ -479,6 +479,15 @@
 .tpola__cap bdi { font-size: 13px; opacity: 0.6; font-family: var(--font-body); }
 
 /* ===================================================================== phone */
+/* phones (portrait and landscape), scroll performance: the stage is one composited layer of its own. Inside it the
+   scene's canvases and layers sit under the UI, so the UI is composited for overlap; without a layer around the
+   stage, Chrome squashed it and then everything after it on the page into one page-long layer (390×7728;
+   750×7600 in landscape). With it the overlap stays inside the stage, and the drawing layers drop from about 33
+   to 23 viewports (60 → 41 in landscape). Nothing looks different: the stage already clips (overflow hidden) and
+   isolates, and nothing inside it is position: fixed (the sheets mount on <body>) */
+@media (max-width: 768px), (max-height: 560px) and (orientation: landscape) {
+  .tree-stage { will-change: transform; }
+}
 @media (max-width: 768px) {
   .tree-stage {
     min-height: 600px;

@@ -34,7 +34,8 @@
   --fs-body: 18px;
   --lh-body: 1.6;
   --fs-small: 15px;
-  --fs-eyebrow: 14px;
+  --fs-eyebrow-base: 14px;   /* grows with the screen on desktop only (below); the a11y text sizes scale it */
+  --fs-eyebrow: var(--fs-eyebrow-base);
   --fs-h3: clamp(24px, 2.2vw, 32px);
   --fs-h2: clamp(40px, 5.4vw, 88px);
   --fs-h1: clamp(56px, 9vw, 140px);
@@ -85,6 +86,11 @@
     --fs-body: 17px;
     --header-h: 64px;
   }
+}
+/* desktop: the eyebrow keeps pace with big screens — 14px up to ≈ 1750px wide, then 0.8vw, 16px from 2000px.
+   Phones (and landscape phones, which are under 1750px wide) keep 14px. */
+@media (min-width: 769px) {
+  :root { --fs-eyebrow-base: clamp(14px, 0.8vw, 16px); }
 }
 
 /* user a11y preferences (set by the accessibility panel on <html>) */

@@ -29,8 +29,9 @@ export interface Ctx {
   hotspots(): Hotspot[];
   /** stage-local rectangle helpers */
   stageRect(): DOMRect;
-  /** show/hide the regular UI around the scene (birth, envelope hide it) */
-  setIntro(on: boolean): void;
+  /** show/hide the regular UI around the scene (birth, envelope hide it); 'caption' = the birth's last phase, its
+   *  caption over the scene (the UI stays hidden) */
+  setIntro(on: boolean | 'caption'): void;
   /** run a page flow (state switch from the presenter or the URL) */
   run(flow: PageState): void;
   /** water from anywhere (keyboard Enter on the stage, birth button) */

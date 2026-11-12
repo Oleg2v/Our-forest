@@ -111,11 +111,19 @@ function splitRise(rec: Rec, letters: boolean) {
         rotate: letters ? 7 : 0,
         opacity: letters ? 0 : 1,
         transformOrigin: '50% 100%',
+        // Touch screens: a plain 2D translate. GSAP's default adds translate3d(0,0,0) while a tween runs, which
+        // gives every rising line its own layer — and the next line's mask overlaps it (the masks overlap by
+        // their 0.12em padding), so Blink lifted everything painted after it into one tall overlap layer
+        // (358×1457 on the /business phone) for the length of the reveal. A line repaints instead (a few px of
+        // text per frame); at 2–3× pixel density the motion looks the same.
+        force3D: env.isTouch ? false : 'auto',
         duration: T.appear,
         ease: EASE.appear,
         stagger: { amount: Math.max(0, amount) },
         paused: true,
-        onComplete: () => finish(el, rec),
+        // landed: nothing left on the lines / letters (GSAP leaves an identity transform, its origin and
+        // opacity inline) — no transform, no layer, nothing for the compositor to keep track of
+        onComplete: () => { gsap.set(targets, { clearProps: 'transform,transformOrigin,opacity' }); finish(el, rec); },
       });
       const st = ScrollTrigger.create({
         trigger: el, start: startOf(el, 'top 88%'), once: true,

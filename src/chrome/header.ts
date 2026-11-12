@@ -6,6 +6,7 @@
    ========================================================================== */
 import { bus } from '../core/bus';
 import { sound } from '../core/sound';
+import { ScrollTrigger } from '../core/gsap';
 import { isDarkAt, qsa } from './util';
 import type { PageName } from './index';
 
@@ -36,6 +37,14 @@ export function initHeader(page: PageName) {
   wireSoundToggles();
   if (!header) return;
   const h = header;
+  // Where the page is: ScrollTrigger's viewport position. ScrollTrigger reads it in its own scroll handler (on the
+  // document, once per scroll event, before the scrubs write) and caches it until the next scroll event, so the
+  // header never reads scrollY itself. (The read is what forces a frame's pending style — CSS transitions and
+  // animations sampled at the start of the frame — to be flushed early; it now happens once, in ScrollTrigger.)
+  // The cache is cleared on every scroll event, so the value is never stale: a page with no ScrollTrigger on the
+  // viewport simply reads it fresh.
+  // (typed as a setter in GSAP's d.ts; called with no argument it is the getter)
+  const scrollPos = ScrollTrigger.getScrollFunc(window) as unknown as () => number;
   let y = Math.max(0, window.scrollY);
   let lastY = y;
   let ticking = false;
@@ -75,9 +84,10 @@ export function initHeader(page: PageName) {
     }
   };
 
-  // rAF: writes only (the scroll position was read in the scroll event)
+  // rAF: writes only (the position is ScrollTrigger's, read in this frame's scroll event)
   const update = () => {
     ticking = false;
+    y = Math.max(0, scrollPos());
     const dy = y - lastY;
     setAttr('data-compact', y > 80);
     const focusInside = h.contains(document.activeElement);
@@ -86,12 +96,14 @@ export function initHeader(page: PageName) {
     else if (dy < -4) setAttr('data-hidden', false);
     lastY = y;
   };
-  // Reads (scrollY, the tone hit test) happen in the scroll event's capture phase, before ScrollTrigger's own
-  // scroll handler, which reads the position too (WebKit and Blink both flush style + layout for scrollY) and
-  // then lets the scrubs write: both reads share that one flush. Read inside rAF — after GSAP's tick had written
-  // the scrubs — it was a second style + layout pass every scroll frame (measured: −37 % layout passes).
-  const onScroll = () => {
-    y = Math.max(0, window.scrollY);
+  // The tone hit test (when due) runs in the scroll event's capture phase, before ScrollTrigger's own scroll
+  // handler, which reads the position (WebKit and Blink both flush style + layout for it) and then lets the
+  // scrubs write: the probe shares that one flush. In rAF — after GSAP's tick had written the scrubs — it would
+  // be a second style + layout pass.
+  // Only the page's own scroll counts: a capture listener on window also hears every scroll inside an element
+  // (the /plant phone sheet, the menu, lists, the forest-map list), and then the page has not moved.
+  const onScroll = (e?: Event) => {
+    if (e && e.type === 'scroll' && e.target !== document && e.target !== window) return;
     if (performance.now() - lastTone > toneEvery) tone();
     clearTimeout(toneTimer);
     toneTimer = window.setTimeout(tone, 160);
@@ -105,7 +117,7 @@ export function initHeader(page: PageName) {
   bus.on('menu:close', () => { menuOpen = false; });
   bus.on<{ visible: boolean }>('header:force', ({ visible }) => { forcedVisible = Math.max(0, forcedVisible + (visible ? 1 : -1)); onScroll(); });
   // first probe in the first frame, not inside the module's start-up task (it forces the first layout)
-  requestAnimationFrame(onScroll);
+  requestAnimationFrame(() => onScroll());
   // re-probe while intro animations, media and webfonts settle (no polling loop)
   window.addEventListener('load', () => setTimeout(tone, 60), { once: true });
   [400, 1200, 2400, 4000].forEach((ms) => setTimeout(tone, ms));

@@ -243,24 +243,38 @@ function drawPlaque(ctx: CanvasRenderingContext2D, L: Layout, wood: HTMLCanvasEl
 }
 
 /* ---------------- canvas sizing ---------------- */
+/** below this CSS width a canvas is folded away, hidden or detached, not a plaque anyone reads */
+const MIN_CSS_W = 16;
+/** canvases that have been sized from a real measurement */
+const measured = new WeakSet<HTMLCanvasElement>();
+
 function sizeCanvas(canvas: HTMLCanvasElement, o: { width?: number; height?: number; resolution?: number }) {
   if (o.width && o.height) {
     if (canvas.width !== o.width) canvas.width = o.width;
     if (canvas.height !== o.height) canvas.height = o.height;
     return;
   }
+  const mw = canvas.clientWidth;
+  // folded to nothing, display: none or detached: a canvas that had a real size keeps it (and its bitmap) — a
+  // resize to the 480 px fallback would make a new, big wood texture for a plaque nobody sees
+  if (mw < MIN_CSS_W && measured.has(canvas)) return;
+  if (mw >= MIN_CSS_W) measured.add(canvas);
   const dpr = Math.min(2, window.devicePixelRatio || 1) * (o.resolution ?? 1);
-  const cw = canvas.clientWidth || 480;
+  const cw = mw || 480;
   const ch = canvas.clientHeight || cw / PLAQUE_ASPECT;
   const W = Math.round(cw * dpr), H = Math.round(ch * dpr);
   if (canvas.width !== W) canvas.width = W;
   if (canvas.height !== H) canvas.height = H;
 }
 
-/** wood at a quantised size (cheap resizes), scaled into the canvas */
+/** wood at a quantised size (cheap resizes), scaled into the canvas. The height follows the quantised width at the
+    plaque's aspect, so canvases whose aspect differs by a pixel (rounding, a size animation) share one plank; a
+    canvas of another shape gets its own aspect, in steps of 0.05 */
 function woodFor(w: number, h: number, seed: number, memorial: boolean) {
   const qw = Math.min(1600, Math.ceil(w / 160) * 160);
-  return createWoodTexture(qw, Math.round(qw * (h / w)), { seed, tone: memorial ? 'memorial' : 'warm' });
+  const a = w / Math.max(1, h);
+  const qa = Math.abs(a / PLAQUE_ASPECT - 1) < 0.03 ? PLAQUE_ASPECT : Math.max(0.5, Math.round(a * 20) / 20);
+  return createWoodTexture(qw, Math.round(qw / qa), { seed, tone: memorial ? 'memorial' : 'warm' });
 }
 
 /** One static frame of the plaque. */
@@ -359,7 +373,11 @@ export function createPlaqueEngraver(canvas: HTMLCanvasElement, opts: PlaqueEngr
   };
   const speed = () => (memorial ? 1 / 1.5 : 1);
 
+  /** a canvas sized from its CSS box is drawn once it has been measured: an engraver made on a detached or hidden
+      canvas draws when the canvas first gets a size (ResizeObserver), not at the 480 px fallback */
+  const fixed = !!(opts.width && opts.height);
   const draw = (laser: Frame['laser']) => {
+    if (!fixed && ro && !measured.has(canvas)) return;
     if (!L) relayout();
     const wood = woodFor(canvas.width, canvas.height, seed, memorial);
     drawPlaque(ctx, L!, wood, { burned, heat, laser, memorial, placeholder });
@@ -466,8 +484,23 @@ export function createPlaqueEngraver(canvas: HTMLCanvasElement, opts: PlaqueEngr
     if (resolveAll) { const r = resolveAll; resolveAll = null; fixedDuration = 0; r(); }
   };
 
-  const ro = typeof ResizeObserver !== 'undefined' && !(opts.width && opts.height)
-    ? new ResizeObserver(() => { const pw = canvas.width, ph = canvas.height; sizeCanvas(canvas, opts); if (canvas.width !== pw || canvas.height !== ph) { relayout(); if (!raf) draw(null); } })
+  /* Size changes are redrawn once the size has been still for SETTLE_MS; meanwhile the canvas keeps its bitmap,
+     scaled by CSS. A size animation (the phone stage folding and unfolding, a window being dragged) reports a new
+     size every frame, and every frame used to re-lay the text and often make a new wood texture. A canvas getting
+     its first real size is drawn at once; a host that moves the canvas calls resize(), which is immediate too. */
+  const SETTLE_MS = 140;
+  let settleT = 0;
+  const applySize = () => {
+    settleT = 0;
+    const pw = canvas.width, ph = canvas.height, was = measured.has(canvas);
+    sizeCanvas(canvas, opts);
+    if (canvas.width !== pw || canvas.height !== ph || (!was && measured.has(canvas))) { relayout(); if (!raf) draw(null); }
+  };
+  const ro = typeof ResizeObserver !== 'undefined' && !fixed
+    ? new ResizeObserver(() => {
+      if (settleT) clearTimeout(settleT);
+      if (measured.has(canvas)) settleT = window.setTimeout(applySize, SETTLE_MS); else applySize();
+    })
     : null;
   ro?.observe(canvas);
 
@@ -509,7 +542,7 @@ export function createPlaqueEngraver(canvas: HTMLCanvasElement, opts: PlaqueEngr
     },
     getProgress: () => (L && L.total ? Math.min(1, burned / L.total) : 1),
     isBurning: () => burned < target,
-    resize() { relayout(); if (!raf) draw(null); },
+    resize() { if (settleT) { clearTimeout(settleT); settleT = 0; } relayout(); if (!raf) draw(null); },
     toDataURL() {
       const c = document.createElement('canvas');
       const W = Math.max(960, canvas.width);
@@ -519,6 +552,7 @@ export function createPlaqueEngraver(canvas: HTMLCanvasElement, opts: PlaqueEngr
     destroy() {
       destroyed = true;
       if (raf) cancelAnimationFrame(raf);
+      if (settleT) clearTimeout(settleT);
       ro?.disconnect();
       document.removeEventListener('visibilitychange', onVis);
     },

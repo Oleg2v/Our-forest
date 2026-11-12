@@ -121,7 +121,7 @@ export class Intro {
         </div>
       </div>`);
     ctx.stage.appendChild(c);
-    ctx.stage.dataset.intro = 'caption';
+    ctx.setIntro('caption');
     ctx.announce(`${he.tree.states.born}, ${ilDate(dateKey)}`);
     const done = (then: () => void) => {
       delete ctx.stage.dataset.birth;

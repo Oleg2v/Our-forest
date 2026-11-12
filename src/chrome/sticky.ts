@@ -7,6 +7,7 @@
    boxes that read --mbar-space: it is not a root variable, so the bar coming/going restyles only them).
    ========================================================================== */
 import { bus } from '../core/bus';
+import { ScrollTrigger } from '../core/gsap';
 import { isDarkAt, qs } from './util';
 import type { PageName } from './index';
 
@@ -35,12 +36,17 @@ export function initSticky(page: PageName) {
     update();
   };
 
-  // home: wait until the visitor leaves the hero. Read in the capture phase of the scroll event, before
-  // ScrollTrigger's handler reads (and the scrubs write): scrollY shares the flush that read needs anyway.
+  // home: wait until the visitor leaves the hero. No reads of its own while scrolling: the position is the one
+  // ScrollTrigger read (and cached) in its own scroll handler on the document — this bubble-phase listener on
+  // window runs right after it — and the window height is kept from the last resize (scrollY and innerHeight
+  // both flush the frame's pending style). Scrolls inside elements do not bubble here.
   if (page === 'home') {
-    const onScroll = () => set('intro', window.scrollY < window.innerHeight * 0.55);
-    window.addEventListener('scroll', onScroll, { passive: true, capture: true });
-    onScroll();
+    const scrollPos = ScrollTrigger.getScrollFunc(window) as unknown as () => number; // no argument = getter
+    let vh = window.innerHeight;
+    const onScroll = () => set('intro', scrollPos() < vh * 0.55);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', () => { vh = window.innerHeight; onScroll(); }, { passive: true });
+    set('intro', window.scrollY < vh * 0.55);
   }
   // over the footer the bar steps aside (the footer has its own big CTA and links)
   const footer = document.getElementById('footer') || qs('footer');

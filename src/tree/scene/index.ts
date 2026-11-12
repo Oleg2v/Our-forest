@@ -565,8 +565,11 @@ class TreeSceneImpl {
       this.glowEl.style.width = this.glowEl.style.height = `${Math.round(r * 2)}px`;
       this.glowEl.style.opacity = String(Math.round(pg * breathe * 1000) / 1000);
     } else if (this.glowEl.style.opacity !== '0') this.glowEl.style.opacity = '0';
-    this.fogEl.style.opacity = f.a.fog > 0.003 ? String(Math.round(f.a.fog * 1000) / 1000) : '0';
-    if (f.a.fog > 0.003) this.fogEl.style.transform = `scale(${(1 + f.a.fog * 0.06).toFixed(4)})`;
+    const fog = f.a.fog > 0.003;
+    // a layer only while the fog is there (scene.css: .ts-fog[data-live]); written on change only
+    if (fog !== this.fogEl.hasAttribute('data-live')) this.fogEl.toggleAttribute('data-live', fog);
+    this.fogEl.style.opacity = fog ? String(Math.round(f.a.fog * 1000) / 1000) : '0';
+    if (fog) this.fogEl.style.transform = `scale(${(1 + f.a.fog * 0.06).toFixed(4)})`;
     this.hazeEl.style.opacity = String(Math.round(L.haze * 0.55 * 1000) / 1000);
     this.hostEl.style.opacity = f.a.appear >= 0.999 ? '' : String(Math.round(f.a.appear * 1000) / 1000);
   }

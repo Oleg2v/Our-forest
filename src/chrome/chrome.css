@@ -10,8 +10,8 @@
    font-size: calc(17px * var(--a11y-k, 1)) (display headings stay as they are). The small/eyebrow tokens
    follow here, so .eyebrow, field labels and every var(--fs-small) grow on all pages. */
 :root { --a11y-k: 1; }
-:root[data-a11y-font='1'] { --a11y-k: 1.125; --fs-small: calc(15px * 1.125); --fs-eyebrow: calc(14px * 1.125); }
-:root[data-a11y-font='2'] { --a11y-k: 1.25; --fs-small: calc(15px * 1.25); --fs-eyebrow: calc(14px * 1.25); }
+:root[data-a11y-font='1'] { --a11y-k: 1.125; --fs-small: calc(15px * 1.125); --fs-eyebrow: calc(var(--fs-eyebrow-base, 14px) * 1.125); }
+:root[data-a11y-font='2'] { --a11y-k: 1.25; --fs-small: calc(15px * 1.25); --fs-eyebrow: calc(var(--fs-eyebrow-base, 14px) * 1.25); }
 html.bg-instant body { transition: none !important; }
 [data-a11y-contrast='high'] body::after { display: none; } /* grain off in high contrast */
 
@@ -564,8 +564,14 @@ html.menu-open .site-header { transform: none; }
   position: fixed;
   z-index: calc(var(--z-sticky) + 5);
   inset-inline-start: var(--gutter); /* reading start: never over the buy buttons (header CTA, /plant summary) */
-  /* above the phone bar, or above a page's own bottom bar / control (--ck-floor, set by cookies.ts) */
-  inset-block-end: max(calc(var(--mbar-space, 0px) + 20px + var(--safe-bottom)), calc(var(--ck-floor, 0px) + 12px));
+  /* It rests --ck-a above the bottom edge, and is lifted above the phone bar or above a page's own bottom bar /
+     control (--ck-floor, set by cookies.ts) to max(bar + --ck-a, floor + --ck-b). The lift is a translate, so
+     when a bar comes or goes the card slides on the compositor (a transition of `bottom` re-laid it out on every
+     frame — on every page, the phone bar comes and goes with the scroll). */
+  --ck-a: 20px;
+  --ck-b: 12px;
+  inset-block-end: calc(var(--ck-a) + var(--safe-bottom));
+  translate: 0 calc(-1 * var(--ck-lift, 1) * max(var(--mbar-space, 0px), var(--ck-floor, 0px) + var(--ck-b) - var(--ck-a) - var(--safe-bottom)));
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -576,14 +582,14 @@ html.menu-open .site-header { transform: none; }
   border-radius: 20px 0 20px 0;
   opacity: 0;
   transform: translateY(20px);
-  transition: opacity 0.6s var(--ease-out), transform 0.9s var(--ease-out), inset-block-end 0.6s var(--ease-out);
+  transition: opacity 0.6s var(--ease-out), transform 0.9s var(--ease-out), translate 0.6s var(--ease-out);
 }
 .cookie[hidden] { display: none !important; }
 .cookie[data-wait] { visibility: hidden; } /* rendered for measuring while it waits for a free slot */
 .cookie[data-shown] { opacity: 1; transform: none; }
 /* moved aside when a primary button / a page's own bottom bar would be under it (cookies.ts) */
 .cookie[data-pos='end'] { inset-inline-start: auto; inset-inline-end: var(--gutter); }
-.cookie[data-pos='top'] { inset-block-end: auto; inset-block-start: calc(var(--header-h) + var(--safe-top) + 8px); transform: translateY(-16px); }
+.cookie[data-pos='top'] { inset-block-end: auto; inset-block-start: calc(var(--header-h) + var(--safe-top) + 8px); --ck-lift: 0; transform: translateY(-16px); } /* no lift under the header (a `translate: none` beside `transform` is folded away by the CSS minifier) */
 .cookie[data-pos='top'][data-shown] { transform: none; }
 .cookie.cookie--measure { transition: none !important; transform: none !important; } /* measured where it rests */
 .cookie__icon { color: var(--olive); width: 24px; height: 24px; }
@@ -600,7 +606,8 @@ html.menu-open .site-header { transform: none; }
 @media (max-width: 768px) {
   .cookie {
     inset-inline: 10px;
-    inset-block-end: max(calc(var(--mbar-space, 0px) + 8px + var(--safe-bottom)), calc(var(--ck-floor, 0px) + 8px));
+    --ck-a: 8px; /* = bottom: max(bar + 8px + safe, floor + 8px) */
+    --ck-b: 8px;
     width: auto; padding-block: 8px; padding-inline: 12px 8px; grid-template-columns: minmax(0, 1fr) auto; gap: 10px;
     border-radius: 18px 0 18px 0;
   }
@@ -774,7 +781,8 @@ html.has-cursor .cursor.is-native { opacity: 0; }
   .cookie {
     --ck-edge: max(var(--gutter), calc((100% - var(--maxw)) / 2));
     inset-inline-start: var(--ck-edge);
-    inset-block-end: max(calc(var(--mbar-space, 0px) + clamp(24px, 2vw, 36px) + var(--safe-bottom)), calc(var(--ck-floor, 0px) + 16px));
+    --ck-a: clamp(24px, 2vw, 36px); /* = bottom: max(bar + clamp(24px, 2vw, 36px) + safe, floor + 16px) */
+    --ck-b: 16px;
     gap: 12px 18px;
     width: min(560px, calc(100% - 2 * var(--gutter)));
     padding-block: 13px;
@@ -788,14 +796,13 @@ html.has-cursor .cursor.is-native { opacity: 0; }
   .cookie[data-pos='top-end'] {
     inset-inline-start: auto; inset-inline-end: var(--ck-edge);
     inset-block-end: auto; inset-block-start: calc(var(--header-h) + var(--safe-top) + clamp(12px, 1.2vw, 20px));
+    --ck-lift: 0; /* no lift under the header */
     transform: translateY(-16px);
   }
   .cookie[data-pos='top-end'][data-shown] { transform: none; }
   /* when the first choice is busy (cookies.ts): lower on the same edge (a caption just above), or out in the
      screen corner, the margin outside the column (a control at the column edge) */
-  .cookie:is([data-edge='low'], [data-edge='corner']) {
-    inset-block-end: max(calc(var(--mbar-space, 0px) + 20px + var(--safe-bottom)), calc(var(--ck-floor, 0px) + 12px));
-  }
+  .cookie:is([data-edge='low'], [data-edge='corner']) { --ck-a: 20px; --ck-b: 12px; }
   /* (the screen corner up to a 1920 screen; beyond it at most 184px outside the column, not lost at 2560) */
   .cookie[data-edge='corner'] { --ck-edge: max(var(--gutter), calc((100% - var(--maxw)) / 2 - 184px)); }
   .cookie__text { font-size: 0.875rem; line-height: 1.5; text-wrap: balance; }

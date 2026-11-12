@@ -480,6 +480,15 @@ html:not(.focus-ring-on) .biz-consent__box:focus-visible + .biz-consent__label .
 @media (min-width: 1440px) and (min-height: 561px) {
   .biz-form__demo { font-size: calc(14px * var(--a11y-k, 1)); }
 }
+/* (integration) 769–1319 px: the cookie card (~560 px wide, in a bottom corner on the column's edge) cannot clear a
+   "down" arrow in the middle of the screen — at 1024–1180 it covered it, at 1280–1300 it sat glued to it, and on a
+   tall tablet it went to the top. The arrow moves to the copy column's start edge, under the buttons, so the corner
+   under the photo stays empty for the card. From 1320 px the centred arrow is clear of it and stays as it was.
+   Under the buttons it sits a little lower than in the middle: on a short laptop (1280×720) the hero's content
+   fills it to its bottom padding, and the usual offset left 2 px between the arrow and the main button */
+@media (min-width: 769px) and (max-width: 1319px) and (min-height: 561px) {
+  .biz-hero__next { inset-inline-start: var(--gutter); translate: none; inset-block-end: clamp(12px, 2vh, 20px); }
+}
 
 /* ==========================================================================
    Tablet
