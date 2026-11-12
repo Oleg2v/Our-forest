@@ -315,17 +315,29 @@ class SeasonsSection {
     const stem = qsa<SVGPathElement>('.seasons__stem', svg);
     const fill = qsa('.seasons__stem-fill', svg);
     const twigs = qsa<SVGPathElement>('.seasons__twig, .seasons__stalk', svg);
+    // leaves and fruit in order along the branch (--t is inline: no computed style needed)
     const parts = qsa<SVGGElement>('.seasons__lf, .seasons__fr', svg)
-      .sort((a, b) => Number(getComputedStyle(a).getPropertyValue('--t')) - Number(getComputedStyle(b).getPropertyValue('--t')));
+      .sort((a, b) => parseFloat(a.style.getPropertyValue('--t')) - parseFloat(b.style.getPropertyValue('--t')));
     gsap.set(stem, { drawSVG: '0%' });
     gsap.set(twigs, { drawSVG: '0%' });
-    gsap.set(parts, { '--in': 0 });
+    // each part pops in around its own stalk point (the origin of its translate). GSAP writes the part's
+    // transform attribute: only that element restyles per frame. (A custom property here was inherited by
+    // every leaf's subtree, so each frame restyled ~5 elements per part with their season formulas.)
+    // (set, then to: a from() re-reads the origin through the zero-scale matrix and loses it. The matrix is
+    // the product of the attribute's list: "translate() scale()" as written, or GSAP's "matrix()" after a revert)
+    const mats = parts.map((el) => {
+      const l = el.transform.baseVal;
+      let m = l.getItem(0).matrix;
+      for (let i = 1; i < l.numberOfItems; i++) m = m.multiply(l.getItem(i).matrix);
+      return m;
+    });
+    gsap.set(parts, { scale: 0, svgOrigin: (i: number) => `${mats[i].e} ${mats[i].f}` });
     gsap.set(fill, { opacity: 0 });
     const tl = gsap.timeline({ paused: true });
     tl.to(stem, { drawSVG: '100%', duration: 1.8, ease: 'power2.inOut' })
       .to(fill, { opacity: 1, duration: 1, ease: EASE.soft }, 1.1)
       .to(twigs, { drawSVG: '100%', duration: 0.7, ease: 'power2.out', stagger: 0.05 }, 0.5)
-      .to(parts, { '--in': 1, duration: 0.9, ease: 'back.out(1.6)', stagger: { each: 1.4 / Math.max(1, parts.length) } }, 0.7);
+      .to(parts, { scale: (i: number) => mats[i].a, duration: 0.9, ease: 'back.out(1.6)', stagger: { each: 1.4 / Math.max(1, parts.length) } }, 0.7);
     whenSeen(trigger, start, () => { this.branchShown = true; tl.play(); });
   }
 
@@ -355,6 +367,15 @@ class SeasonsSection {
       .to(img, { scale: 1, duration: T.image, ease: EASE.image }, 0)
       .to(body, { opacity: 1, y: 0, duration: T.appear, ease: EASE.appear, stagger: T.lineStep }, 0.3)
       .add(() => gsap.set(media, { clearProps: 'clipPath' }));
+  }
+
+  /** the revealed state at once, no animation (a card off screen) */
+  private settleCard(card: HTMLElement) {
+    if (this.revealed.has(card)) return;
+    this.revealed.add(card);
+    gsap.set(card.querySelector('.seasons__media'), { clearProps: 'clipPath' });
+    gsap.set(card.querySelector('.seasons__img'), { scale: 1 });
+    gsap.set(qsa(':scope > .seasons__body > *', card), { opacity: 1, y: 0 });
   }
 
   /* ------------------------------------------------------------ desktop: pinned horizontal strip */
@@ -569,7 +590,15 @@ class SeasonsSection {
       whenSeen(vp, 'top 82%', () => {
         let k = 0;
         if (plaque) gsap.to(plaque, { opacity: 1, y: 0, duration: T.appear, ease: EASE.appear, delay: 0.1 + 0.12 * k++ });
-        this.cards.forEach((c) => this.revealCard(c, 0.1 + 0.12 * k++));
+        // only the slides on screen play their entrance; the ones further along the strip are simply there
+        // when swiped to (an unseen clip-path reveal still repaints the strip on every frame)
+        const vb = vp.getBoundingClientRect();
+        this.cards.forEach((c) => {
+          const b = c.getBoundingClientRect();
+          if (b.right > vb.left + 1 && b.left < vb.right - 1) this.revealCard(c, 0.1 + 0.12 * k);
+          else this.settleCard(c);
+          k++;
+        });
       });
       this.branchIn(this.branchHost, 'top 85%');
     }

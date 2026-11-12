@@ -20,7 +20,7 @@ import { he } from '../../content/he';
 import { dayPeriod, seasonOf, type DayPeriod } from '../../core/format';
 import { sound } from '../../core/sound';
 import { scrollTo } from '../../core/scroll';
-import { onPreloaderBeat, preloaderPlaying, preloaderQuiet } from './preloader';
+import { onPreloaderBeat, preloaderPlaying, preloaderQuiet, whenScrollQuiet } from './preloader';
 import { preloadGL, mountHeroWind, enableRipples, disableRipples, webglAvailable, type HeroWindHandle } from '../../gl';
 
 type Mode = 'gl' | 'video' | 'still';
@@ -167,6 +167,13 @@ class Hero {
   /* ------------------------------------------------------------------ mode */
   private async decideMode() {
     if (env.saveData) return this.setMode('still');
+    // dev: ?mode=gl|video|still forces a path (headless browsers report a weak GPU)
+    const forced = import.meta.env.DEV ? new URLSearchParams(location.search).get('mode') as Mode | null : null;
+    // phones: the 7 s wind loop rendered from the same shader (brief §11: video on phones). A live full-screen
+    // shader under a scrolling page measurably drops iPhone scrolling to 10–15 fps; hardware video decode does not.
+    // Decided at once, without the GPU probes: their answer could not change it, and each costs a WebGL context
+    // (the probe and detect-gpu's), a benchmark fetch and the wind mask download on the phone.
+    if (this.phone && !forced) return this.setMode('video');
     if (!webglAvailable()) return this.setMode(this.phone ? 'video' : 'still');
     if (!this.phone) this.loadGL(); // desktop is almost always GL: fetch the chunk in parallel with the tier test
     // warm the mask in the HTTP cache (TextureLoader will hit it)
@@ -174,11 +181,7 @@ class Hero {
     let tier = 1;
     try { tier = (await gpuTier()).tier; } catch { /* keep 1 */ }
     if (!this.motion) return;
-    // dev: ?mode=gl|video|still forces a path (headless browsers report a weak GPU)
-    const forced = import.meta.env.DEV ? new URLSearchParams(location.search).get('mode') as Mode | null : null;
     if (forced) this.setMode(forced);
-    // phones: the 7 s wind loop rendered from the same shader (brief §11: video on phones). A live full-screen
-    // shader under a scrolling page measurably drops iPhone scrolling to 10–15 fps; hardware video decode does not
     else if (this.phone) this.setMode('video');
     else this.setMode(tier >= 1 ? 'gl' : 'still');
     this.quality = !this.phone && tier >= 2 ? 'full' : 'light';
@@ -278,9 +281,12 @@ class Hero {
       this.video = v;
       this.syncVideo();
     };
-    // never compete with the LCP photo: after the intro (or now if it is already over)
-    if (preloaderPlaying()) bus.on('preloader:done', () => setTimeout(begin, 300));
-    else setTimeout(begin, 600);
+    // never compete with the LCP photo: after the intro (or now if it is already over) — and on touch devices not
+    // in the middle of a swipe (creating the player and its first decode can cost a frame; the photo underneath
+    // is the loop's first frame, so waiting shows nothing different)
+    const go = () => (env.isTouch ? whenScrollQuiet(begin) : begin());
+    if (preloaderPlaying()) bus.on('preloader:done', () => setTimeout(go, 300));
+    else setTimeout(go, 600);
   }
   private syncVideo() {
     const v = this.video; if (!v) return;
@@ -441,10 +447,12 @@ class Hero {
     // Portrait phones: the copy simply scrolls away with the page — a half-faded CTA mid-scroll reads as broken
     // on a small screen (function values, re-read on every refresh, so a rotation picks the right behaviour).
     const still = () => window.matchMedia(PHONE_MQ).matches;
+    let fades = !still();
     this.contentTw = gsap.fromTo(this.content, { y: 0, autoAlpha: 1 }, {
-      y: () => (still() ? 0 : -window.innerHeight * 0.12), autoAlpha: () => (still() ? 1 : 0), ease: 'none',
+      y: () => ((fades = !still()) ? -window.innerHeight * 0.12 : 0), autoAlpha: () => (still() ? 1 : 0), ease: 'none',
+      // opacity is linear in progress (1 → 0): no computed-style read in a scroll frame
       onUpdate: () => {
-        const g = Number(gsap.getProperty(this.content, 'opacity')) < 0.35;
+        const g = fades && (this.contentTw?.progress() ?? 0) > 0.65;
         if (g !== ghost) { ghost = g; this.content.style.pointerEvents = g ? 'none' : ''; }
       },
       scrollTrigger: {

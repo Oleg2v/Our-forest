@@ -30,12 +30,22 @@
 
 /* ---------------------------------------------------------------- frame (paper) */
 .fmap__slot { position: relative; height: var(--fm-h, 100%); }
+/* The home map is ~3000 elements, two thirds of the page. While it is away from the screen the browser
+   skips its style, layout and paint, so the page-wide style changes made while scrolling elsewhere
+   (the page colour as sections pass) cost a third. The slot's size does not depend on its content.
+   Full screen is position: fixed inside the slot, which containment would trap: no skipping there.
+   .is-awake: held awake while the script does bulk work on it (forest-map.ts, awake()). */
+.fmap--home .fmap__slot:not(.is-awake) { content-visibility: auto; }
+.fmap--home.is-full .fmap__slot { content-visibility: visible; }
 .fmap__frame {
   position: absolute; inset: 0; overflow: hidden; isolation: isolate; outline: none;
   border-radius: var(--fm-radius, var(--leaf));
   background-color: var(--cream);
-  /* paper: very low-frequency mottling, warm */
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='640' height='640'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='0.008' numOctaves='3' seed='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.93 0 0 0 0 0.88 0 0 0 0 0.79 0 0 0 0.9 -0.32'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
+  /* paper: very low-frequency mottling, warm. A raster of what used to be an SVG feTurbulence image
+     (fractalNoise 0.008, 3 octaves, seed 4, the same colour matrix; scratch script render.mjs): WebKit
+     re-renders an SVG background with a filter on every paint of the frame (software turbulence, at the
+     device's pixel ratio), which made every repaint of the map heavy on iPhones */
+  background-image: url('./forest-map/paper.webp');
   background-size: 640px 640px;
 }
 .fmap--home .fmap__frame::after {
@@ -315,6 +325,11 @@ a.fmap__li:hover { background: rgb(var(--fruit-rgb) / 0.05); }
 /* ---------------------------------------------------------------- intro (pre-state) */
 .fmap.is-pre .fmap__plot, .fmap.is-pre .fmap__env, .fmap.is-pre .fmap__label-t,
 .fmap.is-pre .fmap__spots, .fmap.is-pre .fmap__canopies, .fmap.is-pre .fmap__clusters { opacity: 0; }
+/* the zoomed-out (phone) intro: the plan, then the groves and places, fade in as two whole layers.
+   CSS animations of opacity run on the compositor: nothing inside the SVG repaints for them */
+.fmap.is-intro-lite .fmap__svg--art { animation: fmap-in 0.56s cubic-bezier(0.215, 0.61, 0.355, 1) both; }
+.fmap.is-intro-lite .fmap__svg--top { animation: fmap-in 0.8s cubic-bezier(0.215, 0.61, 0.355, 1) 0.45s both; }
+@keyframes fmap-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* ---------------------------------------------------------------- full screen + bottom sheet (phones) */
 .fmap.is-full .fmap__frame {

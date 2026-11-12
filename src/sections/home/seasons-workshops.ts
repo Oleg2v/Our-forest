@@ -7,7 +7,8 @@
    cursor — a leaf-shaped card that trails with a soft lag and leans with the cursor's speed.
    Touch / reduced motion: a small thumbnail sits in every row instead.
    ========================================================================== */
-import { gsap, EASE } from '../../core/gsap';
+import { gsap, EASE, ScrollTrigger } from '../../core/gsap';
+import { getLenis } from '../../core/scroll';
 import { env } from '../../core/env';
 import { bus } from '../../core/bus';
 import { he } from '../../content/he';
@@ -125,15 +126,33 @@ export function initWorkshops(host: HTMLElement): void {
     if (row?.dataset.ws) show(row.dataset.ws); else if (current) hide();
   };
   const onLeave = () => { if (on) { hide(); qr?.(0); } };
-  // wheel-scrolling under a still cursor: follow the row that is now under it
+  // wheel-scrolling under a still cursor: follow the row that is now under it. The rows' page positions
+  // are measured once (layout boxes: offsetTop, so a reveal's transform does not shift them) and again
+  // after a refresh or a resize; every scroll frame is then plain arithmetic with the scroll position
+  // (elementFromPoint here made the browser lay out and hit-test the page on every frame of the scroll)
+  let geo: { x0: number; x1: number; y0: number; y1: number; rows: { y0: number; y1: number; id: string }[] } | null = null;
+  const measureRows = () => {
+    const sy = window.scrollY;
+    const lb = list.getBoundingClientRect();
+    const rows = [...list.querySelectorAll<HTMLElement>('.seasons__row')];
+    const op = rows[0]?.offsetParent as HTMLElement | null | undefined;
+    const base = op ? op.getBoundingClientRect().top + sy : 0; // the rows' offsetParent, in page coordinates
+    geo = {
+      x0: lb.left, x1: lb.right, y0: lb.top + sy, y1: lb.top + sy + list.offsetHeight,
+      rows: rows.map((r) => ({ y0: base + r.offsetTop, y1: base + r.offsetTop + r.offsetHeight, id: r.dataset.ws ?? '' })),
+    };
+  };
+  const forget = () => { geo = null; };
   const onScroll = () => {
     if (!on || !current || scrollRaf) return;
     scrollRaf = requestAnimationFrame(() => {
       scrollRaf = 0;
-      const el = document.elementFromPoint(px, py);
-      const row = el?.closest<HTMLElement>('.seasons__row');
-      if (!el || !list.contains(el)) onLeave();
-      else if (row?.dataset.ws) show(row.dataset.ws);
+      if (!geo) measureRows();
+      const g = geo!;
+      const y = py + (getLenis()?.scroll ?? window.scrollY);
+      if (px < g.x0 || px > g.x1 || y < g.y0 || y > g.y1) { onLeave(); return; }
+      const row = g.rows.find((r) => y >= r.y0 && y < r.y1);
+      if (row?.id) show(row.id);
     });
   };
 
@@ -149,6 +168,8 @@ export function initWorkshops(host: HTMLElement): void {
     list.addEventListener('pointermove', onMove, { passive: true });
     list.addEventListener('pointerleave', onLeave, { passive: true });
     window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', forget, { passive: true });
+    ScrollTrigger.addEventListener('refresh', forget);
   };
   const disable = () => {
     host.classList.add('seasons--thumbs');
@@ -157,6 +178,9 @@ export function initWorkshops(host: HTMLElement): void {
     list.removeEventListener('pointermove', onMove);
     list.removeEventListener('pointerleave', onLeave);
     window.removeEventListener('scroll', onScroll);
+    window.removeEventListener('resize', forget);
+    ScrollTrigger.removeEventListener('refresh', forget);
+    forget();
     gsap.killTweensOf(float);
     float.remove();
     current = '';

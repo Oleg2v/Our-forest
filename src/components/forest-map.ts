@@ -164,7 +164,10 @@ export function createForestMap(el: HTMLElement, opts: ForestMapOptions = { mode
       </div>
     </div>`;
 
-  const listHtml = picker ? '' : (() => {
+  /* the text list: 170 places, about half of the map's elements. Its box is in the markup at once; its
+     content comes in an idle moment after the map (see fillList), so the build stays half as heavy */
+  const listHtml = picker ? '' : `<div class="fmap__list" id="${uid}-list" data-lenis-prevent aria-label="${MC.listTitle}" role="region"></div>`;
+  const listInner = () => {
     const free = spots.filter((s) => s.status === 'free');
     const byDate = (a: Spot, b: Spot) => (b.date ?? '').localeCompare(a.date ?? '');
     const planted = spots.filter((s) => s.status === 'planted' && s.kind === 'tree').sort(byDate);
@@ -186,9 +189,8 @@ export function createForestMap(el: HTMLElement, opts: ForestMapOptions = { mode
       return `<li data-id="${s.id}"><div class="fmap__li">${s.species ? speciesIcon(s.species, 'icon fmap__li-ico') : icon('bench', 'icon fmap__li-ico')}<span class="fmap__li-main"><b>${s.kind === 'tree' ? speciesTitle(s.species) : KIND_LABEL[s.kind]}</b> <bdi class="fmap__li-num">${s.kind === 'tree' ? he.tree.number(s.id) : MC.spot(s.id)}</bdi>${s.status === 'planted' ? `<span class="fmap__li-ded">${ded}${s.public && s.plantedBy ? ` · ${s.plantedBy}` : ''}</span>` : ''}</span><span class="fmap__li-meta">${meta}</span></div></li>`;
     };
     const group = (title: string, list: Spot[], key: string, lead = '') => `<section class="fmap__lg" data-group="${key}"><h3 class="fmap__lg-t">${title} <span class="fmap__lg-n">${list.length}</span></h3>${lead}<ul class="fmap__lu fmap__lu--${key}" role="list">${list.map(li).join('')}</ul></section>`;
-    return `<div class="fmap__list" id="${uid}-list" data-lenis-prevent aria-label="${MC.listTitle}" role="region">
-      ${group(he.map.legend.planted, planted, 'planted')}${built.length ? group(he.participate.cards[1].title, built, 'built') : ''}${group(he.map.legend.reserved, reserved, 'reserved')}${group(he.map.legend.free, free, 'free', `<p class="fmap__lg-lead">${he.map.subtitle}</p>`)}</div>`;
-  })();
+    return `${group(he.map.legend.planted, planted, 'planted')}${built.length ? group(he.participate.cards[1].title, built, 'built') : ''}${group(he.map.legend.reserved, reserved, 'reserved')}${group(he.map.legend.free, free, 'free', `<p class="fmap__lg-lead">${he.map.subtitle}</p>`)}`;
+  };
 
   const sheetHtml = !fullscreen ? '' : `
     <div class="fmap__sheet" role="dialog" aria-modal="false" aria-labelledby="${uid}-sheet-t" hidden>
@@ -204,9 +206,11 @@ export function createForestMap(el: HTMLElement, opts: ForestMapOptions = { mode
       <div class="fmap__frame" tabindex="-1">
         <div class="fmap__view" data-cursor="${he.cursor.look}">
           <div class="fmap__glow" aria-hidden="true">${glowHtml}</div>
-          <svg class="fmap__svg" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="${MC.mapLabel}" aria-describedby="${uid}-sum">
+          <svg class="fmap__svg fmap__svg--art" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+            <g class="fmap__cam"><g class="fmap__world">${envArt()}${plotArt(spots)}</g></g>
+          </svg>
+          <svg class="fmap__svg fmap__svg--top" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="${MC.mapLabel}" aria-describedby="${uid}-sum">
             <g class="fmap__cam"><g class="fmap__world">
-              ${envArt()}${plotArt(spots)}
               <g class="fmap__canopies" aria-hidden="true">${canopyHtml}</g>
               <g class="fmap__spots" role="${picker ? 'radiogroup' : 'group'}" aria-label="${MC.freeGroup}">${spotsHtml}</g>
               <g class="fmap__clusters" aria-hidden="true">${clusterHtml}</g>
@@ -240,9 +244,12 @@ export function createForestMap(el: HTMLElement, opts: ForestMapOptions = { mode
   const frame = $('.fmap__frame');
   const slot = $('.fmap__slot');
   const view = $('.fmap__view');
-  const svg = $<SVGSVGElement>('.fmap__svg');
-  const camG = $<SVGGElement>('.fmap__cam');
-  const worldG = $<SVGGElement>('.fmap__world');
+  /* two layers of the same plan: the paper art below (.fmap__svg--art), the places, groves, clusters and
+     labels above (the top one, which also carries the zoom-dependent CSS variables). Each fades in as one
+     composited layer in the zoomed-out intro (see playIntro) */
+  const svg = $<SVGSVGElement>('.fmap__svg--top');
+  const camGs = [...el.querySelectorAll<SVGGElement>('.fmap__cam')];
+  const worldGs = [...el.querySelectorAll<SVGGElement>('.fmap__world')];
   const spotsG = $<SVGGElement>('.fmap__spots');
   const card = $('.fmap__card');
   const hint = $('.fmap__hint');
@@ -256,7 +263,22 @@ export function createForestMap(el: HTMLElement, opts: ForestMapOptions = { mode
   el.querySelectorAll<SVGGElement>('.fmap__spot').forEach((g) => spotEl.set(g.dataset.id!, g));
   const animEls = new Map<string, SVGGElement>();
   spotEl.forEach((g, id) => animEls.set(id, g.querySelector<SVGGElement>('.fmap__a')!));
-  gsap.set([...animEls.values()], { svgOrigin: '0 0' });
+  /** the markers' animated groups, in the order of `spots` */
+  const animList = spots.map((s) => animEls.get(s.id)!);
+  /* The home map's slot has content-visibility: auto (forest-map.css): the browser skips it while it is far
+     from the screen. A style read inside a skipped subtree wakes it for that one read, and GSAP reads one
+     per marker: bulk work runs with the slot held awake instead (one style pass for all of it). The build
+     itself runs awake until the first frame is drawn. */
+  let skipped = false;
+  slot.addEventListener('contentvisibilityautostatechange', (e) => { skipped = !!(e as Event & { skipped?: boolean }).skipped; });
+  const awake = (fn: () => void) => {
+    if (!skipped || slot.classList.contains('is-awake')) { fn(); return; }
+    slot.classList.add('is-awake');
+    try { fn(); } finally { slot.classList.remove('is-awake'); }
+  };
+  slot.classList.add('is-awake');
+  requestAnimationFrame(() => requestAnimationFrame(() => { if (!destroyed) slot.classList.remove('is-awake'); }));
+  gsap.set(animList, { svgOrigin: '0 0' });
 
   /* ------------------------------------------------------------------ state */
   let active = false, full = false, clustered = false, destroyed = false;
@@ -284,7 +306,8 @@ export function createForestMap(el: HTMLElement, opts: ForestMapOptions = { mode
   function render() {
     raf = 0;
     const { k, x, y } = cam;
-    camG.setAttribute('transform', `matrix(${k.toFixed(5)} 0 0 ${k.toFixed(5)} ${x.toFixed(2)} ${y.toFixed(2)})`);
+    const m = `matrix(${k.toFixed(5)} 0 0 ${k.toFixed(5)} ${x.toFixed(2)} ${y.toFixed(2)})`;
+    for (const g of camGs) g.setAttribute('transform', m);
     for (const g of glows) {
       const [sx, sy] = cam.toScreen([g.s.x, g.s.y]);
       g.el.style.translate = `${sx.toFixed(1)}px ${sy.toFixed(1)}px`;
@@ -324,7 +347,7 @@ export function createForestMap(el: HTMLElement, opts: ForestMapOptions = { mode
     const rel = cam.k / cam.kFit;
     const rotChanged = rot !== cam.rot;
     cam.w = r.width; cam.h = r.height; cam.rot = rot;
-    worldG.setAttribute('transform', rot ? 'rotate(90)' : '');
+    for (const g of worldGs) g.setAttribute('transform', rot ? 'rotate(90)' : '');
     svg.style.setProperty('--fm-lrot', rot ? '-90deg' : '0deg');
     el.classList.toggle('is-portrait', !!rot);
     const fit = fitPlan();
@@ -376,15 +399,25 @@ export function createForestMap(el: HTMLElement, opts: ForestMapOptions = { mode
     const f = 0.28;
     return { x: (z.cx - s.x) * f, y: (z.cy - s.y) * f, scale: s.status === 'free' ? 0.62 : 0.34, opacity: s.status === 'free' ? 1 : 0.55 };
   }
+  /** every marker to its place for this cluster state, in ONE tween: GSAP then reads all the start values
+      before it writes any. 170 separate sets read, write, read, write… and force a style recalc each
+      (~190 ms on a throttled phone, at build time and at the start and end of the intro). */
+  function placeAll(clusterOn: boolean, dur = 0, overwrite: 'auto' | false = false) {
+    const t = spots.map((s) => treeTarget(s, clusterOn));
+    const vars = {
+      x: (i: number) => t[i].x, y: (i: number) => t[i].y, scale: (i: number) => t[i].scale, opacity: (i: number) => t[i].opacity,
+      overwrite,
+    };
+    awake(() => {
+      if (dur > 0) gsap.to(animList, { ...vars, duration: dur, ease: 'power3.inOut' });
+      else gsap.set(animList, vars);
+    });
+  }
   function setClustered(onOff: boolean, animate: boolean) {
     clustered = onOff;
     el.classList.toggle('is-clustered', onOff);
     if (onOff) hideCard(true);
-    const dur = animate && motion() ? 0.7 : 0;
-    spots.forEach((s) => {
-      const a = animEls.get(s.id)!;
-      gsap.to(a, { ...treeTarget(s, onOff), duration: dur, ease: 'power3.inOut', overwrite: 'auto' });
-    });
+    placeAll(onOff, animate && motion() ? 0.7 : 0, 'auto');
   }
   function updateClusterCounts() {
     el.querySelectorAll<SVGGElement>('.fmap__cluster').forEach((g) => {
@@ -730,43 +763,51 @@ export function createForestMap(el: HTMLElement, opts: ForestMapOptions = { mode
     const tl = gsap.timeline({ onComplete: () => finishIntro() });
     introTl = tl;
     // phones (and any view that starts zoomed out) see groves, not single trees: a shorter, lighter
-    // intro — the plan draws itself and the groves settle in — instead of ~170 trees planted one by one
+    // intro — the plan appears, then the groves settle in — instead of ~170 trees planted one by one
     const lite = clustered;
-    const T0 = lite ? 0.62 : 1;
-    // the from-states render at once (immediateRender), in the same frame .is-pre goes away: no flash
-    tl.fromTo(el.querySelectorAll('.fmap__plot, .fmap__env'), { opacity: 0 }, { opacity: 1, duration: 0.9 * T0, ease: 'power2.out' }, 0);
-    tl.fromTo(el.querySelectorAll('.fmap__walk, .fmap__walk-edge'), { drawSVG: '0%' }, { drawSVG: '100%', duration: 1.3 * T0, ease: 'power2.inOut', stagger: 0.08 * T0 }, 0.1 * T0);
-    tl.to(el.querySelectorAll('.fmap__draw'), { drawSVG: '100%', duration: 1.2 * T0, ease: 'power2.inOut', stagger: { each: 0.025 * T0, from: 'random' } }, 0.2 * T0);
     if (lite) {
-      spots.forEach((s) => gsap.set(animEls.get(s.id)!, treeTarget(s, clustered)));
-      tl.fromTo(el.querySelector('.fmap__canopies'), { opacity: 0 }, { opacity: 1, duration: 0.8, ease: 'power2.out' }, 0.45);
-      tl.fromTo(spotsG, { opacity: 0 }, { opacity: 1, duration: 0.8, ease: 'power2.out' }, 0.55);
+      // The two <svg> layers fade in on the compositor: first the plan, then the groves and places (CSS
+      // animations, .is-intro-lite in forest-map.css). There is no ink drawing and no opacity on groups
+      // inside the SVG here. Those repaint the whole plan on every frame of the intro, and WebKit draws
+      // each such group into an offscreen buffer first: the phones' intro ran at a few frames a second
+      // while the page was scrolled. The clusters and the labels still settle in one by one (small areas).
+      gsap.set(el.querySelectorAll('.fmap__draw'), { clearProps: 'strokeDasharray,strokeDashoffset,stroke-dasharray,stroke-dashoffset' });
+      placeAll(clustered);
       tl.fromTo(el.querySelectorAll('.fmap__cluster'), { opacity: 0 }, { opacity: 1, duration: 0.6, ease: 'power2.out', stagger: 0.07 }, 0.75);
-    } else {
-      gsap.set([spotsG, el.querySelector('.fmap__canopies')], { opacity: 1 });
-      // trees are planted in a wave that starts at the gate
-      const g = PLAN.gate;
-      const order = spots.map((s) => ({ s, d: Math.hypot(s.x - g.x, s.y - g.y) }));
-      const dmax = Math.max(...order.map((o) => o.d));
-      order.forEach(({ s, d }) => {
-        const t = treeTarget(s, clustered);
-        const a = animEls.get(s.id)!;
-        const at = 0.75 + (d / dmax) * 1.25 + (s.status === 'free' ? 0.35 : 0);
-        tl.fromTo(a, { scale: 0, x: t.x, y: t.y, opacity: t.opacity }, { scale: t.scale, duration: s.status === 'free' ? 1.1 : 0.9, ease: s.status === 'free' ? 'elastic.out(1, 0.6)' : 'expo.out' }, at);
-      });
+      tl.fromTo(el.querySelectorAll('.fmap__label-t'), { opacity: 0 }, { opacity: 1, duration: 0.5, stagger: 0.03 }, 0.74);
+      el.classList.remove('is-pre');
+      el.classList.add('is-intro', 'is-intro-lite');
+      return;
     }
-    tl.fromTo(el.querySelectorAll('.fmap__label-t'), { opacity: 0 }, { opacity: 1, duration: 0.8 * T0, stagger: 0.05 * T0 }, 1.2 * T0);
+    // the from-states render at once (immediateRender), in the same frame .is-pre goes away: no flash
+    tl.fromTo(el.querySelectorAll('.fmap__plot, .fmap__env'), { opacity: 0 }, { opacity: 1, duration: 0.9, ease: 'power2.out' }, 0);
+    tl.fromTo(el.querySelectorAll('.fmap__walk, .fmap__walk-edge'), { drawSVG: '0%' }, { drawSVG: '100%', duration: 1.3, ease: 'power2.inOut', stagger: 0.08 }, 0.1);
+    tl.to(el.querySelectorAll('.fmap__draw'), { drawSVG: '100%', duration: 1.2, ease: 'power2.inOut', stagger: { each: 0.025, from: 'random' } }, 0.2);
+    gsap.set([spotsG, el.querySelector('.fmap__canopies')], { opacity: 1 });
+    // trees are planted in a wave that starts at the gate
+    const g = PLAN.gate;
+    const order = spots.map((s) => ({ s, d: Math.hypot(s.x - g.x, s.y - g.y) }));
+    const dmax = Math.max(...order.map((o) => o.d));
+    order.forEach(({ s, d }) => {
+      const t = treeTarget(s, clustered);
+      const a = animEls.get(s.id)!;
+      const at = 0.75 + (d / dmax) * 1.25 + (s.status === 'free' ? 0.35 : 0);
+      tl.fromTo(a, { scale: 0, x: t.x, y: t.y, opacity: t.opacity }, { scale: t.scale, duration: s.status === 'free' ? 1.1 : 0.9, ease: s.status === 'free' ? 'elastic.out(1, 0.6)' : 'expo.out' }, at);
+    });
+    tl.fromTo(el.querySelectorAll('.fmap__label-t'), { opacity: 0 }, { opacity: 1, duration: 0.8, stagger: 0.05 }, 1.2);
     el.classList.remove('is-pre');
     el.classList.add('is-intro');
   }
   function finishIntro() {
     if (introDone) return;
     introDone = true;
-    if (introTl) { introTl.progress(1); introTl.kill(); introTl = null; }
-    el.classList.remove('is-pre', 'is-intro');
-    gsap.set(el.querySelectorAll('.fmap__draw, .fmap__walk, .fmap__walk-edge'), { clearProps: 'strokeDasharray,strokeDashoffset,stroke-dasharray,stroke-dashoffset' });
-    gsap.set(introLayers(), { clearProps: 'opacity' });
-    spots.forEach((s) => gsap.set(animEls.get(s.id)!, treeTarget(s, clustered)));
+    awake(() => {
+      if (introTl) { introTl.progress(1); introTl.kill(); introTl = null; }
+      el.classList.remove('is-pre', 'is-intro', 'is-intro-lite');
+      gsap.set(el.querySelectorAll('.fmap__draw, .fmap__walk, .fmap__walk-edge'), { clearProps: 'strokeDasharray,strokeDashoffset,stroke-dasharray,stroke-dashoffset' });
+      gsap.set(introLayers(), { clearProps: 'opacity' });
+      placeAll(clustered);
+    });
     el.classList.add('is-live');
   }
 
@@ -1081,8 +1122,17 @@ export function createForestMap(el: HTMLElement, opts: ForestMapOptions = { mode
   const occSel = el.querySelector<HTMLSelectElement>('[data-occasion]');
   if (occSel) on(occSel, 'change', () => { filter.occasion = occSel.value; applyFilter(); });
   const toggle = el.querySelector<HTMLButtonElement>('.fmap__toggle');
+  let listFilled = false;
+  function fillList() {
+    if (listFilled || !listEl || destroyed) return;
+    listFilled = true;
+    listEl.innerHTML = listInner();
+    if (!el.classList.contains('is-list')) listEl.querySelectorAll<HTMLAnchorElement>('a').forEach((a) => { a.tabIndex = -1; });
+    if (filter.species || filter.occasion) applyFilter();
+  }
   function setListView(onOff: boolean) {
     if (!listEl || !toggle) return;
+    if (onOff) fillList();
     el.classList.toggle('is-list', onOff);
     toggle.setAttribute('aria-pressed', String(onOff));
     toggle.querySelector('span')!.textContent = onOff ? MC.map : MC.list;
@@ -1092,6 +1142,10 @@ export function createForestMap(el: HTMLElement, opts: ForestMapOptions = { mode
   }
   if (toggle) on(toggle, 'click', () => { finishIntro(); setListView(!el.classList.contains('is-list')); });
   setListView(false);
+  if (listEl) {
+    const ric = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+    if (ric) ric(fillList, { timeout: 2000 }); else window.setTimeout(fillList, 400);
+  }
 
   /* ------------------------------------------------------------------ lifecycle */
   measure();
@@ -1104,18 +1158,29 @@ export function createForestMap(el: HTMLElement, opts: ForestMapOptions = { mode
   const ro = new ResizeObserver(() => { if (!el.isConnected) { destroy(); return; } measure(); });
   ro.observe(frame);
   cleanups.push(() => ro.disconnect());
-  // phones: the sticky bar lifts the legend (html.mbar-on), and the plan's fit keeps clear of it
+  // phones: the sticky bar lifts the legend (html.mbar-on), and the plan's fit keeps clear of it.
+  // The bar comes and goes while the page scrolls far from the map: the fit is then redone only when the
+  // map comes near (reading its boxes would make the browser style and lay out all of it mid-scroll)
   if (!picker) {
     const root = document.documentElement;
     let mbar = root.classList.contains('mbar-on');
+    let near = false, refit = false;
+    // animated only while it is on screen: a fit animation off screen restyles and lays out every place
+    // on each of its frames for nobody
+    const doRefit = () => { refit = false; if (!full && !destroyed) awake(() => measure(true, el.classList.contains('is-inview'))); };
     const mo = new MutationObserver(() => {
       const now = root.classList.contains('mbar-on');
       if (now === mbar) return;
       mbar = now;
-      if (!full && !destroyed) measure(true, true);
+      if (near) doRefit(); else refit = true;
     });
     mo.observe(root, { attributes: true, attributeFilter: ['class'] });
-    cleanups.push(() => mo.disconnect());
+    const nearIo = new IntersectionObserver((entries) => {
+      near = entries[entries.length - 1].isIntersecting;
+      if (near && refit) doRefit();
+    }, { rootMargin: '50% 0px' });
+    nearIo.observe(slot);
+    cleanups.push(() => { mo.disconnect(); nearIo.disconnect(); });
   }
 
   const wantIntro = opts.intro ?? !picker;
@@ -1150,7 +1215,7 @@ export function createForestMap(el: HTMLElement, opts: ForestMapOptions = { mode
     clearTimeout(showT); clearTimeout(hideT); clearTimeout(hintT2); clearTimeout(liveT);
     gsap.killTweensOf([...animEls.values()]);
     cleanups.splice(0).forEach((f) => f());
-    el.classList.remove('fmap', `fmap--${opts.mode}`, 'fmap--touch', 'is-active', 'is-full', 'is-clustered', 'is-live', 'is-inview', 'is-pre', 'is-intro', 'is-list', 'is-portrait', 'is-filtered', 'is-far', 'is-near', 'is-hover', 'is-dragging');
+    el.classList.remove('fmap', `fmap--${opts.mode}`, 'fmap--touch', 'is-active', 'is-full', 'is-clustered', 'is-live', 'is-inview', 'is-pre', 'is-intro', 'is-intro-lite', 'is-list', 'is-portrait', 'is-filtered', 'is-far', 'is-near', 'is-hover', 'is-dragging');
     el.innerHTML = '';
   }
 

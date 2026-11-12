@@ -8,6 +8,13 @@
    The title changes colour exactly at the leaf's edge: a cream twin of the copy lives inside the
    clipped photo layer (aria-hidden), the bark original sits underneath.
    Packages / logos / buttons are plain markup (chrome reveals); their line marks draw themselves.
+   Scroll cost on touch devices:
+   · the opening is a scroll-driven animation (ViewTimeline: iOS 26 WebKit, Chrome 115+) with the same keyframes
+     (sampled from the same easing): no script per scroll frame, it follows the native scroll, and the engine
+     gets the zoom as one declared animation (Chrome runs it on the compositor) instead of a new scale() written
+     every frame. Desktop keeps the GSAP scrub (its smoothing over Lenis); engines without ViewTimeline too.
+   · the line marks are measured once at init (DrawSVG tweens built and initialised up front), never inside a
+     scroll frame, and are cleaned up with two plain style removals (no transform parsing / forced style reads).
    ========================================================================== */
 import './companies.css';
 import { gsap, ScrollTrigger } from '../../core/gsap';
@@ -34,24 +41,31 @@ function syncCopy(root: ParentNode) {
   });
 }
 
-/** Line marks (package icons, placeholder logos) draw themselves once when they come into view. */
+/** Line marks (package icons, placeholder logos) draw themselves once when they come into view.
+    The tweens are made (and the paths measured) now, at init — on enter they only play. */
 function drawMarks(root: HTMLElement): () => void {
   const groups = Array.from(root.querySelectorAll<SVGSVGElement>('svg[data-draw]'));
   if (!env.motionAllowed() || !groups.length) return () => {};
   const shapes = (svg: SVGSVGElement) => Array.from(svg.querySelectorAll<SVGGeometryElement>('path, circle'));
-  groups.forEach((svg) => gsap.set(shapes(svg), { drawSVG: '0%' }));
-  const triggers = groups.map((svg, i) => ScrollTrigger.create({
-    trigger: svg,
-    start: 'top 88%',
-    once: true,
-    onEnter: () => gsap.to(shapes(svg), {
+  const clean = (els: SVGGeometryElement[]) => els.forEach((el) => { el.style.removeProperty('stroke-dasharray'); el.style.removeProperty('stroke-dashoffset'); });
+  const tweens: gsap.core.Tween[] = [];
+  const triggers = groups.map((svg, i) => {
+    const els = shapes(svg);
+    const tw = gsap.fromTo(els, { drawSVG: '0%' }, {
       drawSVG: '100%', duration: 1.1, ease: 'power2.out', stagger: 0.09,
       delay: svg.closest('.companies__marks') ? (i % 6) * 0.08 : 0.25,
-      onComplete() { gsap.set(shapes(svg), { clearProps: 'all' }); },
-    }),
-  }));
-  return () => { triggers.forEach((t) => t.kill()); groups.forEach((svg) => gsap.set(shapes(svg), { clearProps: 'all' })); };
+      paused: true,
+      onComplete() { clean(els); },
+    });
+    tw.progress(1, true).progress(0, true); // init (measure) now, not when it first plays
+    tweens.push(tw);
+    return ScrollTrigger.create({ trigger: svg, start: 'top 88%', once: true, onEnter: () => { tw.restart(true); } });
+  });
+  return () => { triggers.forEach((t) => t.kill()); tweens.forEach((t) => t.kill()); groups.forEach((svg) => clean(shapes(svg))); };
 }
+
+/** scroll-driven animations (ViewTimeline) — iOS 26 WebKit, Chrome 115+ */
+const hasViewTimeline = typeof window !== 'undefined' && 'ViewTimeline' in window;
 
 export function initCompanies(): void {
   const root = document.getElementById('companies');
@@ -72,9 +86,16 @@ export function initCompanies(): void {
   let clone: HTMLElement | null = null;
   let undraw: () => void = () => {};
 
+  let anims: Animation[] = [];
+  let ro: ResizeObserver | null = null;
+
   function teardown() {
     ctx?.revert();
     ctx = null;
+    anims.forEach((a) => a.cancel());
+    anims = [];
+    ro?.disconnect();
+    ro = null;
     clone?.remove();
     clone = null;
     photo!.style.clipPath = '';
@@ -127,22 +148,72 @@ export function initCompanies(): void {
         if (scrim) scrim.style.opacity = (0.55 + 0.45 * e).toFixed(3);
       };
 
-      measure();
-      render(0);
-      const proxy = { p: 0 };
-      gsap.to(proxy, {
-        p: 1,
-        ease: 'none',
-        onUpdate: () => render(proxy.p),
-        scrollTrigger: {
-          trigger: pin ? banner : stage,
-          start: pin ? 'top top' : 'top 84%',
-          end: pin ? 'bottom bottom' : 'top 6%',
-          scrub: pin ? 0.6 : 0.35,
-          invalidateOnRefresh: true,
-          onRefresh: () => { measure(); render(proxy.p); },
-        },
-      });
+      if (hasViewTimeline && (!pin || env.isTouch)) {
+        // touch devices (phones; tablets in the pinned layout): the same opening as keyframes on a view timeline.
+        // Its default range is 'cover' (the subject's top at the screen's bottom → its bottom at the screen's top);
+        // the run is placed inside it with keyframe offsets — no rangeStart / rangeEnd needed:
+        // phones: the stage's top at 84% → 6% of the screen; pinned: the banner's top at the top → its bottom at the bottom
+        const subject = pin ? banner! : stage!;
+        const N = pin ? 32 : 24;
+        const build = () => {
+          anims.forEach((a) => a.cancel());
+          measure();
+          const vh = window.innerHeight || 1;
+          const sh = subject.offsetHeight;
+          const span = vh + sh;
+          const o0 = pin ? vh / span : (vh * 0.16) / span;
+          const o1 = pin ? sh / span : (vh * 0.94) / span;
+          const clip: Keyframe[] = [];
+          const zoom: Keyframe[] = [];
+          const shade: Keyframe[] = [];
+          for (let i = 0; i <= N; i++) {
+            render(i / N);
+            const at = [o0 + (o1 - o0) * (i / N)];
+            if (i === 0) at.unshift(0);
+            if (i === N) at.push(1);
+            for (const offset of at) {
+              clip.push({ offset, clipPath: photo!.style.clipPath });
+              zoom.push({ offset, transform: media!.style.transform });
+              shade.push({ offset, opacity: scrim?.style.opacity || '1' });
+            }
+          }
+          photo!.style.clipPath = '';
+          media!.style.transform = '';
+          if (scrim) scrim.style.opacity = '';
+          const timeline = new (window as any).ViewTimeline({ subject, axis: 'block' });
+          const opts = { fill: 'both', easing: 'linear', timeline } as KeyframeAnimationOptions;
+          anims = [photo!.animate(clip, opts), media!.animate(zoom, opts)];
+          if (scrim) anims.push(scrim.animate(shade, opts));
+        };
+        build();
+        const size = () => `${stage!.clientWidth}x${stage!.clientHeight}x${subject.offsetHeight}`;
+        let last = size();
+        ro = new ResizeObserver(() => {
+          const now = size();
+          if (now === last) return;
+          last = now;
+          build();
+        });
+        ro.observe(stage!);
+        if (subject !== stage) ro.observe(subject);
+      } else {
+        measure();
+        render(0);
+        const proxy = { p: 0 };
+        gsap.to(proxy, {
+          p: 1,
+          ease: 'none',
+          onUpdate: () => render(proxy.p),
+          scrollTrigger: {
+            trigger: pin ? banner : stage,
+            start: pin ? 'top top' : 'top 84%',
+            end: pin ? 'bottom bottom' : 'top 6%',
+            scrub: pin ? 0.6 : 0.35,
+            invalidateOnRefresh: true,
+            onRefresh: () => { measure(); render(proxy.p); },
+          },
+        });
+      }
 
       // title: lines rise from their masks (original + twin together, pairwise)
       const lines = Array.from(root!.querySelectorAll<HTMLElement>('.companies__line-in'));

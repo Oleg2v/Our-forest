@@ -38,6 +38,11 @@
     linear-gradient(to bottom, rgb(var(--moss-rgb) / .42) 0%, rgb(var(--moss-rgb) / 0) 20%);
 }
 .hero__dim { position: absolute; inset: 0; background: var(--moss); opacity: 0; pointer-events: none; }
+/* scrubbed by the scroll (zoom, dim, rising edge): steady compositor layers of their own (one screen or less each),
+   so a scroll frame only moves layers — no repaint of the photo / video, and no layer created and dropped again
+   at the top of the page */
+html.motion .hero__zoom, html.motion .hero__ground { will-change: transform; }
+html.motion .hero__dim { will-change: opacity; }
 
 /* gentle CSS-only life (no WebGL / weak device): the photo breathes */
 .hero--still .hero__img { animation: hero-breathe 22s ease-in-out infinite alternate; transform-origin: 50% 30%; }

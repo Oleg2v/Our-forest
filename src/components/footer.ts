@@ -16,9 +16,13 @@
    · desktop + motion: the line dog runs across once per visit (session), the first time the field is in view.
    Reduced motion: letters still, no intro, no dog; planting still works, without animation.
    Ticker runs only while the field is on screen.
+   Scroll cost: no window scroll listener of its own (it ran on every page, on every scroll event, and its
+   scrollY read forced a style recalc) — the scroll breeze takes the position ScrollTrigger already read this
+   frame; a finger / cursor brushing the letters reads the field's box at most once per frame; the seed's idle
+   bob is paused while the footer is off screen.
    ========================================================================== */
 import './footer.css';
-import { gsap } from '../core/gsap';
+import { gsap, ScrollTrigger } from '../core/gsap';
 import { env } from '../core/env';
 import { bus } from '../core/bus';
 import { sound } from '../core/sound';
@@ -220,6 +224,21 @@ export function initFooter(): void {
 
   /* roots of the letters + a few pebbles in the soil (SVG, field-independent soil coordinates) */
   let rootPaths: SVGPathElement[] = [];
+  let rootsTween: gsap.core.Tween | null = null;
+  const undash = (els: SVGElement[]) => els.forEach((el) => { el.style.removeProperty('stroke-dasharray'); el.style.removeProperty('stroke-dashoffset'); });
+  /** the intro's root drawing is made (and its paths measured) here — when the field is first seen it only plays,
+      nothing is measured inside a scroll frame; it ends with two plain style removals (no clearProps:'all') */
+  function primeRoots() {
+    rootsTween?.kill();
+    rootsTween = null;
+    if (!introPending || !env.motionAllowed() || !rootPaths.length) return;
+    const paths = rootPaths;
+    rootsTween = gsap.fromTo(paths, { drawSVG: '0%' }, {
+      drawSVG: '100%', duration: 1.6, ease: 'power2.out', stagger: 0.012, delay: 0.35,
+      paused: true, onComplete() { undash(paths); },
+    });
+    rootsTween.progress(1, true).progress(0, true); // init (measure) now, not when the field is first seen
+  }
   function drawUnder() {
     if (!under) return;
     const W = soil!.clientWidth;
@@ -268,7 +287,7 @@ export function initFooter(): void {
       e.setAttribute('ry', (rx * (0.55 + pr() * 0.3)).toFixed(1));
       under.append(e);
     }
-    if (introPending && env.motionAllowed()) gsap.set(rootPaths, { drawSVG: '0%' });
+    primeRoots();
   }
 
   /* ------------------------------------------------------------ physics (grass) */
@@ -277,9 +296,11 @@ export function initFooter(): void {
   let t = 0;
   let inView = false;
   let ticking = false;
+  let fieldRect: DOMRect | null = null; // read at most once per frame (brush), dropped every tick
   const tick = (_time: number, deltaMs: number) => {
     const dt = Math.min(0.033, deltaMs / 1000);
     t += dt;
+    fieldRect = null;
     const amp = env.isTouch ? 1.2 : 1.6;
     for (let i = 0; i < chars.length; i++) {
       const ch = chars[i];
@@ -306,7 +327,7 @@ export function initFooter(): void {
   /** a brush through the grass at (clientX, clientY) moving dx px horizontally */
   function brush(clientX: number, clientY: number, dx: number, gain: number) {
     if (!ticking || !dx) return;
-    const r = field!.getBoundingClientRect();
+    const r = fieldRect ?? (fieldRect = field!.getBoundingClientRect());
     const x = clientX - r.left;
     const y = clientY - r.top;
     if (y < topY - 40 || y > groundY + 16) return;
@@ -338,16 +359,22 @@ export function initFooter(): void {
     lastTouchX = tch.clientX;
     brush(tch.clientX, tch.clientY, dx, 3.2);
   }, { passive: true });
-  // scrolling is a soft breeze too (stronger on phones, where there is no cursor)
-  let lastScroll = window.scrollY;
-  window.addEventListener('scroll', () => {
-    const y = window.scrollY;
-    const dy = y - lastScroll;
-    lastScroll = y;
-    if (!ticking) return;
-    const g = env.isTouch ? 0.55 : 0.3;
-    chars.forEach((ch, i) => { ch.v = clamp(-260, 260, ch.v + clamp(-50, 50, dy) * g * (0.65 + 0.35 * Math.sin(i * 1.3))); });
-  }, { passive: true });
+  // scrolling is a soft breeze too (stronger on phones, where there is no cursor). The position comes from
+  // ScrollTrigger's own once-per-frame read (self.scroll() is its cached value): no listener, no extra read.
+  // A page-long trigger (numeric range, so it never goes stale when the page grows); off screen it only stores y.
+  let lastScroll = -1;
+  ScrollTrigger.create({
+    start: 0,
+    end: 1e7,
+    onUpdate: (self) => {
+      const y = self.scroll();
+      const dy = lastScroll < 0 ? 0 : y - lastScroll;
+      lastScroll = y;
+      if (!ticking || !dy) return;
+      const g = env.isTouch ? 0.55 : 0.3;
+      chars.forEach((ch, i) => { ch.v = clamp(-260, 260, ch.v + clamp(-50, 50, dy) * g * (0.65 + 0.35 * Math.sin(i * 1.3))); });
+    },
+  });
 
   /** letters lean away from a new sprout */
   function shock(x: number) {
@@ -555,9 +582,9 @@ export function initFooter(): void {
   function intro() {
     if (!introPending) return;
     introPending = false;
-    if (!env.motionAllowed()) { gsap.set(chars.map((c) => c.inner), { clearProps: 'transform,opacity' }); gsap.set(rootPaths, { clearProps: 'all' }); return; }
+    if (!env.motionAllowed()) { gsap.set(chars.map((c) => c.inner), { clearProps: 'transform,opacity' }); primeRoots(); undash(rootPaths); return; }
     gsap.to(chars.map((c) => c.inner), { yPercent: 0, opacity: 1, duration: 1.4, ease: 'expo.out', stagger: 0.055, clearProps: 'transform,opacity' });
-    gsap.to(rootPaths, { drawSVG: '100%', duration: 1.6, ease: 'power2.out', stagger: 0.012, delay: 0.35, onComplete() { gsap.set(rootPaths, { clearProps: 'all' }); } });
+    rootsTween?.restart(true);
     chars.forEach((c, i) => { c.v += (i % 2 ? 1 : -1) * 30; });
   }
   function runDog() {
@@ -600,7 +627,7 @@ export function initFooter(): void {
       const upper = chars.filter((c) => !c.low).map((c) => c.inner);
       if (low.length) gsap.set(low, { yPercent: 108 });
       if (upper.length) gsap.set(upper, { yPercent: 40, opacity: 0 });
-      if (rootPaths.length) gsap.set(rootPaths, { drawSVG: '0%' });
+      primeRoots();
     }
   }
   if (planted && Number.isFinite(savedRatio)) growSprout(savedRatio * fieldW, false);
@@ -608,6 +635,7 @@ export function initFooter(): void {
   const io = new IntersectionObserver((entries) => {
     for (const e of entries) {
       inView = e.isIntersecting;
+      root.classList.toggle('site-footer--inview', inView); // footer.css: the seed bobs only while it can be seen
       syncTicker();
       if (e.isIntersecting && e.intersectionRatio >= 0.3) { intro(); runDog(); }
     }
@@ -635,7 +663,7 @@ export function initFooter(): void {
     if (!allowed) {
       // also when the footer is off screen (the ticker is not running): no letter stays frozen mid-sway
       still();
-      if (introPending) { introPending = false; gsap.set(chars.map((c) => c.inner), { clearProps: 'transform,opacity' }); gsap.set(rootPaths, { clearProps: 'all' }); }
+      if (introPending) { introPending = false; gsap.set(chars.map((c) => c.inner), { clearProps: 'transform,opacity' }); primeRoots(); undash(rootPaths); }
       dog?.destroy();
       dog = null;
     }

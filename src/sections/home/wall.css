@@ -47,6 +47,11 @@ html:not(.js) .wall__band { display: none; }
   backface-visibility: hidden;
 }
 .wall__list { display: flex; margin: 0; padding: 0; list-style: none; }
+/* live rows: the full list is for screen readers only — the window list (wall.ts) draws the items on screen */
+.wall--live .wall__list--sr {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+}
 .wall__item {
   direction: rtl;
   display: inline-flex; align-items: baseline;
@@ -67,8 +72,12 @@ html:not(.js) .wall__band { display: none; }
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 19C5 10.5 10.5 5 19 5c0 8.5-5.5 14-14 14Z'/%3E%3Cpath d='M5 19 13 11'/%3E%3C/svg%3E") center / contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 19C5 10.5 10.5 5 19 5c0 8.5-5.5 14-14 14Z'/%3E%3Cpath d='M5 19 13 11'/%3E%3C/svg%3E") center / contain no-repeat;
 }
-.wall__ded { font-family: var(--font-display); font-weight: 300; color: var(--ink); transition: color var(--t-page) var(--ease-inout); }
-.wall__by { font-size: 14px; letter-spacing: 0.02em; color: var(--wall-accent); transition: color var(--t-page) var(--ease-inout); }
+.wall__ded { font-family: var(--font-display); font-weight: 300; color: var(--ink); }
+.wall__by { font-size: 14px; letter-spacing: 0.02em; color: var(--wall-accent); }
+/* the page colour turns (moss ↔ cream) while the band is usually off screen: ease the dedications' colour only
+   while the band can be seen (wall.ts .is-near) — no off-screen restyle of every span for .9 s */
+.wall__band.is-near :is(.wall__ded, .wall__by) { transition: color var(--t-page) var(--ease-inout); }
+.wall--live .wall__list--sr :is(.wall__ded, .wall__by) { transition: none; } /* never seen while the rows run */
 
 .wall__row--a { padding-block: clamp(18px, 2vw, 30px); }
 .wall__row--a .wall__ded { font-size: clamp(38px, 4.9vw, 78px); line-height: 1.1; letter-spacing: -0.01em; }

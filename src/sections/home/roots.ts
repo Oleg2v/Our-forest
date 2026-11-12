@@ -24,6 +24,7 @@ import { sound } from '../../core/sound';
 import { he } from '../../content/he';
 import { mountDog, type DogHandle } from '../../components/dog';
 import { scrollTo } from '../../core/scroll';
+import { whenScrollQuiet } from './preloader';
 import {
   seeded, smoothPath, pebble, samplePath, lengthAtY, pointAt, rootlet, surfaceMarkup,
   type P, type Rand, type Sample,
@@ -31,6 +32,47 @@ import {
 
 const NS = 'http://www.w3.org/2000/svg';
 type Mode = 'pinned' | 'static' | 'mobile' | 'mobile-static';
+
+/** Initialise every tween of an animation now and put it back where it was: DrawSVG measures its paths
+    (getTotalLength, getBBox, computed stroke styles) the first time a tween renders — done here, in an init slot,
+    not as a forced style + layout in the middle of a scroll frame when a node lights up. */
+function prime(a: gsap.core.Animation) {
+  if (a.isActive()) return; // already playing: it initialised itself
+  const p = a.progress();
+  a.progress(1, true).progress(p, true);
+}
+
+/** sine.inOut as a CSS timing function (compositor animations) */
+const SINE = 'cubic-bezier(0.37, 0, 0.63, 1)';
+
+/* ---------------- the soil grain, rendered once ----------------
+   The grain is an SVG feTurbulence (roots.css, --roots-grain-svg). Painted as a CSS background, an SVG image is
+   re-rendered — filter included — on every paint of every tile it touches; on iPhones that ran a turbulence filter
+   per tile per scroll frame under the growing root. Here the same SVG is drawn ONCE into a canvas at the screen's
+   pixel ratio and handed back as a plain raster tile (blob URL in --roots-grain): the browser's own pixels, no filter
+   at paint time. If anything fails (old engine, tainted canvas) the CSS keeps the SVG. */
+let grainTile: Promise<string | null> | null = null;
+function renderGrain(section: HTMLElement): Promise<string | null> {
+  grainTile ??= (async () => {
+    const m = /url\(\s*(["']?)(data:[^]*?)\1\s*\)/.exec(getComputedStyle(section).getPropertyValue('--roots-grain-svg'));
+    if (!m) return null;
+    const img = new Image();
+    img.src = m[2];
+    await img.decode();
+    // the one turbulence render + PNG encode (tens of ms on a phone): never under the finger
+    if (env.isTouch) await new Promise<void>((res) => whenScrollQuiet(res));
+    const s = Math.min(3, Math.max(1, Math.ceil(window.devicePixelRatio || 1)));
+    const c = document.createElement('canvas');
+    c.width = c.height = 260 * s;
+    const x = c.getContext('2d');
+    if (!x) return null;
+    x.drawImage(img, 0, 0, c.width, c.height);
+    const blob = await new Promise<Blob | null>((res) => c.toBlob(res, 'image/png'));
+    return blob ? URL.createObjectURL(blob) : null;
+  })().catch(() => null);
+  return grainTile;
+}
+
 interface Box { x: number; y: number; w: number; h: number; cx: number; cy: number; bottom: number }
 /** where the reader is, recorded before a rebuild (motion toggle) and restored after it */
 type Place =
@@ -77,6 +119,9 @@ class Roots {
   /** pinned mode: the pin and its timeline length (for mapping a reading position into it) */
   pin: ScrollTrigger | null = null;
   tlDur = TL.end;
+  /** animations to initialise in a quiet slot of their own (see prime / primeAll) */
+  unprimed: gsap.core.Animation[] = [];
+  gen = 0;
 
   constructor(s: HTMLElement) {
     this.s = s;
@@ -106,9 +151,20 @@ class Roots {
       else if (this.mode === 'mobile') this.setupMobile();
       else this.setupStatic();
     }, this.s);
+    // touch devices: the DrawSVG measuring gets its own scroll-quiet slot (a phone's init stays short);
+    // whatever lights up before that simply initialises itself, as it always did
+    const gen = ++this.gen;
+    if (env.isTouch) whenScrollQuiet(() => { if (gen === this.gen) this.primeAll(); });
+    else this.primeAll();
   }
 
+  /** queue an animation for priming (returns it, for chaining) */
+  prime<A extends gsap.core.Animation>(a: A): A { this.unprimed.push(a); return a; }
+  primeAll() { this.unprimed.splice(0).forEach(prime); }
+
   teardown() {
+    this.gen++;
+    this.unprimed.length = 0;
     this.disposers.splice(0).forEach((f) => f());
     this.dog?.destroy();
     this.dog = null;
@@ -247,28 +303,44 @@ class Roots {
     }
   }
 
-  /** Rare fireflies: soft breathing glows that drift a little. Paused off-screen. */
+  /** Rare fireflies: soft breathing glows that drift a little. Paused off-screen.
+      Compositor animations (WAAPI, transform + opacity): no main-thread work per frame, smooth even while the page
+      is busy. Same timing as the GSAP version they replace: a breath (in, dip, back, out) then a 3–9 s rest, and a
+      6–10 s drift that eases back and forth; the same seeded values in the same order, so the same flies. */
   makeFlies(rand: Rand, count: number, zone: { x0: number; x1: number; y0: number; y1: number }) {
-    const tweens: gsap.core.Animation[] = [];
+    const anims: Animation[] = [];
+    const canAnimate = typeof Element !== 'undefined' && typeof Element.prototype.animate === 'function';
     for (let i = 0; i < count; i++) {
       const el = document.createElement('span');
       el.className = 'roots__fly';
       this.flies.append(el);
-      gsap.set(el, { x: rand.range(zone.x0, zone.x1), y: rand.range(zone.y0, zone.y1), opacity: 0 });
+      const x = rand.range(zone.x0, zone.x1), y = rand.range(zone.y0, zone.y1);
       const peak = rand.range(0.5, 0.95);
-      tweens.push(gsap.timeline({ repeat: -1, repeatDelay: rand.range(3, 9), delay: rand.range(0, 8), paused: true })
-        .to(el, { opacity: peak, duration: rand.range(1.2, 1.8), ease: 'sine.inOut' })
-        .to(el, { opacity: peak * 0.55, duration: 0.7, ease: 'sine.inOut' })
-        .to(el, { opacity: peak, duration: 0.6, ease: 'sine.inOut' })
-        .to(el, { opacity: 0, duration: rand.range(1.6, 2.4), ease: 'sine.inOut' }));
-      tweens.push(gsap.to(el, {
-        x: `+=${rand.range(-36, 36)}`, y: `+=${rand.range(-28, 18)}`,
-        duration: rand.range(6, 10), ease: 'sine.inOut', repeat: -1, yoyo: true, paused: true,
-      }));
+      const rest = rand.range(3, 9), delay = rand.range(0, 8);
+      const rise = rand.range(1.2, 1.8), fall = rand.range(1.6, 2.4);
+      const dx = rand.range(-36, 36), dy = rand.range(-28, 18), drift = rand.range(6, 10);
+      el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
+      if (!canAnimate) continue;
+      const cycle = rise + 0.7 + 0.6 + fall + rest;
+      const at = (t: number) => t / cycle;
+      anims.push(el.animate([
+        { offset: 0, opacity: 0, easing: SINE },
+        { offset: at(rise), opacity: peak, easing: SINE },
+        { offset: at(rise + 0.7), opacity: peak * 0.55, easing: SINE },
+        { offset: at(rise + 1.3), opacity: peak, easing: SINE },
+        { offset: at(rise + 1.3 + fall), opacity: 0 },
+        { offset: 1, opacity: 0 },
+      ], { duration: cycle * 1000, delay: delay * 1000, iterations: Infinity, fill: 'backwards' }));
+      anims.push(el.animate([
+        { transform: `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)` },
+        { transform: `translate3d(${(x + dx).toFixed(1)}px, ${(y + dy).toFixed(1)}px, 0)` },
+      ], { duration: drift * 1000, iterations: Infinity, direction: 'alternate', easing: SINE }));
     }
+    anims.forEach((a) => a.pause());
+    this.disposers.push(() => anims.forEach((a) => a.cancel()));
     ScrollTrigger.create({
       trigger: this.s, start: 'top bottom', end: 'bottom top',
-      onToggle: (st) => tweens.forEach((t) => (st.isActive ? t.play() : t.pause())),
+      onToggle: (st) => anims.forEach((a) => (st.isActive ? a.play() : a.pause())),
     });
   }
 
@@ -386,15 +458,14 @@ class Roots {
       .to(split.lines, { yPercent: 0, duration: 1.2, ease: 'expo.out', stagger: 0.08 }, 0.25);
     if (this.img) tl.to(this.img, { scale: 1, duration: 1.4, ease: 'power4.out' }, 0);
     if (artPaths) tl.to(artPaths, { drawSVG: '100%', duration: 1.6, ease: 'power2.inOut', stagger: 0.08 }, 0.5);
+    this.prime(tl);
     ScrollTrigger.create({ trigger: this.s, start: 'top 72%', once: true, onEnter: () => tl.play() });
 
     const words = SplitText.create(this.text, { type: 'words', wordsClass: 'roots__word', aria: 'none' }).words;
     gsap.set(words, { opacity: 0.22 });
     if (!scrubWords) {
-      gsap.to(words, {
-        opacity: 1, ease: 'none', stagger: 0.1,
-        scrollTrigger: { trigger: this.text, start: 'top 82%', end: 'bottom 52%', scrub: true },
-      });
+      const read = this.prime(gsap.to(words, { opacity: 1, ease: 'none', stagger: 0.1, paused: true }));
+      ScrollTrigger.create({ trigger: this.text, start: 'top 82%', end: 'bottom 52%', scrub: true, animation: read });
     }
     return { words };
   }
@@ -458,6 +529,7 @@ class Roots {
       .to(icon, { drawSVG: '100%', duration: 0.9, stagger: 0.08, ease: 'power2.inOut' }, 0.12)
       .to(title, { opacity: 1, y: 0, duration: 0.8, ease: 'expo.out' }, 0.2)
       .to(text, { opacity: 1, y: 0, duration: 0.8, ease: 'expo.out' }, 0.32));
+    nodeTls.forEach((t) => this.prime(t));
     const nodeOn = nodeParts.map(() => false);
     const lightNode = (i: number, at: number) => { ignite[i] = at; };
     branches.forEach((b, i) => {
@@ -510,6 +582,7 @@ class Roots {
     });
     placeAnchor();
     this.tlDur = tl.duration();
+    this.prime(tl);
     this.pin = ScrollTrigger.create({
       trigger: this.s,
       start: 'top top',
@@ -519,7 +592,12 @@ class Roots {
       anticipatePin: 1,
       animation: tl,
       invalidateOnRefresh: true,
-      onRefresh: placeAnchor,
+      onRefresh: () => {
+        placeAnchor();
+        // a refresh reverts + invalidates the timeline: initialise the tweens beyond the playhead again, here
+        const p = tl.progress();
+        tl.progress(1, true).progress(p, true);
+      },
     });
 
     // dog: appears with its node, follows the cursor along the bottom of the section
@@ -595,14 +673,45 @@ class Roots {
 
   setupMobile() {
     const g = this.buildMobile();
-    const { line, total, samples } = g;
+    const { line, samples } = g;
     this.storyReveal(false);
     const netSplit = SplitText.create(this.netTitle, { type: 'lines', mask: 'lines', aria: 'none' });
     gsap.set(netSplit.lines, { yPercent: 105 });
-    gsap.to(netSplit.lines, { yPercent: 0, duration: 1.2, ease: 'expo.out', stagger: 0.08, scrollTrigger: { trigger: this.netTitle, start: 'top 82%', once: true } });
+    const netIn = this.prime(gsap.to(netSplit.lines, { yPercent: 0, duration: 1.2, ease: 'expo.out', stagger: 0.08, paused: true }));
+    ScrollTrigger.create({ trigger: this.netTitle, start: 'top 82%', once: true, onEnter: () => netIn.play() });
 
-    line.style.strokeDasharray = `${total} ${total}`;
-    line.style.strokeDashoffset = String(total);
+    // The root grows by a moving clip (roots.css .roots__grow): a composited wrapper slides down with the tip while
+    // the drawing inside slides back up by the same amount. The line stays put on the page; per scroll frame only
+    // two transforms change — no stroke-dash repaint of a section-tall SVG (and of the soil under it) every frame.
+    // The line only descends, so "everything above the tip" is exactly "drawn up to the tip".
+    // the layer covers only the line's own box (+ stroke and cap), in world coordinates
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const p of samples) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); }
+    x0 = Math.floor(x0 - 4); y0 = Math.floor(y0 - 4); x1 = Math.ceil(x1 + 4); y1 = Math.ceil(y1 + 4);
+    const w = x1 - x0, H = y1 - y0;
+    const grow = document.createElement('div');
+    grow.className = 'roots__grow';
+    grow.setAttribute('aria-hidden', 'true');
+    grow.style.cssText = `left:${x0}px;top:${y0}px;width:${w}px;height:${H}px`;
+    const art = document.createElementNS(NS, 'svg');
+    art.setAttribute('class', 'roots__grow-art');
+    art.setAttribute('focusable', 'false');
+    art.setAttribute('viewBox', `${x0} ${y0} ${w} ${H}`);
+    art.setAttribute('width', String(w));
+    art.setAttribute('height', String(H));
+    art.append(line);
+    grow.append(art);
+    this.lines.after(grow); // above the soil details and rootlets, below the fireflies, story and nodes — as before
+    this.disposers.push(() => grow.remove());
+    let shown = NaN;
+    const reveal = (tipY: number) => {
+      const c = Math.round(Math.min(H, Math.max(0, tipY - y0)));
+      if (c === shown) return;
+      shown = c;
+      grow.style.transform = `translate3d(0, ${c - H}px, 0)`;
+      art.style.transform = `translate3d(0, ${H - c}px, 0)`;
+    };
+
     gsap.set(g.rootlets.map((r) => r.path), { drawSVG: '0%' });
     gsap.set(g.sap, { drawSVG: '0%' });
 
@@ -616,23 +725,31 @@ class Roots {
       gsap.set(icon, { drawSVG: '0%' });
       gsap.set([title, text], { opacity: 0.36 }); // dim, not gone: the 26px title stays ≥ 3:1 on soil
       gsap.set(n, { '--lit': 0 });
-      const tl = gsap.timeline({ paused: true })
+      const tl = this.prime(gsap.timeline({ paused: true })
         .set(ring.ownerSVGElement, { autoAlpha: 0.9, immediateRender: false }, 0.001)
         .to(ring, { drawSVG: '100%', duration: 0.6, ease: 'power2.out' }, 0)
         .to(n, { '--lit': 1, duration: 0.8, ease: 'power2.out' }, 0)
         .to(icon, { drawSVG: '100%', duration: 0.8, stagger: 0.06, ease: 'power2.inOut' }, 0.1)
-        .to([title, text], { opacity: 1, duration: 0.6, stagger: 0.08, ease: 'power2.out' }, 0.15);
+        .to([title, text], { opacity: 1, duration: 0.6, stagger: 0.08, ease: 'power2.out' }, 0.15));
       return { y: g.dots[i].cy, tl, lit: false };
     });
-    const rl = g.rootlets.map((r) => ({ ...r, on: false, tw: gsap.to(r.path, { drawSVG: '100%', duration: 0.6, ease: 'power1.out', paused: true }) }));
-    const sapTw = gsap.to(g.sap, { drawSVG: '100%', duration: 1.2, ease: 'power1.out', paused: true });
+    const rl = g.rootlets.map((r) => ({ ...r, on: false, tw: this.prime(gsap.to(r.path, { drawSVG: '100%', duration: 0.6, ease: 'power1.out', paused: true })) }));
+    const sapTw = this.prime(gsap.to(g.sap, { drawSVG: '100%', duration: 1.2, ease: 'power1.out', paused: true }));
     let sapOn = false;
 
-    const update = () => {
-      const top = this.world.getBoundingClientRect().top;
-      const tipY = window.innerHeight * 0.76 - top; // the tip runs a little ahead of the reading line
+    // Geometry is measured at refresh, never in a scroll frame: the world's page offset (layout) and the viewport
+    // height (resize — the iOS address bar) are cached; the scroll position comes from ScrollTrigger's own cache.
+    let worldTop = 0;
+    let vh = window.innerHeight;
+    const measure = () => { worldTop = this.world.getBoundingClientRect().top + window.scrollY; vh = window.innerHeight; };
+    const onResize = () => { vh = window.innerHeight; };
+    window.addEventListener('resize', onResize, { passive: true });
+    this.disposers.push(() => window.removeEventListener('resize', onResize));
+
+    const update = (scroll: number) => {
+      const tipY = vh * 0.76 - (worldTop - scroll); // the tip runs a little ahead of the reading line
+      reveal(tipY);
       const len = lengthAtY(samples, tipY);
-      line.style.strokeDashoffset = String(Math.max(0, total - len));
       parts.forEach((p) => {
         const on = tipY >= p.y - 2;
         if (on !== p.lit) {
@@ -647,8 +764,13 @@ class Roots {
       const s = len > 4;
       if (s !== sapOn) { sapOn = s; s ? sapTw.play() : sapTw.reverse(); }
     };
-    ScrollTrigger.create({ trigger: this.world, start: 'top bottom', end: 'bottom top', onUpdate: update, onRefresh: update });
-    update();
+    measure();
+    ScrollTrigger.create({
+      trigger: this.world, start: 'top bottom', end: 'bottom top',
+      onUpdate: (st) => update(st.scroll()),
+      onRefresh: (st) => { measure(); update(st.scroll()); },
+    });
+    update(window.scrollY);
     this.makeFlies(g.rand, 5, { x0: g.W * 0.08, x1: g.W * 0.92, y0: g.ground.y + 260, y1: g.Hw - 60 });
   }
 }
@@ -659,6 +781,11 @@ export function initRoots(): void {
   syncCopy(section);
   const roots = new Roots(section);
   roots.mount();
+  renderGrain(section).then((url) => {
+    if (!url) return;
+    section.style.setProperty('--roots-grain', `url("${url}")`);
+    section.classList.add('roots--grain');
+  });
 
   let timer = 0;
   let place: Place | null = null;
@@ -682,7 +809,11 @@ export function initRoots(): void {
     lastW = w; lastH = h;
     schedule();
   });
-  // webfonts change line heights / label sizes → re-measure once they settle
+  // webfonts change line heights / label sizes → re-measure once they settle (phones: not under the finger — a
+  // rebuild ends in a full ScrollTrigger.refresh)
   const sig = roots.signature();
-  document.fonts?.ready.then(() => { if (roots.signature() !== sig) schedule(60); });
+  document.fonts?.ready.then(() => {
+    if (roots.signature() === sig) return;
+    if (env.isTouch) whenScrollQuiet(() => schedule(0)); else schedule(60);
+  });
 }

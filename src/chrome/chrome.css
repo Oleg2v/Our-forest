@@ -20,11 +20,14 @@ html.bg-instant body { transition: none !important; }
 :root.reveals-on.motion [data-reveal='words'] { opacity: 0.2; }
 /* line masks keep Hebrew ascenders/descenders and niqqud-free glyph overshoot */
 .rv-line-mask { padding-block: 0.12em; margin-block: -0.12em; }
-.rv-char { will-change: transform; }
+/* a layer per letter only while the letters rise (data-reveal becomes data-reveal-done when they land) */
+[data-reveal='letters'] .rv-char { will-change: transform; }
 
-/* lazy photos sharpen in from their own blurred colour */
+/* lazy photos sharpen in from their own blurred colour. While the blur animates the photo is its own
+   layer, so the compositor (GPU) blurs it each frame instead of the page repainting a blurred photo —
+   the layer exists only for that second (images.ts drops both classes 1.1 s after load). */
 img.img-sharpen { filter: blur(16px); transition: filter 1s var(--ease-out); }
-img.img-sharpen.is-loaded { filter: blur(0); }
+img.img-sharpen.is-loaded { filter: blur(0); will-change: filter; }
 
 /* keyboard focus: the travelling leaf ring replaces outlines */
 html.focus-ring-on :focus-visible { outline-color: transparent; }
@@ -690,9 +693,11 @@ html.has-cursor .cursor.is-native { opacity: 0; }
   border-radius: 14px 2px 14px 2px;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.2s var(--ease-out), border-color 0.3s;
+  /* hidden (not just transparent) while unused: an always-there fixed box is a permanent composited layer on iOS */
+  visibility: hidden;
+  transition: opacity 0.2s var(--ease-out), border-color 0.3s, visibility 0s linear 0.2s;
 }
-.focus-ring.is-visible { opacity: 1; }
+.focus-ring.is-visible { opacity: 1; visibility: visible; transition-delay: 0s; }
 .focus-ring[data-tone='light'] { border-color: var(--cream); }
 [data-a11y-contrast='high'] .focus-ring { border-width: 3px; }
 @media (forced-colors: active) {

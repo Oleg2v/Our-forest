@@ -103,6 +103,7 @@ html[data-theme='dark'] .site-footer__logo { color: var(--ink); }
 .site-footer__seed.is-falling { z-index: 1; pointer-events: none; }
 html.motion .site-footer__seed:not(.is-dragging):not(.is-falling) svg { animation: sf-bob 3.4s var(--ease-inout) infinite alternate; }
 @keyframes sf-bob { from { transform: translateY(-3px) rotate(-30deg); } to { transform: translateY(3px) rotate(-16deg); } }
+html.motion .site-footer:not(.site-footer--inview) .site-footer__seed svg { animation-play-state: paused; } /* no endless loop off screen */
 /* while the seed is carried, the custom cursor (src/chrome) lets go of its cream «גררו» disc — it sat right on
    top of the seed and hid the very thing being thrown. Just a thin ring around the seed; the label stays as the
    hover hint before the press. (footer.ts sets html.sf-seed-drag for the length of the drag.) */

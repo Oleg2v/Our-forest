@@ -39,8 +39,14 @@ export function initMap(): void {
   else {
     const ric = (window as any).requestIdleCallback as ((cb: () => void, o?: { timeout: number }) => number) | undefined;
     if (ric) ric(build, { timeout: 1500 }); else setTimeout(build, 600);
-    // and in any case before it can be seen
-    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); build(); } }, { rootMargin: '150% 0px' });
+    // and in any case before it can be seen: 1.5 screens ahead, in the next idle moment between the
+    // frames of the scroll (within 250 ms — about a third of a screen at a fast thumb's speed), not
+    // inside the frame that noticed it
+    const io = new IntersectionObserver((es) => {
+      if (!es.some((e) => e.isIntersecting)) return;
+      io.disconnect();
+      if (ric) ric(build, { timeout: 250 }); else build();
+    }, { rootMargin: '150% 0px' });
     io.observe(sec);
   }
 

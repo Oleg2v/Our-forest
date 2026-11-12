@@ -21,15 +21,16 @@ export function initHeader(page: PageName) {
   wireSoundToggles();
   if (!header) return;
   const h = header;
-  let lastY = Math.max(0, window.scrollY);
+  let y = Math.max(0, window.scrollY);
+  let lastY = y;
   let ticking = false;
   let lastTone = 0;
   let toneTimer = 0;
 
   // write only on change: an attribute write per scroll frame invalidates the header's style every frame
   const setAttr = (name: string, on: boolean) => { if (h.hasAttribute(name) !== on) { if (on) h.setAttribute(name, ''); else h.removeAttribute(name); } };
-  // the tone probe (3 × elementsFromPoint + computed styles) forces a layout + hit test: during a scroll it runs
-  // at most every 140 ms with a mouse and every 450 ms on touch screens, and always once the scroll settles
+  // the tone probe (3 × elementsFromPoint + computed styles) needs layout: during a scroll it runs at most every
+  // 140 ms with a mouse and every 450 ms on touch screens, and always once the scroll settles
   const toneEvery = window.matchMedia('(hover: none) and (pointer: coarse)').matches ? 450 : 140;
   let headerH = 0;
   window.addEventListener('resize', () => { headerH = 0; }, { passive: true });
@@ -37,17 +38,17 @@ export function initHeader(page: PageName) {
   const tone = () => {
     lastTone = performance.now();
     if (!headerH) headerH = parseFloat(getComputedStyle(h).height) || 64;
-    const y = headerH / 2 + 2;
+    const py = headerH / 2 + 2;
     const w = window.innerWidth;
     let dark = 0;
-    for (const x of [w * 0.2, w * 0.5, w * 0.8]) if (isDarkAt(x, y, skip)) dark++;
+    for (const x of [w * 0.2, w * 0.5, w * 0.8]) if (isDarkAt(x, py, skip)) dark++;
     const t = dark >= 2 ? 'light' : 'dark';
     if (h.dataset.tone !== t) h.dataset.tone = t;
   };
 
+  // rAF: writes only (the scroll position was read in the scroll event)
   const update = () => {
     ticking = false;
-    const y = Math.max(0, window.scrollY);
     const dy = y - lastY;
     setAttr('data-compact', y > 80);
     const focusInside = h.contains(document.activeElement);
@@ -55,12 +56,19 @@ export function initHeader(page: PageName) {
     else if (dy > 4 && y > 160) setAttr('data-hidden', true);
     else if (dy < -4) setAttr('data-hidden', false);
     lastY = y;
+  };
+  // Reads (scrollY, the tone hit test) happen in the scroll event's capture phase — before ScrollTrigger and the
+  // sections write this frame's styles — so they find layout clean. Read inside rAF, after GSAP's tick, every
+  // scrollY forced a style + layout pass of whatever the scrubs had just written (WebKit and Blink both flush
+  // layout for scrollY).
+  const onScroll = () => {
+    y = Math.max(0, window.scrollY);
     if (performance.now() - lastTone > toneEvery) tone();
     clearTimeout(toneTimer);
     toneTimer = window.setTimeout(tone, 160);
+    if (!ticking) { ticking = true; requestAnimationFrame(update); }
   };
-  const onScroll = () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } };
-  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('scroll', onScroll, { passive: true, capture: true });
   window.addEventListener('resize', onScroll, { passive: true });
   bus.on('theme:section', () => setTimeout(tone, 30));
   h.addEventListener('focusin', () => setAttr('data-hidden', false));
@@ -68,7 +76,7 @@ export function initHeader(page: PageName) {
   bus.on('menu:close', () => { menuOpen = false; });
   bus.on<{ visible: boolean }>('header:force', ({ visible }) => { forcedVisible = Math.max(0, forcedVisible + (visible ? 1 : -1)); onScroll(); });
   // first probe in the first frame, not inside the module's start-up task (it forces the first layout)
-  onScroll();
+  requestAnimationFrame(onScroll);
   // re-probe while intro animations, media and webfonts settle (no polling loop)
   window.addEventListener('load', () => setTimeout(tone, 60), { once: true });
   [400, 1200, 2400, 4000].forEach((ms) => setTimeout(tone, ms));

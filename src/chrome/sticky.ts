@@ -30,10 +30,11 @@ export function initSticky(page: PageName) {
     update();
   };
 
-  // home: wait until the visitor leaves the hero
+  // home: wait until the visitor leaves the hero. Read in the capture phase of the scroll event, before
+  // ScrollTrigger and the sections write this frame's styles: scrollY then never forces a layout.
   if (page === 'home') {
     const onScroll = () => set('intro', window.scrollY < window.innerHeight * 0.55);
-    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('scroll', onScroll, { passive: true, capture: true });
     onScroll();
   }
   // over the footer the bar steps aside (the footer has its own big CTA and links)

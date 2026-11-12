@@ -124,7 +124,7 @@
   opacity: calc(1 - var(--f) * var(--f) * var(--f));
 }
 .seasons__lf-grow {
-  transform: scale(calc(var(--in, 1) * (0.3 + 0.7 * var(--g))));
+  transform: scale(calc(0.3 + 0.7 * var(--g)));
   color: color-mix(in oklab, color-mix(in oklab, var(--leaf-young), var(--leaf-full) calc(var(--g) * 100%)), var(--leaf-autumn) calc(var(--a) * 100%));
 }
 .seasons__blade { fill: currentColor !important; fill-opacity: 0.13; }
@@ -136,14 +136,14 @@
   --b: clamp(0, (var(--sp) - 0.12 - 0.5 * var(--t)) / 0.5, 1);
 }
 .seasons__fr-grow {
-  transform: scale(calc(var(--in, 1) * (0.26 + 0.74 * var(--r))));
+  transform: scale(calc(0.26 + 0.74 * var(--r)));
   color: color-mix(in oklab,
     color-mix(in oklab, var(--fruit-young), var(--olive-deep) clamp(0%, var(--r) * 200%, 100%)),
     var(--fruit) clamp(0%, (var(--r) * 2 - 1) * 100%, 100%));
 }
 .seasons__fr-body { fill: currentColor !important; fill-opacity: calc(0.08 + 0.24 * var(--r)); }
 .seasons__fr--pom .seasons__fr-grow { opacity: var(--b); }
-.seasons__bloom { color: var(--fruit); opacity: calc(1 - var(--b)); transform: scale(calc(var(--in, 1) * (1 - 0.35 * var(--b)))); }
+.seasons__bloom { color: var(--fruit); opacity: calc(1 - var(--b)); transform: scale(calc(1 - 0.35 * var(--b))); }
 .seasons__bloom path { fill: currentColor !important; fill-opacity: 0.16; }
 
 /* ---------------------------------------------------------------- cards (base = static grid) */
@@ -175,7 +175,9 @@
   display: block;
   aspect-ratio: 4 / 5;
   overflow: hidden;
-  background: color-mix(in oklab, var(--season-bg) 70%, var(--soil));
+  /* under the photo (always covered by it and its blurred preview): a fixed tone, not the season, so a
+     swipe through the year does not repaint the photos too */
+  background: color-mix(in oklab, var(--s1) 70%, var(--soil));
   -webkit-tap-highlight-color: transparent;
 }
 .seasons__img { position: absolute; inset: 0; display: block; overflow: hidden; transform-origin: 50% 60%; }

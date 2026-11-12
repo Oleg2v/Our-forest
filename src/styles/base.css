@@ -59,11 +59,17 @@ input, textarea { caret-color: var(--fruit); }
   border-radius: 14px 0 14px 0;
 }
 
-/* grain over the whole site (SVG noise, multiply) — exactly the viewport: one static fixed layer */
+/* grain over the whole site (SVG noise, multiply) — one static fixed layer. Its height is the LARGE viewport
+   (100lvh; 100vh is the same on iOS/Android), not inset:0: on phones the visible height changes whenever the
+   browser's toolbars collapse or return (every change of scroll direction), and a fixed inset:0 layer was
+   resized — and its SVG noise repainted — each time. WebKit re-renders an SVG background (filter included)
+   on every paint; now the layer is painted once. */
 body::after {
   content: '';
   position: fixed;
-  inset: 0;
+  inset: 0 0 auto 0;
+  height: 100vh;
+  height: 100lvh;
   z-index: var(--z-grain);
   pointer-events: none;
   opacity: 0.055;

@@ -67,15 +67,62 @@ export function pebble(cx: number, cy: number, r: number, rand: Rand): string {
 }
 
 export interface Sample { l: number; x: number; y: number }
-/** Sample a path into (length, x, y) triples. */
+
+/** Our paths are M + C only (smoothPath / rootlet): flatten them into a fine polyline (24 steps per cubic). */
+function flatten(d: string): P[] | null {
+  const out: P[] = [];
+  let cx = 0, cy = 0;
+  const re = /([MC])([^MC]*)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(d))) {
+    const v = (m[2].match(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi) || []).map(Number);
+    if (m[1] === 'M') {
+      if (v.length !== 2) return null;
+      cx = v[0]; cy = v[1]; out.push({ x: cx, y: cy });
+      continue;
+    }
+    if (!v.length || v.length % 6) return null;
+    for (let k = 0; k < v.length; k += 6) {
+      const [x1, y1, x2, y2, x3, y3] = v.slice(k, k + 6);
+      for (let i = 1; i <= 24; i++) {
+        const t = i / 24, u = 1 - t;
+        const a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, e = t * t * t;
+        out.push({ x: a * cx + b * x1 + c * x2 + e * x3, y: a * cy + b * y1 + c * y2 + e * y3 });
+      }
+      cx = x3; cy = y3;
+    }
+  }
+  return out.length > 1 ? out : null;
+}
+
+/** Sample a path into (length, x, y) triples, every ~step px of length.
+    The browser's getPointAtLength walks the path again on every call — a few hundred calls were ~100 ms of a
+    throttled phone's init. Our paths are flattened in JS instead (the same curve) and the lengths scaled to the
+    browser's getTotalLength, the unit DrawSVG draws in. Anything unexpected falls back to the browser. */
 export function samplePath(path: SVGPathElement, step = 6): { total: number; samples: Sample[] } {
   const total = path.getTotalLength();
   const n = Math.max(2, Math.ceil(total / step));
   const samples: Sample[] = [];
+  const poly = flatten(path.getAttribute('d') || '');
+  if (!poly) {
+    for (let i = 0; i <= n; i++) {
+      const l = (total * i) / n;
+      const p = path.getPointAtLength(l);
+      samples.push({ l, x: p.x, y: p.y });
+    }
+    return { total, samples };
+  }
+  const cum = [0];
+  for (let i = 1; i < poly.length; i++) cum.push(cum[i - 1] + Math.hypot(poly[i].x - poly[i - 1].x, poly[i].y - poly[i - 1].y));
+  const k = cum[cum.length - 1] > 0 ? total / cum[cum.length - 1] : 0;
+  let j = 1;
   for (let i = 0; i <= n; i++) {
     const l = (total * i) / n;
-    const p = path.getPointAtLength(l);
-    samples.push({ l, x: p.x, y: p.y });
+    const target = k ? l / k : 0;
+    while (j < poly.length - 1 && cum[j] < target) j++;
+    const seg = cum[j] - cum[j - 1];
+    const t = seg > 0 ? Math.min(1, Math.max(0, (target - cum[j - 1]) / seg)) : 0;
+    samples.push({ l, x: poly[j - 1].x + (poly[j].x - poly[j - 1].x) * t, y: poly[j - 1].y + (poly[j].y - poly[j - 1].y) * t });
   }
   return { total, samples };
 }

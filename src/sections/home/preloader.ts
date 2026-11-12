@@ -52,6 +52,48 @@ export function preloaderQuiet(): Promise<void> {
   });
 }
 
+/* ---- touch-scroll quiet ----------------------------------------------------------------------------------
+   Phones: deferred work (section inits, ScrollTrigger.refresh) never runs under the finger or during momentum.
+   A main-thread task that lands mid-swipe is a dropped frame the user feels; the same task 200 ms later is not. */
+let touches = 0;
+let lastScrollAt = 0;
+let lastTouchAt = 0;
+let tracking = false;
+function trackTouch() {
+  if (tracking || typeof window === 'undefined') return;
+  tracking = true;
+  const opt: AddEventListenerOptions = { passive: true, capture: true };
+  const down = (e: TouchEvent) => { touches = e.touches.length; lastTouchAt = performance.now(); };
+  const up = (e: TouchEvent) => { touches = e.touches.length; lastScrollAt = lastTouchAt = performance.now(); };
+  window.addEventListener('touchstart', down, opt);
+  window.addEventListener('touchmove', down, opt);
+  window.addEventListener('touchend', up, opt);
+  window.addEventListener('touchcancel', up, opt);
+  window.addEventListener('scroll', () => { lastScrollAt = performance.now(); }, opt);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) touches = 0; });
+}
+/** a finger is down — unless nothing has moved for 3 s (a lost touchend must never hold deferred work forever) */
+const fingerDown = () => touches > 0 && performance.now() - Math.max(lastTouchAt, lastScrollAt) < 3000;
+/** no finger on the screen and no scroll (momentum included) for `gap` ms */
+export function scrollQuiet(gap = 180): boolean {
+  trackTouch();
+  return !fingerDown() && performance.now() - lastScrollAt >= gap;
+}
+type IdleWin = Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+/** Runs fn at the next scroll-quiet moment (see scrollQuiet), in idle time where the browser offers it. */
+export function whenScrollQuiet(fn: () => void, gap = 180): void {
+  trackTouch();
+  const ric = (window as IdleWin).requestIdleCallback;
+  const go = () => (scrollQuiet(gap) ? fn() : check());
+  const check = () => {
+    const wait = fingerDown() ? 120 : gap - (performance.now() - lastScrollAt);
+    if (wait > 0) { window.setTimeout(check, Math.max(40, wait)); return; }
+    if (ric) ric(go, { timeout: 300 });
+    else requestAnimationFrame(() => window.setTimeout(go, 0));
+  };
+  check();
+}
+
 /** timing marks (DevTools Performance panel / RUM): of:preloader:init|shows100 (predicted)|beat|100|open|done */
 const mark = (k: string) => { try { performance.mark(`of:preloader:${k}`); } catch { /* old engines */ } };
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, Math.max(0, ms)));
@@ -81,6 +123,7 @@ function hundredAt(count: HTMLElement | null): number {
 }
 
 export function initPreloader(): Promise<void> {
+  trackTouch(); // from boot: a finger that is already down counts
   const html = document.documentElement;
   const el = document.querySelector<HTMLElement>('.preloader');
   const finish = () => {

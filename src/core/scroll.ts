@@ -31,6 +31,49 @@ export function initScroll() {
 
 export function getLenis() { return lenis; }
 
+/* ---- touch-scroll quiet ----------------------------------------------------------------------------------
+   Phones: heavy one-off work (ScrollTrigger.refresh, page-wide style changes) never runs under the finger or
+   during momentum — a long task mid-swipe is a dropped frame the visitor feels; 200 ms later it is not.
+   (Same rule as the home sections' whenScrollQuiet in src/sections/home/preloader.ts.) */
+let touches = 0;
+let lastScrollAt = 0;
+let lastTouchAt = 0;
+let tracking = false;
+function trackTouch() {
+  if (tracking || typeof window === 'undefined') return;
+  tracking = true;
+  const opt: AddEventListenerOptions = { passive: true, capture: true };
+  const down = (e: TouchEvent) => { touches = e.touches.length; lastTouchAt = performance.now(); };
+  const up = (e: TouchEvent) => { touches = e.touches.length; lastScrollAt = lastTouchAt = performance.now(); };
+  window.addEventListener('touchstart', down, opt);
+  window.addEventListener('touchmove', down, opt);
+  window.addEventListener('touchend', up, opt);
+  window.addEventListener('touchcancel', up, opt);
+  window.addEventListener('scroll', () => { lastScrollAt = performance.now(); }, opt);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) touches = 0; });
+}
+/** a finger is down — unless nothing has moved for 3 s (a lost touchend must never hold work forever) */
+const fingerDown = () => touches > 0 && performance.now() - Math.max(lastTouchAt, lastScrollAt) < 3000;
+/** no finger on the screen and no scroll (momentum included) for `gap` ms */
+export function scrollQuiet(gap = 180): boolean {
+  trackTouch();
+  return !fingerDown() && performance.now() - lastScrollAt >= gap;
+}
+type IdleWin = Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+/** Runs fn at the next scroll-quiet moment, in idle time where the browser offers it. */
+export function whenScrollQuiet(fn: () => void, gap = 180): void {
+  trackTouch();
+  const ric = (window as IdleWin).requestIdleCallback;
+  const go = () => (scrollQuiet(gap) ? fn() : check());
+  const check = () => {
+    const wait = fingerDown() ? 120 : gap - (performance.now() - lastScrollAt);
+    if (wait > 0) { window.setTimeout(check, Math.max(40, wait)); return; }
+    if (ric) ric(go, { timeout: 300 });
+    else requestAnimationFrame(() => window.setTimeout(go, 0));
+  };
+  check();
+}
+
 /** Scroll to an element / selector / y. Respects header height and reduced motion. */
 export function scrollTo(target: string | HTMLElement | number, opts: { offset?: number; immediate?: boolean } = {}) {
   const headerH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 72;

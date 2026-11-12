@@ -7,6 +7,11 @@
    · a visible pause button (WCAG 2.2.2), state in aria-pressed
    · reduced motion / "stop animations": static, wrapped rows; no ticker at all
    · the ticker runs only while the band is on screen
+   Cheap on phones: a row is an endless strip, but only the dedications that are on screen exist in the DOM
+   (a window list, ~2–4 items). The strip moves with one transform on a viewport-sized layer; an item is added
+   or dropped at an edge only when it enters or leaves (every few seconds). There is no 13 000 px wide layer of
+   copies, and a page-colour change restyles a handful of spans, not 150. The full list stays in the DOM for
+   screen readers (visually hidden while the rows run; it is the wrapped static list in reduced motion).
    ========================================================================== */
 import './wall.css';
 import { gsap, ScrollTrigger } from '../../core/gsap';
@@ -78,40 +83,107 @@ function listEl(items: Item[], hidden: boolean): HTMLUListElement {
   return ul;
 }
 
+/** edge margin (px): an item is in the window while any part of it is within the row (+ this) */
+const EDGE = 1;
+
 class Row {
   track: HTMLDivElement;
+  /** the full list: read by screen readers; the visible wrapped list in static mode */
+  sr: HTMLUListElement;
+  /** live: only the items on screen, in strip order (aria-hidden) */
+  win: HTMLUListElement;
+  tpl: HTMLLIElement[];
+  /** item widths and their prefix sums (pre[n] = loop length L) */
+  w: number[] = [];
+  pre: number[] = [0];
+  L = 0;
+  W = 0;
+  /** strip offset (px): item k's left edge sits at x + s(k) in the row */
   x = 0;
   v = 0;
-  span = 1;
+  /** strip indices of the first and last item in the window (k1 < k0: empty) */
+  k0 = 0;
+  k1 = -1;
   constructor(public el: HTMLElement, public items: Item[], public base: number, public dir: 1 | -1) {
     this.track = document.createElement('div');
     this.track.className = 'wall__track';
-    this.track.append(listEl(items, false));
+    this.sr = listEl(items, false);
+    this.sr.classList.add('wall__list--sr');
+    this.win = document.createElement('ul');
+    this.win.className = 'wall__list';
+    this.win.setAttribute('aria-hidden', 'true');
+    this.track.append(this.sr, this.win);
     el.append(this.track);
+    this.tpl = Array.from(this.sr.children) as HTMLLIElement[];
   }
-  /** one copy's width = loop distance; enough copies so the row never shows a gap */
+  /** strip position of item k (any integer: the list repeats every n items / L px) */
+  s(k: number) {
+    const n = this.w.length;
+    const q = Math.floor(k / n);
+    return q * this.L + this.pre[k - q * n];
+  }
+  item(k: number) {
+    const n = this.tpl.length;
+    return this.tpl[((k % n) + n) % n].cloneNode(true) as HTMLLIElement;
+  }
+  /** measure the items once (fonts / width change), then rebuild the window */
   layout(live: boolean) {
-    const lists = Array.from(this.track.querySelectorAll('.wall__list'));
-    lists.slice(1).forEach((l) => l.remove());
+    this.win.textContent = '';
+    this.k0 = 0;
+    this.k1 = -1;
+    this.w = [];
     this.track.style.transform = '';
-    if (!live) return;
-    this.span = Math.max(1, lists[0].getBoundingClientRect().width);
-    const need = Math.max(1, Math.ceil(this.el.clientWidth / this.span));
-    for (let i = 0; i < need; i++) this.track.append(listEl(this.items, true));
-    this.x = this.dir > 0 ? -this.span * 0.5 : -this.span * 0.15;
+    if (!live || !this.tpl.length) return;
+    const all = this.tpl.map((li) => li.cloneNode(true) as HTMLLIElement);
+    this.win.append(...all);
+    const w = all.map((li) => li.getBoundingClientRect().width);
+    this.win.textContent = '';
+    const pre = [0];
+    w.forEach((v, i) => pre.push(pre[i] + v));
+    if (pre[w.length] < 1) return;
+    this.w = w;
+    this.pre = pre;
+    this.L = pre[w.length];
+    this.W = this.el.clientWidth;
+    this.x = this.dir > 0 ? -this.L * 0.5 : -this.L * 0.15;
+    this.sync();
     this.paint();
+  }
+  /** add / drop items at the edges so the window covers the row exactly */
+  sync() {
+    const n = this.w.length;
+    if (!n) return;
+    const right = this.W + EDGE;
+    if (this.k1 < this.k0) {
+      // empty: start with the item under the left edge
+      let k = Math.floor((-EDGE - this.x) / this.L) * n;
+      while (this.x + this.s(k + 1) <= -EDGE) k++;
+      this.k0 = this.k1 = k;
+      this.win.append(this.item(k));
+    }
+    while (this.k1 > this.k0 && this.x + this.s(this.k0 + 1) <= -EDGE) { this.win.firstElementChild?.remove(); this.k0++; }
+    while (this.x + this.s(this.k0) > -EDGE) { this.k0--; this.win.prepend(this.item(this.k0)); }
+    while (this.k1 > this.k0 && this.x + this.s(this.k1) >= right) { this.win.lastElementChild?.remove(); this.k1--; }
+    while (this.x + this.s(this.k1 + 1) < right) { this.k1++; this.win.append(this.item(this.k1)); }
+    // keep the numbers small: shift by whole loops (x + s(k) stays the same)
+    if (this.k0 < 0 || this.k0 >= n) {
+      const q = Math.floor(this.k0 / n);
+      this.k0 -= q * n;
+      this.k1 -= q * n;
+      this.x += q * this.L;
+    }
   }
   step(dt: number, target: number) {
     // critically-damped-ish approach to the target speed → stops and starts feel eased, never abrupt
     this.v += (target * this.base - this.v) * (1 - Math.exp(-dt * 3.4));
     // settled at a stop: really stop (no endless sub-pixel repaints while someone reads)
     if (target === 0 && Math.abs(this.v) < 0.25) { if (this.v !== 0) { this.v = 0; } return; }
+    if (!this.w.length) return;
     this.x += this.dir * this.v * dt;
-    if (this.x <= -this.span) this.x += this.span;
-    else if (this.x > 0) this.x -= this.span;
+    this.sync();
     this.paint();
   }
-  paint() { this.track.style.transform = `translate3d(${this.x.toFixed(2)}px,0,0)`; }
+  paint() { this.track.style.transform = `translate3d(${(this.x + this.s(this.k0)).toFixed(2)}px,0,0)`; }
 }
 
 export function initWall(): void {
@@ -189,10 +261,12 @@ export function initWall(): void {
         trigger: band,
         start: 'top bottom',
         end: 'bottom top',
-        onToggle: (self) => { inView = self.isActive; syncTicker(); },
+        // the dedications' colour transition (page colour change) only while the band can be seen
+        onToggle: (self) => { inView = self.isActive; band!.classList.toggle('is-near', inView); syncTicker(); },
         onUpdate: (self) => { if (live) gust = Math.min(2.6, Math.max(gust, Math.abs(self.getVelocity()) / 700)); },
       });
       inView = st.isActive;
+      band!.classList.toggle('is-near', inView);
     }
     syncTicker();
   }
