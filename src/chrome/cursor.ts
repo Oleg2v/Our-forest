@@ -87,7 +87,21 @@ function enable() {
   });
   on(document, 'pointerleave', () => show(false));
   on(window, 'blur', () => show(false));
-  on(document, 'scroll', () => { if (target) resolve(document.elementFromPoint(px, py)); magnetMove(); }, { passive: true, capture: true });
+  // the page moves under a still pointer (wheel / keys / Lenis): the section under the ring changes, so does
+  // its colour — re-probe (throttled, plus once when the scroll settles); without this a ring that was cream
+  // over the dark roots stayed cream — invisible — on the cream sections a wheel scroll brought under it
+  on(document, 'scroll', () => {
+    if (target) resolve(document.elementFromPoint(px, py));
+    magnetMove();
+    if (!shown) return;
+    const now = performance.now();
+    if (now - lastTone > 240) { lastTone = now; tone(); }
+    clearTimeout(toneTimer);
+    toneTimer = window.setTimeout(() => { lastTone = performance.now(); tone(); }, 160);
+  }, { passive: true, capture: true });
+  // a layer opened or closed under the ring (menu, a11y panel) or the page turned light ↔ dark
+  const retone = () => [90, 520, 1100].forEach((ms) => setTimeout(() => { if (shown && enabled) tone(); }, ms));
+  ['menu:open', 'menu:close', 'modal:open', 'modal:close', 'theme:section'].forEach((ev) => cleanup.push(bus.on(ev, retone)));
   // programmatic: bus.emit('cursor:set', { label, fill, icon }) / bus.emit('cursor:set', null)
   cleanup.push(bus.on<{ label?: string; fill?: string; icon?: string } | null>('cursor:set', (s) => apply(s ?? {}, !!s)));
   magnetsOn();

@@ -99,6 +99,10 @@ body::after {
   transform: translateY(-160%); transition: transform var(--t-ui) var(--ease-out);
 }
 .skip-link:focus-visible { transform: none; }
+/* wide screens: off the screen corner, on the gutter (phones and landscape phones keep 16px) */
+@media (min-width: 769px) and (min-height: 561px) {
+  .skip-link { inset-inline-start: var(--gutter); inset-block-start: 14px; }
+}
 
 /* ---------- typography helpers ---------- */
 .eyebrow {

@@ -8,7 +8,7 @@
 import { gsap } from '../core/gsap';
 import { env } from '../core/env';
 import { bus } from '../core/bus';
-import { isDarkAt, qs } from './util';
+import { isDarkAt, parseRGB, qs } from './util';
 
 const root = document.documentElement;
 let ring: HTMLElement | null = null;
@@ -16,6 +16,21 @@ let target: Element | null = null;
 let visible = false;
 let loop = 0;
 let last = '';
+/* wide screens (not phones, not landscape phones): a text link with no box of its own (nav links, the legal
+   table of contents, links in running text) gets a little more air left and right — with the plain 5px the
+   ring hugged the first and last letters while it stood ~20px clear above and below (44px tap height) */
+const wideMQ = matchMedia('(min-width: 769px) and (min-height: 561px)');
+let padFor: Element | null = null;
+let padX = 0;
+function sidePad(v: Element, pad: number): number {
+  if (!wideMQ.matches || !v.matches('a, button, summary, [role="button"], [role="tab"]')) return pad;
+  if (!v.textContent?.trim()) return pad; // icon buttons: the ring keeps their circle
+  const cs = getComputedStyle(v);
+  // (not the corner radius: base.css gives every :focus-visible element leaf corners for the outline fallback)
+  const boxed = (parseFloat(cs.borderLeftWidth) || 0) > 0 || (parseRGB(cs.backgroundColor)?.[3] ?? 0) > 0;
+  const inner = Math.min(parseFloat(cs.paddingLeft) || 0, parseFloat(cs.paddingRight) || 0);
+  return !boxed && inner < 4 ? pad + 6 - inner : pad;
+}
 
 export function initFocus() {
   ring = qs('[data-focus-ring]');
@@ -108,7 +123,8 @@ function place(animate: boolean, quiet = false) {
   const r = v.getBoundingClientRect();
   if (!r.width && !r.height) { if (!quiet) hide(); return; }
   const pad = v.matches('input, textarea, select') ? 3 : 5;
-  const x = r.left - pad, y = r.top - pad, w = r.width + pad * 2, h = r.height + pad * 2;
+  if (v !== padFor) { padFor = v; padX = sidePad(v, pad); } // once per element (the follow loop runs every frame)
+  const x = r.left - padX, y = r.top - pad, w = r.width + padX * 2, h = r.height + pad * 2;
   const key = `${x | 0},${y | 0},${w | 0},${h | 0}`;
   if (quiet && key === last) return;
   last = key;

@@ -743,6 +743,84 @@ html.has-cursor .cursor.is-native { opacity: 0; }
 }
 .pt.is-entering .pt__mark { opacity: 1; }
 
+/* ---------------------------------------------------------------- desktop polish (wide screens)
+   Tablets / laptops / monitors only: (min-width: 769px) and (min-height: 561px) leaves phones — portrait
+   (≤ 768) and landscape (≤ 560 tall) — exactly as they were. The floating cards line up with the header's
+   content column (the same edge as the CTA / nav: max(gutter, (viewport − maxw) / 2)) instead of hugging the
+   screen corner, and get the room a big screen gives them. */
+@media (min-width: 769px) and (min-height: 561px) {
+  /* header: the pills and icons breathe (6px read as one glued block on a 1920 screen) */
+  .site-header__end { gap: clamp(8px, 0.7vw, 14px); }
+  .site-header__icon-btn[data-tip]::after { top: calc(100% + 8px); padding: 7px 14px; font-size: 0.875rem; }
+
+  /* menu (tablets, small laptops, larger a11y text): the foot no longer sits on the bottom edge */
+  .menu__panel { padding-block-end: calc(var(--safe-bottom) + clamp(28px, 5vh, 56px)); }
+  .menu__foot { gap: 22px; }
+  .menu__place { font-size: 0.875rem; }
+
+  /* a11y panel: hangs under the header's tools (the column edge), not in the screen corner */
+  .a11y__card {
+    inset-block-start: calc(var(--header-h) + var(--safe-top) + 10px);
+    inset-inline-end: max(var(--gutter), calc((100% - var(--maxw)) / 2));
+    width: min(412px, calc(100% - 2 * var(--gutter)));
+    max-height: calc(100dvh - var(--header-h) - 32px);
+    padding: 26px 30px 22px;
+  }
+  .a11y__desc { margin-block: 4px 22px; }
+  .a11y__row { margin-block-start: 16px; padding-block-start: 16px; }
+  .a11y__foot { margin-block-start: 20px; padding-block-start: 14px; }
+
+  /* cookie card: on the column edge, off the bottom edge, readable text, room inside */
+  .cookie {
+    --ck-edge: max(var(--gutter), calc((100% - var(--maxw)) / 2));
+    inset-inline-start: var(--ck-edge);
+    inset-block-end: max(calc(var(--mbar-space, 0px) + clamp(24px, 2vw, 36px) + var(--safe-bottom)), calc(var(--ck-floor, 0px) + 16px));
+    gap: 12px 18px;
+    width: min(560px, calc(100% - 2 * var(--gutter)));
+    padding-block: 13px;
+    padding-inline: 20px 14px;
+    border-radius: 24px 0 24px 0;
+  }
+  .cookie[data-pos='end'] { inset-inline-start: auto; inset-inline-end: var(--ck-edge); }
+  .cookie[data-pos='top'] { inset-block-start: calc(var(--header-h) + var(--safe-top) + clamp(12px, 1.2vw, 20px)); }
+  /* under the header on the far side (cookies.ts offers it on wide screens: the legal pages' and /credits'
+     empty top corner, instead of a bottom corner over the first heading or the top one over the breadcrumb) */
+  .cookie[data-pos='top-end'] {
+    inset-inline-start: auto; inset-inline-end: var(--ck-edge);
+    inset-block-end: auto; inset-block-start: calc(var(--header-h) + var(--safe-top) + clamp(12px, 1.2vw, 20px));
+    transform: translateY(-16px);
+  }
+  .cookie[data-pos='top-end'][data-shown] { transform: none; }
+  /* when the first choice is busy (cookies.ts): lower on the same edge (a caption just above), or out in the
+     screen corner, the margin outside the column (a control at the column edge) */
+  .cookie:is([data-edge='low'], [data-edge='corner']) {
+    inset-block-end: max(calc(var(--mbar-space, 0px) + 20px + var(--safe-bottom)), calc(var(--ck-floor, 0px) + 12px));
+  }
+  /* (the screen corner up to a 1920 screen; beyond it at most 184px outside the column, not lost at 2560) */
+  .cookie[data-edge='corner'] { --ck-edge: max(var(--gutter), calc((100% - var(--maxw)) / 2 - 184px)); }
+  .cookie__text { font-size: 0.875rem; line-height: 1.5; text-wrap: balance; }
+  .cookie__actions { gap: 8px; }
+  .cookie__actions .btn { padding-inline: 18px; }
+}
+/* big monitors: the header type grows a step with the screen (the column stays 1440) */
+@media (min-width: 1680px) and (min-height: 561px) {
+  .site-header__link { font-size: 1rem; }
+  .site-header .btn--sm { font-size: 0.96875rem; }
+}
+@media (min-width: 2200px) and (min-height: 561px) {
+  .site-header__link { font-size: 1.0625rem; }
+  .site-header .btn--sm { min-height: 46px; font-size: 1rem; padding-inline: 22px; }
+}
+/* over a dark section the compact header takes that section's colour (a moss band over the soil roots
+   read as a separate strip); over photos and light pages it keeps the moss / cream glass. header.ts sets
+   data-under from what is actually under the header (not the page theme, which turns at the 55% reading line:
+   a soil glass over the hero video / the seasons photos read as a brown strip). Fine pointers only (the touch
+   tint rules above stay as they are). */
+@media (min-width: 769px) and (min-height: 561px) and (hover: hover) and (pointer: fine) {
+  html:not([data-a11y-contrast='high']) .site-header[data-tone='light'][data-under='soil'] { --hd-bg: rgb(var(--soil-rgb) / 0.86); }
+  html:not([data-a11y-contrast='high']) .site-header[data-tone='light'][data-under='moss'] { --hd-bg: rgb(var(--moss-rgb) / 0.86); }
+}
+
 /* ---------------------------------------------------------------- print: no chrome */
 @media print {
   .site-header, .menu, .mbar, .a11y, .cookie, .cursor, .focus-ring, .pt { display: none !important; }

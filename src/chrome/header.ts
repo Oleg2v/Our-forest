@@ -11,6 +11,21 @@ import type { PageName } from './index';
 
 const SKIP = '.site-header, .menu, .mbar, .cookie, .cursor, .focus-ring, .pt, .a11y, .skip-link';
 const skip = (el: Element) => !!el.closest(SKIP);
+/* wide fine-pointer screens: over a dark section's own colour (the roots soil, the moss wall) the compact glass
+   takes that colour instead of the moss band (chrome.css, [data-under]); over photos / video / canvas — the hero
+   while the page has already turned to the roots, the seasons workshops — it keeps the moss glass. Phones and
+   touch screens never probe for it. */
+const wideFine = matchMedia('(min-width: 769px) and (min-height: 561px) and (hover: hover) and (pointer: fine)');
+const DARK_SECTIONS = new Set(['soil', 'moss']);
+function underColour(x: number, y: number): string {
+  const el = document.elementsFromPoint(Math.round(x), Math.round(y)).find((e) => !skip(e));
+  const root = document.documentElement;
+  const page = root.dataset.bg || '';
+  if (!el || el === root || el === document.body) return DARK_SECTIONS.has(page) ? page : '';
+  if (el instanceof HTMLImageElement || el instanceof HTMLVideoElement || el instanceof HTMLCanvasElement || el.tagName === 'PICTURE') return '';
+  const bg = el.closest<HTMLElement>('[data-bg]')?.dataset.bg || '';
+  return DARK_SECTIONS.has(bg) && bg === page ? bg : '';
+}
 
 let header: HTMLElement | null = null;
 let menuOpen = false;
@@ -54,6 +69,10 @@ export function initHeader(page: PageName) {
     for (const x of [w * 0.2, w * 0.5, w * 0.8]) if (isDarkAt(x, py, skip)) dark++;
     const t = dark >= 2 ? 'light' : 'dark';
     if (h.dataset.tone !== t) h.dataset.tone = t;
+    if (wideFine.matches || h.dataset.under) {
+      const u = t === 'light' && wideFine.matches ? underColour(w * 0.5, py) : '';
+      if ((h.dataset.under || '') !== u) { if (u) h.dataset.under = u; else delete h.dataset.under; }
+    }
   };
 
   // rAF: writes only (the scroll position was read in the scroll event)

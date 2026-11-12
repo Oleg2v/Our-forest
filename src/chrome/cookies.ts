@@ -4,6 +4,10 @@
      reaches it first (it stays a non-modal region; the page is fully usable without answering).
    · Where it rests. Slots: 'start' (bottom, reading-start corner), 'end' (the other bottom corner,
      desktop) and 'top' (under the header). Phones get a compact one-row card above the phone bar.
+     Wide screens (≥ 769 × 561) also have 'top-end' (under the header, far side) and, for the bottom
+     corners, the content column's edge (preferred) or the screen corner (when the column spot is busy:
+     the /plant next button, the /business scroll arrow); a neighbour within 16px counts as touched and
+     the card never half-covers a photo.
      - It never rests on a primary action or on content that must stay in view (AVOID).
      - A primary that hugs the bottom edge (a page's own bar: the /plant summary, the tree's skip / dock)
        is a floor: the card sits just above it instead of jumping to the top.
@@ -22,7 +26,12 @@ import { qs } from './util';
 import type { PageName } from './index';
 
 type Choice = 'all' | 'necessary';
-type Pos = 'start' | 'end' | 'top';
+type Pos = 'start' | 'end' | 'top' | 'top-end';
+/** where the card rests: a side ('top-end' = under the header on the far side; wide screens only) and, on wide
+ *  screens, how a bottom card sits when its first choice is busy: plain 'start' / 'end' = on the content column's
+ *  edge, clamp(24px, 2vw, 36px) up; ':low' = the same edge, 20px up (clear of a caption just above it);
+ *  ':corner' = out in the screen corner, 20px up (the pre-polish geometry: clear of a control at the column edge) */
+type Slot = Pos | 'start:low' | 'end:low' | 'start:corner' | 'end:corner';
 
 /** primary actions and content that must stay in view (pages opt in with data-cookie-avoid; the classes
  *  are the home live counter, the /plant price bar and the tree's dock / skip button) */
@@ -30,6 +39,24 @@ const AVOID = '.btn--fruit, .btn--lg, .pc-bar, .tdock-card, .hero__count, .tbirt
 /** anything else one may press — on desktop a corner over these costs a little */
 const PRESS = 'a[href], button, input, select, textarea, summary, [role="button"]';
 const CHROME = '.site-header, .menu, .mbar, .a11y, [data-cookie], [hidden], [inert]';
+/** running text (wide screens). The home hero's paragraph ends where the bottom-corner card starts: at
+ *  1366×768 the card covered its last line, at 1768×900 it sat 2px under it. Text is only a tie-breaker —
+ *  0.1 for a block next to the card, plus up to 2 for the share of the block the card would hide — so a
+ *  corner over a link still costs more than one beside a paragraph (the pages where the card was fine keep
+ *  their slot), and a completely free top slot (under the header, at the reading start) beats both */
+const TEXT = 'p, h1, h2, h3, h4, li, dt, dd, blockquote, figcaption';
+/** photos / video / canvas (wide screens): the card may sit fully on one (the home hero) or fully off it, never
+ *  half over its edge (the /business photo's top edge) */
+const MEDIA = 'img, video, canvas';
+const straddles = (a: DOMRect, b: DOMRect) =>
+  a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top &&
+  !(a.left >= b.left - 1 && a.right <= b.right + 1 && a.top >= b.top - 1 && a.bottom <= b.bottom + 1);
+const hiddenShare = (a: DOMRect, b: DOMRect) => {
+  const w = Math.min(a.right, b.right) - Math.max(a.left, b.left), h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+  return w > 0 && h > 0 ? (w * h) / Math.max(1, b.width * b.height) : 0;
+};
+/** tablets / laptops / monitors — phones and landscape phones keep their placement exactly as before */
+const wideMQ = matchMedia('(min-width: 769px) and (min-height: 561px)');
 const PRIMARY = 100;
 const GIVE_UP = 20000;
 
@@ -46,15 +73,46 @@ export function initCookies(page: PageName, hold: Promise<unknown>) {
   let lastScroll = 0;
   let shownAt = 0;
   let seen = '';
-  const left = new Set<Pos>();
+  const left = new Set<Slot>();
 
-  const slots = (): Pos[] => (env.isMobile() ? ['start', 'top'] : ['start', 'end', 'top']);
+  const slots = (): Slot[] => (env.isMobile() ? ['start', 'top']
+    : wideMQ.matches ? ['start', 'end', 'top', 'top-end', 'start:low', 'end:low', 'start:corner', 'end:corner'] : ['start', 'end', 'top']);
+  const slotOf = (): Slot => {
+    const p = card.dataset.pos || 'start';
+    return (card.dataset.edge ? `${p}:${card.dataset.edge}` : p) as Slot;
+  };
+  const setSlot = (s: Slot) => {
+    const [p, edge] = s.split(':');
+    if (card.dataset.pos !== p) card.dataset.pos = p;
+    if (edge) card.dataset.edge = edge; else if (card.dataset.edge) delete card.dataset.edge;
+  };
   const shown = (r: DOMRect) => r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight;
   const rectsOf = (sel: string) => Array.from(document.querySelectorAll<HTMLElement>(sel))
     .filter((b) => !b.closest(CHROME))
     .map((b) => b.getBoundingClientRect())
     .filter(shown);
-  const near = (a: DOMRect, b: DOMRect) => b.left < a.right + 8 && b.right > a.left - 8 && b.top < a.bottom + 8 && b.bottom > a.top - 8;
+  /** where the text itself is (a range over the block's contents), not its block box: a short right-aligned
+   *  heading in a wide column must not block the other corner */
+  const range = document.createRange();
+  const textRects = () => Array.from(document.querySelectorAll<HTMLElement>(TEXT))
+    .filter((b) => !b.closest(CHROME))
+    .map((b) => { const box = b.getBoundingClientRect(); if (!shown(box)) return box; range.selectNodeContents(b); return range.getBoundingClientRect(); })
+    .filter(shown);
+  /** media actually seen there (not a photo of the next section still under the hero's bottom edge) */
+  const mediaRects = () => Array.from(document.querySelectorAll<HTMLElement>(MEDIA))
+    .filter((b) => !b.closest(CHROME))
+    .map((el) => ({ el, r: el.getBoundingClientRect() }))
+    .filter(({ r }) => shown(r));
+  const seenAt = (el: Element, a: DOMRect, b: DOMRect) => {
+    const x = (Math.max(a.left, b.left) + Math.min(a.right, b.right)) / 2;
+    const y = (Math.max(a.top, b.top) + Math.min(a.bottom, b.bottom)) / 2;
+    const top = document.elementsFromPoint(x, y).find((e) => !e.closest(CHROME));
+    return !!top && (top === el || el.contains(top) || top.contains(el));
+  };
+  const near = (a: DOMRect, b: DOMRect, m = 8) => b.left < a.right + m && b.right > a.left - m && b.top < a.bottom + m && b.bottom > a.top - m;
+  /** 1 touching / overlapping … 0 at m px apart (wide screens: the closer a text block, the more it costs) */
+  const closeness = (a: DOMRect, b: DOMRect, m: number) =>
+    Math.min(1, Math.max(0, 1 - Math.max(0, b.left - a.right, a.left - b.right, b.top - a.bottom, a.top - b.bottom) / m));
   const setFloor = (px: number) => card.style.setProperty('--ck-floor', `${Math.round(px)}px`);
 
   /** what the card would cover in every slot, and the floor for the bottom slots */
@@ -63,25 +121,36 @@ export function initCookies(page: PageName, hold: Promise<unknown>) {
     const phone = env.isMobile();
     const avoid = rectsOf(AVOID);
     const press = phone ? [] : rectsOf(PRESS);
+    const wide = !phone && wideMQ.matches;
+    const text = wide ? textRects() : [];
+    const media = wide ? mediaRects() : [];
+    // wide screens: a neighbour closer than 16px reads as glued (the /business caption 3px above the card)
+    const m = wide ? 16 : 8;
     const floors = avoid.filter((r) => r.bottom >= H - 40 && r.top >= H - 160);
     const floor = floors.length ? Math.max(0, H - Math.min(...floors.map((r) => r.top))) : 0;
     const rest = avoid.filter((r) => !floors.includes(r));
-    const pos = card.dataset.pos || 'start';
+    const pos = slotOf();
     const prevFloor = card.style.getPropertyValue('--ck-floor');
     // measured in place with transitions off, then put back exactly as it was
     card.classList.add('cookie--measure');
     setFloor(floor);
-    const cost = new Map<Pos, number>();
+    const cost = new Map<Slot, number>();
     for (const p of slots()) {
-      card.dataset.pos = p;
+      setSlot(p);
       const r = card.getBoundingClientRect();
       let c = 0;
       for (const b of rest) if (near(r, b)) c += PRIMARY;
-      for (const b of press) if (near(r, b)) c += 1;
-      if (p === 'top' && !phone) c += 1.5; // desktop: a free bottom corner beats the top
+      for (const b of press) if (near(r, b, m)) c += 1;
+      for (const b of text) if (near(r, b, m)) c += 0.1 + 0.2 * closeness(r, b, m) + 2 * Math.min(1, hiddenShare(r, b));
+      for (const { el: e, r: b } of media) if (straddles(r, b) && seenAt(e, r, b)) c += 1;
+      // desktop: a free bottom corner beats the top; on wide screens a top slot with nothing under it beats a
+      // corner beside or over text (the reading-start side first), and the column edge beats the screen corner
+      if ((p === 'top' || p === 'top-end') && !phone) c += wide && c === 0 ? (p === 'top' ? 0.05 : 0.07) : 1.5;
+      if (p.endsWith(':low')) c += 0.04;
+      else if (p.endsWith(':corner')) c += 0.1;
       cost.set(p, c);
     }
-    card.dataset.pos = pos;
+    setSlot(pos);
     if (prevFloor) card.style.setProperty('--ck-floor', prevFloor); else card.style.removeProperty('--ck-floor');
     void card.offsetWidth;
     card.classList.remove('cookie--measure');
@@ -89,14 +158,14 @@ export function initCookies(page: PageName, hold: Promise<unknown>) {
   }
 
   /** the cheapest slot among `allowed` (their order breaks ties) */
-  function cheapest(cost: Map<Pos, number>, allowed: Pos[]) {
-    let pick: Pos | null = null;
+  function cheapest(cost: Map<Slot, number>, allowed: Slot[]) {
+    let pick: Slot | null = null;
     let c = Infinity;
     for (const p of allowed) { const v = cost.get(p) ?? Infinity; if (v < c - 0.01) { pick = p; c = v; } }
     return { pick, c };
   }
 
-  function reveal(p: Pos, floor: number) {
+  function reveal(p: Slot, floor: number) {
     state = 'open';
     shownAt = Date.now();
     left.clear();
@@ -105,7 +174,7 @@ export function initCookies(page: PageName, hold: Promise<unknown>) {
     if (skip?.parentElement === document.body) skip.after(card);
     else document.body.prepend(card);
     card.classList.add('cookie--measure');
-    card.dataset.pos = p;
+    setSlot(p);
     setFloor(floor);
     void card.offsetWidth;
     card.classList.remove('cookie--measure');
@@ -113,11 +182,11 @@ export function initCookies(page: PageName, hold: Promise<unknown>) {
     requestAnimationFrame(() => requestAnimationFrame(() => { if (state === 'open') card.setAttribute('data-shown', ''); }));
   }
 
-  function move(p: Pos, floor: number) {
-    left.add(card.dataset.pos as Pos);
+  function move(p: Slot, floor: number) {
+    left.add(slotOf());
     const jump = () => {
       card.classList.add('cookie--measure');
-      card.dataset.pos = p;
+      setSlot(p);
       setFloor(floor);
       void card.offsetWidth;
       card.classList.remove('cookie--measure');
@@ -134,7 +203,7 @@ export function initCookies(page: PageName, hold: Promise<unknown>) {
   const place = () => {
     if (state !== 'wait' && state !== 'open') return;
     const all = slots();
-    if (!all.includes(card.dataset.pos as Pos)) card.dataset.pos = 'start'; // desktop → phone width
+    if (!all.includes(slotOf())) setSlot('start'); // desktop → phone width (or a wide-only slot → narrower)
     const { cost, floor } = survey();
     if (state === 'wait') {
       const { pick, c } = cheapest(cost, all);
@@ -145,7 +214,7 @@ export function initCookies(page: PageName, hold: Promise<unknown>) {
       if (pick && ((c < PRIMARY && same) || Date.now() - since > GIVE_UP)) reveal(pick, floor);
       return;
     }
-    const cur = card.dataset.pos as Pos;
+    const cur = slotOf();
     const now = cost.get(cur) ?? 0;
     // off a primary: any slot without one; in the first seconds also off plain links, to a free slot
     const settling = Date.now() - shownAt < 6000;
@@ -162,7 +231,7 @@ export function initCookies(page: PageName, hold: Promise<unknown>) {
     if (state !== 'idle') return;
     state = 'wait';
     since = Date.now();
-    card.dataset.pos = 'start';
+    setSlot('start');
     card.setAttribute('data-wait', '');
     card.hidden = false;
     place();

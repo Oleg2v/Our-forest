@@ -169,6 +169,21 @@ html:not(.js) .wall__band { display: none; }
 .wall__talk { --btn-bg: var(--ink); --btn-fg: var(--page-bg); transition: background-color var(--t-page) var(--ease-inout), color var(--t-page) var(--ease-inout), transform var(--t-micro) var(--ease-out); }
 .wall__talk:hover { --btn-bg: var(--sage); --btn-fg: var(--moss); }
 
+/* ---------------------------------------------------------------- desktop polish (tablet and wider; not landscape phones) */
+@media (min-width: 769px) and (min-height: 561px) {
+  /* signatures and captions: 13–14px read as specks under 28–78px dedications on a big screen */
+  .wall__row--a .wall__by { font-size: clamp(14px, 0.85vw, 16.5px); }
+  .wall__row--b .wall__by { font-size: clamp(13px, 0.8vw, 15px); }
+  .wall__band-note { font-size: clamp(15px, 0.85vw, 16.5px); }
+  .wall__pause { font-size: clamp(14.5px, 0.85vw, 16.5px); } /* same row as the note: the same size, not a step smaller */
+  .wall__slot-label { font-size: clamp(14px, 0.85vw, 16px); }
+  .wall__slot-num { font-size: clamp(15px, 0.9vw, 17px); }
+  /* the note and the pause button sat 18px under the rows' rule — air in step with the band's own padding */
+  .wall__band-foot { padding-block-start: clamp(18px, 1.6vw, 30px); }
+  /* reduced motion: the wrapped rows ran to ~35px from the screen's edges; they keep to the content column */
+  .wall--static .wall__track { width: min(100% - 2 * var(--gutter), var(--maxw)); margin-inline: auto; }
+}
+
 /* ---------------------------------------------------------------- phones */
 @media (max-width: 768px) {
   .wall__title { font-size: clamp(36px, 10.2vw, 46px); max-width: 13ch; }
