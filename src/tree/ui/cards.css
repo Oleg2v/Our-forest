@@ -86,8 +86,10 @@
 .tdock-lead.is-on .tdock-lead__ring { animation: tdock-ring 2.6s var(--ease-out) infinite; }
 @keyframes tdock-ring { 0% { transform: scale(0.5); opacity: 0.6; } 100% { transform: scale(1.5); opacity: 0; } }
 html.no-motion .tdock-lead__ring { animation: none; }
-/* the stage scrolled out of view (index.ts): its endless loops (this ring, the news dot, the memorial candle) wait */
-.tree-stage[data-away] *, .tree-stage[data-away] *::after { animation-play-state: paused !important; }
+/* the stage scrolled out of view (index.ts): its endless loops (this ring, the news dot, the memorial candle) wait.
+   Named, not `[data-away] *`: a universal selector made every crossing of the viewport edge restyle the whole stage */
+.tree-stage[data-away] :is(.tdock-lead__ring, .tree-candle__flame, .tree-candle__glow),
+.tree-stage[data-away] .tree-news__dot::after { animation-play-state: paused !important; }
 
 /* the dedication, large, under the zoomed plaque */
 .tplaque {

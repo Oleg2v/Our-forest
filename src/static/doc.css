@@ -150,6 +150,9 @@
 .doc__table td:last-child, .doc__table th:last-child { padding-inline-end: 0; }
 .doc__contact { display: grid; gap: 6px; margin-block-start: 16px; padding: 20px 24px; border-radius: 28px 0 28px 0; background: var(--sand); font-size: calc(17px * var(--a11y-k, 1)); }
 .doc__contact .btn { justify-self: start; margin-block-start: 8px; }
+/* the contact card's button is a .btn inside the article: `.doc__article a` (olive text, underline) outranked
+   .btn and painted the label olive on the olive pill — an empty green button. The button keeps its own ink. */
+.doc__article a.btn { color: var(--btn-fg); text-decoration: none; }
 
 /* ---------------------------------------------------------------- more documents */
 .doc__more { width: var(--doc-w); margin: clamp(64px, 10vh, 120px) auto 0; }
@@ -166,6 +169,11 @@
 .doc__more-list li:has(a[aria-current='page']) { display: none; }
 .doc__more-list .icon { color: var(--olive-deep); transition: transform var(--t-ui) var(--ease-out); }
 .doc__more-list a:hover .icon { transform: translateX(-5px); }
+
+/* ---------------------------------------------------------------- desktop polish (large screens only) */
+@media (min-width: 1440px) and (min-height: 561px) {
+  .doc__toc-list a::before { font-size: calc(14px * var(--a11y-k, 1)); }
+}
 
 /* ---------------------------------------------------------------- tablet / phone */
 @media (max-width: 1000px) {

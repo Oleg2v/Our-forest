@@ -9,6 +9,11 @@
   /* theme-aware: the chrome tweens the page bg between sections, so text follows html[data-theme] */
   --biz-h: var(--bark);
   --biz-accent: var(--olive-deep);
+  /* Its own ink, not body's: body fades `color` for 0.9 s at every light ↔ dark turn of the page (four on this page),
+     and an inherited colour that changes every frame restyled the whole page under it every frame (phones: 30–40 fps
+     through "איך זה עובד"). The text here already takes its colours from --ink / --biz-h, which turn at once, so the
+     look is the same; the fade itself stays on the backgrounds and on the few titles that tween their own colour. */
+  color: var(--ink);
   overflow-x: clip;
 }
 html[data-theme='dark'] .biz { --biz-h: var(--cream); --biz-accent: var(--sage); }
@@ -85,11 +90,13 @@ html[data-theme='dark'] .biz { --biz-h: var(--cream); --biz-accent: var(--sage);
   border-radius: var(--leaf);
   overflow: hidden;
   background: var(--olive-deep);
-  transform: translateZ(0);
 }
 .biz-hero__parallax { position: absolute; inset: -7% 0; }
-/* a layer only while the desktop parallax runs (index.ts) — phones never move it, so no permanent layer there */
-.biz-hero__parallax.is-parallax { will-change: transform; }
+/* layers only while the desktop parallax runs (.is-parallax on the hero, index.ts): the moving photo, and the leaf
+   that clips it (a composited child is clipped by the rounded corners only inside a layer of its own). Phones and
+   reduced motion never move it — no permanent layers there */
+.biz-hero.is-parallax .biz-hero__leaf { transform: translateZ(0); }
+.biz-hero.is-parallax .biz-hero__parallax { will-change: transform; }
 .biz-hero__parallax picture, .biz-hero__img { display: block; width: 100%; height: 100%; }
 .biz-hero__img { object-fit: cover; object-position: 50% 45%; }
 .biz-hero__cap {
@@ -274,8 +281,9 @@ html.motion .biz-steps[data-live] .biz-steps__item.is-lit .biz-steps__icon { opa
   overflow: hidden;
   border-radius: var(--leaf);
   background: var(--sand);
-  transform: translateZ(0);
 }
+/* the leaf clips a moving (composited) photo only from a layer of its own — drift mode only */
+.biz-gal--drift .biz-gal__frame { transform: translateZ(0); }
 .biz-gal__frame--flip { border-radius: var(--leaf-flip); }
 .biz-gal__frame--flip.leaf--hover:hover { border-radius: var(--leaf); }
 .biz-gal__item--tall .biz-gal__frame { width: clamp(260px, 23vw, 380px); aspect-ratio: 4 / 5; }
@@ -436,12 +444,41 @@ html:not(.focus-ring-on) .biz-consent__box:focus-visible + .biz-consent__label .
 .biz-done__demo { font-size: calc(14px * var(--a11y-k, 1)); color: var(--ink-soft); }
 .biz-done__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-block-start: 12px; }
 
+/* wide but not tall desktops (1536×864, 1768×900, 1920×940 …): the three-line title, the question, the text and
+   the buttons used to run ~50 px past the first screen — the buttons sat below the reveal line (they stayed hidden
+   until the first scroll) and the "down" arrow was cut by the screen edge. The title and the space above it follow
+   the screen height here, so the whole hero sits in one screen */
+@media (min-width: 769px) and (min-height: 821px) and (max-height: 1024px) {
+  .biz-hero { padding-block-start: calc(var(--header-h) + var(--safe-top) + clamp(16px, 3vh, 40px)); }
+  .biz-hero__title { font-size: clamp(52px, min(7.4vw, 11.5vh), 118px); }
+}
+
 /* short laptop screens (1280×720): the buttons stay above the fold */
 @media (min-width: 769px) and (max-height: 820px) {
   .biz-hero { padding-block-start: calc(var(--header-h) + var(--safe-top) + 12px); }
   .biz-hero__title { font-size: clamp(52px, min(7.4vw, 11.5vh), 118px); }
   .biz-hero__sub { margin-block-start: clamp(16px, 2.6vh, 28px); }
   .biz-hero__actions { margin-block-start: clamp(20px, 3vh, 32px); }
+}
+
+/* ==========================================================================
+   Desktop polish (≥ 769 px wide and ≥ 561 px tall: phones, landscape ones included, are untouched)
+   ========================================================================== */
+@media (min-width: 769px) and (min-height: 561px) {
+  /* two fields side by side: an error that wraps to two lines under one of them no longer stretches its
+     neighbour (the other label and input slid down 7 px and the input grew taller) */
+  .biz-form__row { align-items: start; }
+  /* the form's WhatsApp pill is cream on the moss page; when the footer turns the page cream on the way out it
+     kept no edge and read as a loose word — a fine outline while the page is light */
+  html[data-theme='light'] .biz-form__wa .btn--light { --btn-bd: var(--line-strong); }
+  /* (verification) the packages stand side by side: the holiday card's date chip (shown until ט״ו בשבט) sat under its
+     price and lifted that price ~50 px above the other two. The chip moves up under the description, so the three
+     prices and buttons share one line at the bottom of the cards */
+  .biz-pk__season { order: 1; }
+  .biz-pk__price, .biz-pk__btn { order: 2; }
+}
+@media (min-width: 1440px) and (min-height: 561px) {
+  .biz-form__demo { font-size: calc(14px * var(--a11y-k, 1)); }
 }
 
 /* ==========================================================================

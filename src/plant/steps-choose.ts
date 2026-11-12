@@ -318,10 +318,21 @@ export function locationStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): Step
       // desktop: once the frame has opened, bring the options and the whole map into the window
       revealT = window.setTimeout(() => {
         if (ctx.root.dataset.step !== 'location' || ctx.store.get().spotMode !== 'map') return;
-        if (mapEl.getBoundingClientRect().bottom > window.innerHeight - 16) {
-          const headerH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 76;
-          scrollTo(optGroup, { offset: -(headerH + 20) });
+        const headerH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 76;
+        const optTop = optGroup.getBoundingClientRect().top + window.scrollY - (headerH + 20);
+        // a phone on its side keeps the old move (the options under the header)
+        if (window.matchMedia('(max-height: 560px) and (orientation: landscape)').matches) {
+          if (mapEl.getBoundingClientRect().bottom > window.innerHeight - 16) scrollTo(optGroup, { offset: -(headerH + 20) });
+          return;
         }
+        // the map, its caption and the step's buttons come into view, no further: putting the options under the
+        // header scrolled past the end of the steps, so the sticky stage was pushed up and cut by the top of the
+        // window (1366×768). The step's end is the end of the panel's scroll box: the buttons' row itself is sticky
+        // (plant.css), so its own box sits wherever it waits.
+        const panel = ctx.root.querySelector<HTMLElement>('.pc__scroll');
+        const end = panel ? panel.getBoundingClientRect().bottom + window.scrollY - window.innerHeight : optTop;
+        const y = Math.min(optTop, end);
+        if (y > window.scrollY + 4) scrollTo(y, { offset: 0 });
       }, ctx.motion() ? 700 : 30);
       return;
     }

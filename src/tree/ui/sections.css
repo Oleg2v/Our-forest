@@ -271,3 +271,25 @@
   .hb-sheet { padding: 8px 8px 0; }
   .hb-seal svg { width: 108px; height: 108px; }
 }
+
+/* ==========================================================================
+   Desktop polish (≥ 769 px wide and ≥ 561 px tall: phones, landscape ones included, are untouched)
+   ========================================================================== */
+@media (min-width: 769px) and (min-height: 561px) {
+  /* "עוד דברים טובים לעץ": the cards are one height, so the links stand on one line at the bottom
+     (a one-line description used to lift its link above the others) */
+  .tmore { align-content: stretch; grid-template-rows: auto auto auto 1fr auto; }
+  .tmore__btn { align-self: end; }
+  /* the upper tape holds the leaf: at 24 % it floated above the pressed leaf on the empty paper */
+  .hb-tape--b { top: 40%; }
+}
+/* small laptops / landscape tablets: four cards made a row of three and one left alone — two by two instead.
+   Only with exactly four: the memorial page has three, which stand in one row (2 × 2 left one alone there) */
+@media (min-width: 769px) and (max-width: 1060px) and (min-height: 561px) {
+  .tree-more__list:has(> :nth-child(4):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1440px) and (min-height: 561px) {
+  .tmore__eyebrow, .hb-poster__eyebrow { font-size: 13px; }
+  .hb-label__wait { font-size: 13px; }
+  .hb-label__latin { font-size: 12px; }
+}

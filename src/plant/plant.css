@@ -284,7 +284,11 @@ html.motion .pmini__pulse { animation: pmini-pulse 2.4s var(--ease-out) infinite
 .pcs-plaque__count.is-near { color: var(--fruit); }
 .pcs-plaque__again { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding-inline: 4px; font-size: 15px; color: var(--olive-deep); }
 .pcs-plaque__again .icon { width: 18px; height: 18px; }
-.pc-plaque { display: block; width: 100%; height: auto; aspect-ratio: 2.4; }
+/* min-width: a canvas that measures 0 (the phone stage folded away for the map, the full sheet or the keyboard) would
+   be re-rendered by the engraver at its 480 px fallback — a 1600 px wood texture; at 1 px it is a tiny one */
+.pc-plaque { display: block; width: 100%; min-width: 1px; height: auto; aspect-ratio: 2.4; }
+/* the canvas while there is no plaque to show (a workshop): parked at a small size instead of detached (index.ts) */
+.pc__park { position: absolute; inset-block-start: 0; inset-inline-start: 0; width: 80px; height: 0; overflow: hidden; visibility: hidden; pointer-events: none; }
 
 /* gift */
 .pcs-switch {
@@ -580,6 +584,11 @@ html.motion .pmini__pulse { animation: pmini-pulse 2.4s var(--ease-out) infinite
   .pcs-extra__box { grid-area: box; }
   .pcs-extra__title { font-size: 19px; }
   .pcs-plaque__slot { display: block; }
+  /* a whole-pixel height, so index.ts can prepare the wood texture for exactly this canvas size ahead of the step */
+  @supports (height: round(down, 1.5px, 1px)) {
+    .pcs-plaque__slot { container-type: inline-size; }
+    .pcs-plaque__slot .pc-plaque { aspect-ratio: auto; height: round(down, calc(100cqw / 2.4), 1px); }
+  }
   .pcs-plaque__input { min-height: 60px; font-size: 24px; }
   .pcs-gift__grid { grid-template-columns: 1fr; grid-template-areas: 'fields' 'preview'; gap: 22px; }
   .pcard { height: 290px; }
@@ -732,3 +741,79 @@ html.motion .pmini__pulse { animation: pmini-pulse 2.4s var(--ease-out) infinite
 
 /* small prices on the sand surfaces (the stage, a chosen card) keep 4.5:1 — the same fruit, a shade deeper */
 .pst .price:not(.odo), .pc [aria-checked='true'] .price, .pcs-extra:has(input:checked) .price { color: color-mix(in srgb, var(--fruit) 86%, var(--soil)); }
+
+/* ==========================================================================
+   Desktop polish (tablet/desktop only — phones and landscape phones keep the rules above)
+   ========================================================================== */
+/* the stage never sits glued to the bottom of the window (it used to end 8 px above it at 768–1000 px tall), and on
+   big, tall screens (2560×1440) it grows with the window instead of stopping at 900 px — with a bigger tree */
+@media (min-width: 769px) and (min-height: 581px) {
+  .pc {
+    --pc-stage-gap: clamp(24px, 3.2vh, 40px);
+    /* room under the step's buttons: their bottom lines up with the stage's bottom (sticky row below) */
+    --pc-nav-pb: max(var(--pc-stage-gap), min(96px, 100svh - var(--header-h) - 24px - clamp(900px, 46vw, 1180px)));
+  }
+  .pc__stage {
+    height: calc(100svh - var(--header-h) - 24px - var(--pc-stage-gap));
+    max-height: clamp(900px, 46vw, 1180px);
+  }
+  .pst__art { width: min(100cqw, 100cqh * 240 / 260, clamp(443px, 21vw, 540px)); }
+  /* the step's "חזרה / הבא" row stays in the window: on a step taller than the window it waits at the bottom (cream,
+     over the step) instead of being sliced by the window edge (the first step at 1920×940: a 6 px sliver of "הבא");
+     its button lines up with the bottom of the stage. In place (not stuck) wherever the step fits. */
+  .pc__nav {
+    position: sticky; inset-block-end: 0; z-index: 3;
+    padding-block-end: var(--pc-nav-pb);
+    background: var(--pc-bg);
+    transition: background-color calc(var(--t-appear) * var(--pc-speed)) var(--ease-inout);
+  }
+  /* payment below 1024 px: "חזרה" sits under the pay button, in the flow (from 1024 px they share a row, below) */
+  .pc:has(.pcs--checkout:not([hidden])) .pc__nav { position: static; padding-block-end: 0; }
+}
+/* a narrow tablet column: "הבא" without the next step's name (the rail names it) — "הבא · מה מקבלים" did not fit
+   beside "חזרה" at 769 px and stuck 28 px out of the column, against the stage */
+@media (min-width: 769px) and (max-width: 900px) {
+  .pc__next-to { display: none; }
+}
+/* a tall window: the map picker gets more of it (it stayed 380 px at 1440 px tall) */
+@media (min-width: 769px) and (min-height: 1200px) {
+  .pcs-map:not(.pcs-map--mini) { height: clamp(380px, 36vh, 520px); }
+}
+
+/* big screens: the small type grows with the window (13–14.5 px captions read too small at 1920 and up) */
+@media (min-width: 1280px) and (min-height: 581px) {
+  .pc__node { font-size: clamp(13px, 0.78vw, 15px); }
+  .pst__season { font-size: clamp(13.5px, 0.78vw, 15px); max-width: 90%; }
+  .pst__line { font-size: clamp(15px, 0.84vw, 16.5px); padding-block: 6px; }
+  .pst__line dt { font-size: clamp(13.5px, 0.76vw, 15px); }
+  .pst__sub, .pst__monthly { font-size: clamp(15px, 0.82vw, 16.5px); }
+  .pst__trust, .pst__pin, .pst__ws-meta > span { font-size: clamp(14px, 0.78vw, 15px); }
+  /* the card column stops growing at ≈ 1800 px, so card texts stop at the size that still keeps "משבעת המינים, מתיקות
+     של בית" on one line (16 px wrapped it and made the first row of species 23 px taller than the second) */
+  .pcs-card__text { font-size: clamp(14.5px, 0.8vw, 15.4px); text-wrap: balance; }
+  .pcs-extra__text { font-size: clamp(14.5px, 0.8vw, 16px); text-wrap: balance; }
+  .pcs-row__seats, .pcs-plaque__count, .pcs-pay__note { font-size: clamp(14px, 0.78vw, 15px); }
+  .pcs-err { font-size: clamp(13.5px, 0.76vw, 15px); }
+  /* the gift: the fields get the room (the "when" chips no longer break 2 + 1), the postcard stays a postcard */
+  .pcs-gift__grid { grid-template-columns: minmax(0, 1fr) minmax(240px, 0.66fr); }
+}
+
+/* payment: "משלמים" is the step row's own primary button, where "הבא" sits on every other step (and as in the phone
+   bar): "חזרה" on the right, "משלמים" on the left, one row under the same line, waiting at the bottom of the window
+   like every step's buttons. It was the form's own button with "חזרה" stacked under it (and, once side by side, the
+   row was sliced by the window edge at 1440×900 and 1768×900). Below 1024 px the form keeps its button (index.ts). */
+@media (min-width: 1024px) and (min-height: 581px) {
+  .pcs-pay__submit { display: none; }
+  .pc:has(.pcs--checkout:not([hidden])) .pc__nav {
+    position: sticky; padding-block: 28px var(--pc-nav-pb); border-block-start: 1px solid var(--line);
+  }
+  /* …at the size the form's pay button had (.btn--lg): the one big button of the configurator */
+  .pc[data-step='checkout'] .pc__next { min-height: 60px; padding: 0 36px; font-size: 18px; }
+  .pc__next.is-busy { opacity: 0.85; cursor: progress; }
+  html.motion .pc__next.is-busy .pc__next-label { animation: pc-breathe 1.2s ease-in-out infinite; }
+}
+
+/* after paying: the done view lines up with the site's content column (it was 1240 px inside the 1440 px column) */
+@media (min-width: 769px) {
+  .pdone { width: min(100% - 2 * var(--gutter), var(--maxw)); }
+}

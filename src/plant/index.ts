@@ -10,9 +10,9 @@ import { bus } from '../core/bus';
 import { gsap, EASE } from '../core/gsap';
 import { track } from '../core/analytics';
 import { sound } from '../core/sound';
-import { scrollTo } from '../core/scroll';
+import { scrollTo, whenScrollQuiet } from '../core/scroll';
 import { refreshChrome } from '../chrome';
-import { createPlaqueEngraver, type PlaqueEngraver } from '../components/plaque';
+import { createPlaqueEngraver, renderPlaque, PLAQUE_ASPECT, type PlaqueEngraver } from '../components/plaque';
 import { icon } from './art';
 import {
   STEPS, PRODUCT_TITLE, PRODUCT_TAB, stepTitle, stepShort, speciesName, extraTitle, BENCH_ITEMS, WORKSHOPS,
@@ -53,6 +53,8 @@ export function initPlant(root: HTMLElement) {
   const store = createStore(fromUrl());
   let motion = env.motionAllowed();
   const mq = window.matchMedia('(max-width: 768px)');
+  // desktop from 1024 px: the step row's "next" button is also the pay button (plant.css hides the form's own one)
+  const payInNav = window.matchMedia('(min-width: 1024px) and (min-height: 581px)');
 
   root.innerHTML = `
     <div class="pc" data-product="" data-step="">
@@ -72,7 +74,7 @@ export function initPlant(root: HTMLElement) {
           <div class="pc__nav">
             <button type="button" class="btn btn--outline pc__back">${icon('back', 'icon')}<span>חזרה</span></button>
             <p class="pc__err" role="alert"></p>
-            <button type="button" class="btn pc__next" data-magnetic><span class="pc__next-label">הבא</span><span class="pc__next-to"></span>${icon('fwd', 'icon arrow-fwd')}</button>
+            <button type="button" class="btn pc__next" data-magnetic data-cookie-avoid><span class="pc__next-label">הבא</span><span class="pc__next-to"></span>${icon('fwd', 'icon arrow-fwd')}</button>
           </div>
         </div>
       </div>
@@ -84,6 +86,7 @@ export function initPlant(root: HTMLElement) {
       </div>
       <p class="pc-bar__err" role="alert"></p>
       <div class="sr-only" aria-live="polite" data-announce></div>
+      <div class="pc__park" aria-hidden="true"></div>
     </div>`;
 
   const pc = root.querySelector<HTMLElement>('.pc')!;
@@ -135,6 +138,11 @@ export function initPlant(root: HTMLElement) {
   };
 
   const stage = createStage(ctx, q<HTMLElement>('.pc__stage'));
+  // the canvas is in place before the engraver's first draw: it sizes itself (and its wood texture) from the canvas'
+  // CSS size, and a detached canvas reads as 480 px wide — a 1600 px wood texture made and thrown away on every load
+  // (≈ 1 s at 4× CPU on a phone, right in the intro). Without a home (a workshop) it waits in a small hidden park.
+  const park = q<HTMLElement>('.pc__park');
+  (store.get().product === 'workshop' ? park : stage.plaqueHome).appendChild(canvas);
   const barOdo = createOdometer(q<HTMLElement>('.pc-bar__odo'), ctx.pricing().total, { motion: ctx.motion, speed: ctx.speed });
   engraver = createPlaqueEngraver(canvas, {
     memorial: ctx.memorial(),
@@ -261,7 +269,7 @@ export function initPlant(root: HTMLElement) {
     const nxt = steps[i + 1];
     backBtn.hidden = i === 0;
     barBack.hidden = i === 0;
-    nextBtn.hidden = current === 'checkout';
+    nextBtn.hidden = current === 'checkout' && !payInNav.matches;
     q<HTMLElement>('.pc__next-label').innerHTML = isoPrices(cta?.label ?? 'הבא');
     q<HTMLElement>('.pc__next-to').textContent = !cta && nxt ? stepTitle(nxt, s.product) : '';
     const nextName = cta?.label ?? (nxt ? `הבא: ${stepTitle(nxt, s.product)}` : 'הבא');
@@ -324,14 +332,62 @@ export function initPlant(root: HTMLElement) {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-step]');
     if (b) go(b.dataset.step as StepId, { focus: true });
   });
+  // desktop: the step's buttons wait at the bottom of the window (plant.css) — a control reached with Tab that lands
+  // under them comes up above them (Tab's own scrolling only brings it to the window's edge)
+  const navEl = q<HTMLElement>('.pc__nav');
+  stepsHost.addEventListener('focusin', (e) => {
+    if (mq.matches) return;
+    const t = e.target as HTMLElement;
+    requestAnimationFrame(() => {
+      const r = t.getBoundingClientRect();
+      const n = navEl.getBoundingClientRect();
+      if (getComputedStyle(navEl).position !== 'sticky' || n.bottom < window.innerHeight - 1 || r.bottom <= n.top - 8) return;
+      const headerH = parseFloat(getComputedStyle(html).getPropertyValue('--header-h')) || 76;
+      const by = Math.min(r.bottom - n.top + 16, r.top - headerH - 16);
+      if (by > 4) scrollTo(window.scrollY + by, { offset: 0, immediate: true });
+    });
+  });
 
   /* ---------- the plaque lives in the stage; on phones the plaque step shows it big above the input ---------- */
   const placePlaque = () => {
     const s = store.get();
     const slot = mq.matches && current === 'plaque' ? views.get('plaque')?.plaqueSlot : stage.plaqueHome;
-    const target = s.product === 'workshop' ? null : slot;
-    if (!target) { canvas.remove(); return; }
+    // no plaque (a workshop): parked, not detached — a detached canvas would be re-sized to the 480 px fallback
+    const target = (s.product === 'workshop' ? null : slot) ?? park;
     if (canvas.parentElement !== target) { target.appendChild(canvas); engraver.resize(); }
+  };
+  /* phones: the plaque step shows the plaque big above the input — a new canvas size, so the engraver needs a new
+     wood texture (≈ 0.9 Mpx: about 1 s at 4× CPU), which used to be generated in the middle of the step change.
+     It is made ahead, at a quiet moment before that step, at exactly the size the slot will have (plant.css gives
+     the slot's canvas a whole-pixel height for that), into the plaque component's own cache. */
+  const warmed = new Set<string>();
+  const warmPlaqueStep = () => {
+    if (!mq.matches) return;
+    const s = store.get();
+    const steps = STEPS[s.product];
+    if (!steps.includes('plaque') || steps.indexOf(current!) >= steps.indexOf('plaque')) return;
+    const cs = getComputedStyle(scrollEl);
+    const cw = scrollEl.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    if (!(cw > 0)) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1) * 2; // the engraver's backing: CSS px × min(2, DPR) × resolution 2
+    const w = Math.round(cw * dpr), h = Math.round(Math.floor(cw / PLAQUE_ASPECT) * dpr);
+    const key = `${w}x${h}:${ctx.memorial()}`;
+    if (warmed.has(key)) return;
+    warmed.add(key);
+    const c = document.createElement('canvas');
+    renderPlaque(c, '', { width: w, height: h, memorial: ctx.memorial() });
+    c.width = c.height = 0;
+  };
+  // after the intro and away from any change (a tree grows, then the bird lands: ~3.5 s), never under a finger or
+  // during momentum
+  let lastActivity = performance.now();
+  let warmT = 0;
+  const scheduleWarm = () => {
+    if (!mq.matches) return;
+    clearTimeout(warmT);
+    warmT = window.setTimeout(() => whenScrollQuiet(() => {
+      if (performance.now() - lastActivity < 2400) scheduleWarm(); else warmPlaqueStep();
+    }), 4000);
   };
   const describePlaque = () => {
     const t = store.get().text.trim();
@@ -347,11 +403,14 @@ export function initPlant(root: HTMLElement) {
 
   /* ---------- store → UI ---------- */
   store.subscribe((s, p) => {
-    if (s.product !== p.product) { build(); setMood(s); stage.update(s, p); barOdo.set(ctx.pricing(s).total); placePlaque(); return; }
+    lastActivity = performance.now();
+    if (s.product !== p.product) { build(); setMood(s); stage.update(s, p); barOdo.set(ctx.pricing(s).total); placePlaque(); scheduleWarm(); return; }
     views.forEach((v) => v.update?.(s, p));
     stage.update(s, p);
     if (s.text !== p.text) { engraver.setText(s.text); describePlaque(); }
     if (s.occasion !== p.occasion) setMood(s);
+    // the memorial plank has its own (greyer) texture: the plaque step's one is made ahead again, at the next quiet moment
+    if (isMemorial(s) !== isMemorial(p)) scheduleWarm();
     barOdo.set(ctx.pricing(s).total);
     if (s.step !== p.step) {
       const steps = STEPS[s.product];
@@ -399,11 +458,14 @@ export function initPlant(root: HTMLElement) {
   grab.addEventListener('pointerup', endDrag);
   grab.addEventListener('pointercancel', endDrag);
   const vv = window.visualViewport;
+  let vvh = '';
   const onVV = () => {
     if (!vv) return;
     const kb = window.innerHeight - vv.height > 140;
-    pc.style.setProperty('--vvh', `${vv.height}px`);
-    pc.classList.toggle('is-typing', kb && mq.matches);
+    // written only when it changes: --vvh on .pc restyles the whole configurator
+    const h = `${vv.height}px`;
+    if (h !== vvh) { vvh = h; pc.style.setProperty('--vvh', h); }
+    if (pc.classList.contains('is-typing') !== (kb && mq.matches)) pc.classList.toggle('is-typing', kb && mq.matches);
     if (kb && mq.matches && current !== 'plaque') {
       const a = document.activeElement as HTMLElement | null;
       if (a && scrollEl.contains(a)) requestAnimationFrame(() => a.scrollIntoView({ block: 'center', behavior: 'auto' }));
@@ -412,6 +474,7 @@ export function initPlant(root: HTMLElement) {
   vv?.addEventListener('resize', onVV);
   // the stage collapses only while the on-screen keyboard is really open (visualViewport), never on focus alone —
   // otherwise tapping a chip below a focused field would move it under the finger
+  payInNav.addEventListener('change', () => { if (current) paintNav(); });
   mq.addEventListener('change', () => {
     placePlaque();
     // a phone turned back to portrait: the sheet starts at the top of the (now locked) page
@@ -443,15 +506,24 @@ export function initPlant(root: HTMLElement) {
     const s = store.get();
     const pr = ctx.pricing(s);
     sound.play('click');
+    const paid = wait(motion ? 1500 : 250);
     // the certificate (and its QR encoder) loads while the "payment" runs — off the page's critical path
-    const [{ createDoneView }] = await Promise.all([import('./certificate'), wait(motion ? 1500 : 250)]);
+    const cert = import('./certificate');
+    // the certificate's plaque picture (a 960 px plank + PNG encoding: ≈ 0.5 s at 4× CPU) is made during the mock
+    // payment too — once "מעבדים את התשלום…" has painted — not in the frame that starts the cross-fade
+    const frame = () => new Promise<void>((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+    await frame();
+    const plaqueUrl = s.product === 'workshop' ? null : engraver.toDataURL();
+    // …and so is the done view itself (the QR code, the certificate's DOM), in its own task
+    const { createDoneView } = await cert;
+    await frame();
+    const done: DoneView = createDoneView(ctx, s, buyer, plaqueUrl);
+    await paid;
     const id = `OF-${Date.now().toString().slice(-6)}`;
     track('purchase', {
       transaction_id: id, value: pr.total, currency: 'ILS', payment_type: buyer.method,
       items: pr.lines.map((l) => ({ item_id: l.id, item_name: l.label, price: l.amount })),
     });
-    const plaqueUrl = s.product === 'workshop' ? null : engraver.toDataURL();
-    const done: DoneView = createDoneView(ctx, s, buyer, plaqueUrl);
     root.appendChild(done.el);
     html.classList.add('pc-has-cert');
     // the address bar no longer says "checkout": a reload or a shared link opens the configurator at its first step
@@ -460,6 +532,8 @@ export function initPlant(root: HTMLElement) {
       history.replaceState({ ...(history.state ?? {}), plant: true, done: true }, '', `${location.pathname}${toQuery({ ...s, step: STEPS[s.product][0] })}${location.hash}`);
     } catch { /* sandboxed */ }
     const swap = () => {
+      // the live plaque is done (its picture is on the certificate): no re-render when its canvas is hidden with the form
+      engraver.destroy();
       pc.hidden = true;
       html.classList.remove('pc-sheet');
       window.scrollTo({ top: 0, behavior: 'auto' });
@@ -479,6 +553,7 @@ export function initPlant(root: HTMLElement) {
   describePlaque();
   placePlaque();
   if (s0.text.trim() && motion) engraver.burnAll({ from: 0, duration: Math.max(1.4, s0.text.length * 0.08) });
+  scheduleWarm();
   track('view_item', {
     currency: 'ILS', value: ctx.pricing(s0).base,
     items: [{ item_id: `${s0.product}`, item_name: ctx.mainLabel(s0), item_category: s0.product }],

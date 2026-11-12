@@ -10,6 +10,7 @@ import { sound } from '../core/sound';
 import type { SpeciesId } from '../components/forest-map';
 import { SAPLING, SPECIES_ART, TREE_VB, GROUND, GRASS, ROOTS, ICONS, icon, type IconName } from './art';
 import { createOdometer, type Odometer } from './odometer';
+import './draw'; // plantDraw: DrawSVG without the per-frame re-measure of non-scaling strokes
 import { summaryRows } from './steps-flow';
 import { speciesText, stepShort, WORKSHOPS, type StepId, type ExtraId, type BenchItemId, type WorkshopId } from './catalog';
 import type { PlantState } from './store';
@@ -184,16 +185,16 @@ export function createStage(ctx: Ctx, host: HTMLElement): Stage {
         .to(bird, { opacity: 0, y: -14, x: 10, duration: 0.3, ease: 'power2.in' }, 0)
         .to(trunk, { morphSVG: SAPLING.trunk, duration: 0.5 * sp1, ease: 'power3.inOut' }, 0.05)
         .to(crown, { morphSVG: SAPLING.crown, duration: 0.5 * sp1, ease: 'power3.inOut' }, 0.05)
-        .to(roots, { drawSVG: '0% 12%', duration: 0.4 * sp1, ease: 'power2.inOut' }, 0.05);
+        .to(roots, { plantDraw: '0% 12%', duration: 0.4 * sp1, ease: 'power2.inOut' }, 0.05);
     } else {
-      tl.set(trunk, { attr: { d: SAPLING.trunk } }).set(crown, { attr: { d: SAPLING.crown } }).set(roots, { drawSVG: '0% 0%' })
+      tl.set(trunk, { attr: { d: SAPLING.trunk } }).set(crown, { attr: { d: SAPLING.crown } }).set(roots, { plantDraw: '0% 0%' })
         .set([details, marks], { opacity: 0 });
       if (first) tl.fromTo([trunk, crown], { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.6, ease: EASE.appear });
     }
     tl.add(() => { fillDetails(sp); gsap.set(details.children, { opacity: 0 }); sound.play('rustle', { volume: 0.5 }); })
       .to(trunk, { morphSVG: a.trunk, duration: 1.3 * sp1, ease: 'expo.out' })
       .to(crown, { morphSVG: a.crown, duration: 1.5 * sp1, ease: 'expo.out' }, '<0.12')
-      .to(roots, { drawSVG: '0% 100%', duration: 1.4 * sp1, ease: 'power3.out' }, '<')
+      .to(roots, { plantDraw: '0% 100%', duration: 1.4 * sp1, ease: 'power3.out' }, '<')
       .to(marks, { opacity: 1, duration: 0.8 * sp1 }, '<0.5')
       .set(details, { opacity: 1 }, '<')
       .add(() => {
@@ -237,7 +238,7 @@ export function createStage(ctx: Ctx, host: HTMLElement): Stage {
       props.appendChild(wrap);
       if (ctx.motion()) {
         const path = wrap.querySelector('path')!;
-        gsap.fromTo(path, { drawSVG: '0%' }, { drawSVG: '100%', duration: 1.1 * ctx.speed(), ease: 'power2.inOut' });
+        gsap.fromTo(path, { plantDraw: '0%' }, { plantDraw: '100%', duration: 1.1 * ctx.speed(), ease: 'power2.inOut' });
         gsap.fromTo(wrap, { y: -8, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7 * ctx.speed(), ease: ctx.memorial() ? EASE.soft : EASE.game });
       }
     }
@@ -247,7 +248,7 @@ export function createStage(ctx: Ctx, host: HTMLElement): Stage {
     if (!on) { corner.innerHTML = ''; return; }
     if (corner.childElementCount) return;
     corner.innerHTML = CORNER_PROPS.map((p) => `${p.hang ? `<path d="${p.hang}" ${NS}/>` : ''}<g transform="${p.t}"><path d="${ICONS[p.icon]}" ${NS}/></g>`).join('');
-    if (ctx.motion()) gsap.fromTo(corner.querySelectorAll('path'), { drawSVG: '0%' }, { drawSVG: '100%', duration: 1.2, stagger: 0.12, ease: 'power2.inOut' });
+    if (ctx.motion()) gsap.fromTo(corner.querySelectorAll('path'), { plantDraw: '0%' }, { plantDraw: '100%', duration: 1.2, stagger: 0.12, ease: 'power2.inOut' });
   };
 
   /** carpentry: the piece draws itself in front of the olive (lines first, then the wood fills in) */
@@ -260,7 +261,7 @@ export function createStage(ctx: Ctx, host: HTMLElement): Stage {
     if (key && ctx.motion()) {
       const sp = ctx.speed();
       const paths = build.querySelectorAll('path');
-      gsap.fromTo(paths, { drawSVG: '0%' }, { drawSVG: '100%', duration: 1.2 * sp, stagger: 0.08 * sp, ease: 'power2.inOut' });
+      gsap.fromTo(paths, { plantDraw: '0%' }, { plantDraw: '100%', duration: 1.2 * sp, stagger: 0.08 * sp, ease: 'power2.inOut' });
       gsap.fromTo(build.querySelectorAll('.pst__wood, .pst__flame'), { fillOpacity: 0 }, { fillOpacity: 1, duration: 0.7 * sp, delay: 0.7 * sp, ease: 'power1.out' });
     }
   };

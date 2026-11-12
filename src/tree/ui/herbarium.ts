@@ -205,15 +205,20 @@ export class Herbarium {
     const lay = () => {
       this.io?.disconnect();
       const motion = this.ctx.motion();
+      // every pivot measured first, then the tweens written: measuring between the writes forced a layout per leaf
+      const spots = fresh.map((s) => {
+        const svg = s.querySelector<SVGSVGElement>('.hb-svg');
+        return motion && svg ? spot(svg) : null;
+      });
       fresh.forEach((s, i) => {
         const svg = s.querySelector<SVGSVGElement>('.hb-svg');
         const tapes = s.querySelectorAll('.hb-tape');
         const label = s.querySelectorAll('.hb-label > *');
-        if (motion && svg) {
+        const k = spots[i];
+        if (k && svg) {
           // The leaf falls in on the outer <svg> (a box the compositor can move), not on the <g> inside it: an SVG
           // child's transform repaints the whole drawing every frame, its paper-grain filter (feTurbulence) included.
           // Same motion as before: 60 viewBox units of drop, the pivot at 50% / 80% of the drawing itself.
-          const k = spot(svg);
           const tl = gsap.timeline({ delay: 0.3 + i * 0.35 });
           tl.call(() => sound.play('paper', { volume: 0.6 }))
             .fromTo(svg, { y: -60 * k.scale, rotation: -14, opacity: 0, transformOrigin: k.origin }, { y: 0, rotation: 0, opacity: 1, duration: 1.4, ease: 'expo.out', clearProps: 'transform' })

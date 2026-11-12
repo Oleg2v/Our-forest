@@ -316,3 +316,14 @@
   .wp { row-gap: 4px; }
   .wp-side { min-height: 56px; }
 }
+
+/* Desktop polish — large screens: the panel's small print reads at ≥ 14 px */
+@media (min-width: 1440px) and (min-height: 561px) {
+  .wp__honest { font-size: 14px; }
+  .wp__alt, .wp__goal-t { font-size: 14px; }
+}
+/* the note's two lines are balanced, so its end does not break off ("…לפי מה / שהעץ צריך"). `pretty` did not do it:
+   Chrome only lifts a single-word last line, and this one is two words (verification) */
+@media (min-width: 769px) and (min-height: 561px) {
+  .wp__honest { text-wrap: balance; }
+}

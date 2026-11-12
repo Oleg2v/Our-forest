@@ -278,6 +278,9 @@ export function initTreePage(main: HTMLElement) {
       <button class="tree-pager__arr" type="button" data-dir="1" aria-label="העץ הבא">${icon('arrow')}</button>
     </nav>`);
     if (env.isMobile()) stage.appendChild(pager); else stage.querySelector('[data-head]')!.prepend(pager);
+    // a flag, not .tree-stage:has(.tree-pager): a :has() on the stage made every text change inside it (the scene's
+    // labels, the clock) re-check the whole stage subtree
+    stage.toggleAttribute('data-pager', true);
     pager.querySelectorAll<HTMLButtonElement>('[data-dir]').forEach((b) => b.addEventListener('click', () => go(familyIdx + Number(b.dataset.dir))));
     pager.querySelectorAll<HTMLButtonElement>('[data-i]').forEach((b) => b.addEventListener('click', () => go(Number(b.dataset.i))));
   }
@@ -333,10 +336,12 @@ export function initTreePage(main: HTMLElement) {
       const when = savedKey === israelDateKey() ? hm : `${ilDate(savedKey)}, ${hm}`;
       offlineBanner = el(`<p class="tree-offline" role="status">${icon('wifiOff')}<span class="tree-offline__long">אין חיבור כרגע. מוצגת הגרסה האחרונה ששמרנו (<bdi>${ilDate(savedKey)}, ${hm}</bdi>). השקיה תישמר ותישלח כשהחיבור יחזור.</span><span class="tree-offline__short">אין חיבור כרגע · מוצגת הגרסה מ־<bdi>${when}</bdi></span></p>`);
       stage.appendChild(offlineBanner);
+      stage.toggleAttribute('data-offline', true); // the flag tree.css reads (no :has() on the stage)
       if (env.motionAllowed()) gsap.fromTo(offlineBanner, { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.8, ease: 'expo.out' });
     }
     if (!off) {
       offlineBanner?.remove(); offlineBanner = null;
+      stage.toggleAttribute('data-offline', false);
       const q = store.flush();
       if (q.length) {
         panel.flushed(q.length);
@@ -368,6 +373,7 @@ export function initTreePage(main: HTMLElement) {
     if (prev === 'offline' && f !== 'offline') setOffline(!navigator.onLine);
     if (f !== 'multi' && pager) {
       pager.remove(); pager = null;
+      stage.toggleAttribute('data-pager', false);
       if (ctx.tree.id !== base.id) { ctx.tree = base; ctx.store = store = new TreeStore(base.id); timeline.rebuild(); feed.render(); herb.render(); about.render(); }
     }
     ctx.override = {};

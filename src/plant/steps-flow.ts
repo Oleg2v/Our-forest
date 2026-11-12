@@ -421,6 +421,13 @@ export function checkoutStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): Step
     submit.disabled = true;
     form.querySelector('.pcs-pay__label')!.textContent = 'מעבדים את התשלום…';
     ctx.root.querySelector<HTMLButtonElement>('.pc-bar__next')?.setAttribute('disabled', '');
+    // desktop from 1024 px: the step row's button is the pay button (plant.css) — it says so too
+    const navPay = ctx.root.querySelector<HTMLButtonElement>('.pc__next');
+    const navLabel = navPay?.querySelector<HTMLElement>('.pc__next-label');
+    const navWas = navLabel?.innerHTML ?? '';
+    navPay?.classList.add('is-busy');
+    navPay?.setAttribute('aria-disabled', 'true');
+    if (navLabel) navLabel.textContent = 'מעבדים את התשלום…';
     try {
       await ctx.purchase({ name: name.value.trim(), phone: phone.value.trim(), email: email.value.trim(), method });
     } finally {
@@ -428,6 +435,9 @@ export function checkoutStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): Step
       form.classList.remove('is-busy');
       submit.disabled = false;
       ctx.root.querySelector<HTMLButtonElement>('.pc-bar__next')?.removeAttribute('disabled');
+      navPay?.classList.remove('is-busy');
+      navPay?.removeAttribute('aria-disabled');
+      if (navLabel) navLabel.innerHTML = navWas;
       paintLabel();
     }
   };

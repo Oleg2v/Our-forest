@@ -30,6 +30,11 @@
 .credits__lic { font-size: calc(14.5px * var(--a11y-k, 1)); white-space: nowrap; }
 .credits__lic a { color: var(--olive-deep); }
 
+/* desktop polish: the "where on the site" line reads at 14 px on large screens */
+@media (min-width: 1440px) and (min-height: 561px) {
+  .credits__where { font-size: calc(14px * var(--a11y-k, 1)); }
+}
+
 @media (max-width: 900px) {
   .credits__photos { grid-template-columns: 1fr; }
   .credits__row { grid-template-columns: 1fr; gap: 4px; }

@@ -89,6 +89,12 @@ html[data-season='winter'] .nf__stage { --leaf-fill: var(--olive-deep); --leaf-v
 }
 .nf__stage[data-hint] .nf__hint { opacity: 1; }
 
+/* desktop polish: the hint sat across the first tuft of grass (its top crossed the grass line) — lower in the soil,
+   clear of the tufts at every height, and on the content column (the header's edge) rather than the screen edge */
+@media (min-width: 769px) and (min-height: 561px) {
+  .nf__hint { inset-block-end: calc(var(--ground) * 0.22); inset-inline-end: max(var(--gutter), (100% - var(--maxw)) / 2); }
+}
+
 @media (max-width: 768px) {
   .nf__stage { align-items: start; padding-block: calc(var(--header-h) + var(--safe-top) + 40px) calc(var(--ground) + var(--mbar-space, 0px) + 24px); --ground: 96px; }
   .nf__title { font-size: clamp(60px, 18vw, 84px); max-width: 3.4em; }

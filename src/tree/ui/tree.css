@@ -548,8 +548,10 @@
     margin: 0;
   }
   /* several trees: the island steps back a little so the pager sits under it, not on its soil */
-  .tree-stage:has(.tree-pager) { --tree-scene-fill: 0.37; }
-  .tree-stage:has(.tree-pager) .tree-caption, .tree-stage:has(.tree-offline) .tree-caption, .tree-stage[data-time] .tree-caption { opacity: 0; }
+  /* [data-pager] / [data-offline] are set by index.ts with the pager / the offline note: a :has() here made every
+     text change inside the stage (the scene's labels, the clock) re-check the whole stage subtree */
+  .tree-stage[data-pager] { --tree-scene-fill: 0.37; }
+  .tree-stage[data-pager] .tree-caption, .tree-stage[data-offline] .tree-caption, .tree-stage[data-time] .tree-caption { opacity: 0; }
   /* phones: one quiet line in the caption's place, between the island and the panel (not over the island) */
   .tree-offline__long { display: none; }
   .tree-offline__short { display: inline; }
@@ -567,7 +569,7 @@
 }
 @media (max-width: 768px) and (max-height: 700px) {
   .tree-stage { --tree-scene-cy: 0.33; --tree-scene-fill: 0.34; }
-  .tree-stage:has(.tree-pager) { --tree-scene-fill: 0.31; }
+  .tree-stage[data-pager] { --tree-scene-fill: 0.31; }
 }
 
 /* before planting there is no history to scrub yet: the countdown speaks instead of the timeline */
@@ -617,3 +619,34 @@ html.no-motion .tree-candle__flame, html.no-motion .tree-candle__glow { animatio
 }
 .tree-stage[data-plaque]::before, .tree-stage[data-zoomed]::before { opacity: 1; }
 
+
+/* ==========================================================================
+   Desktop polish (≥ 769 px wide and ≥ 561 px tall: phones, landscape ones included, are untouched)
+   ========================================================================== */
+@media (min-width: 769px) and (min-height: 561px) {
+  /* Wide screens: the UI around the island (title + panel, readout, demo button, timeline, cards, the plaque card)
+     stands on the site's content column, like the header above it — it used to hug the screen edges
+     (56 px) while the header's logo and links sit on the 1440 px column: 108 px apart at 1768, 504 px at 2560.
+     --gutter is redefined for the stage only; 100cqw is the stage's own width (the header's 100 %), so the edges
+     meet the header's to the pixel. Up to 1552 px wide it is the same --gutter as before. */
+  .tree-stage {
+    container-type: inline-size;
+    --gutter: max(clamp(16px, 4vw, 56px), (100cqw - var(--maxw)) / 2);
+  }
+  /* (verification) the island's rim reaches ~2 % of the stage height below its nominal box, so a fixed 22 px left the
+     caption glued to it (4–8 px at 900–1080 tall) and, on the taller stage below (1440, 1600), the rim cut through the
+     caption's words. The gap now grows with the island: 11 px clear at 768 tall, 17 at 900, 20 at 1080, 27 at 1440. */
+  .tree-caption { top: calc((var(--tree-scene-cy) + var(--tree-scene-fill) * 0.5) * 100% + max(22px, var(--tree-scene-fill) * 6%)); }
+}
+/* tall wide screens (1920×1200, 2560×1440 …): the stage was capped at 1180 px, so a band of the next section's
+   empty paper showed under the timeline on the first screen. Landscape desktops let it fill the screen. */
+@media (min-width: 1101px) and (min-height: 561px) and (min-aspect-ratio: 4/3) {
+  .tree-stage { max-height: 1600px; }
+}
+/* large screens: the small print around the island reads at ≥ 14 px */
+@media (min-width: 1440px) and (min-height: 561px) {
+  .tree-cond { font-size: 15px; }
+  .tree-cond__t { font-size: 13px; }
+  .ttl__labels, .ttl__lab { font-size: 14px; }
+  .tree-demo-btn { font-size: 14px; }
+}
