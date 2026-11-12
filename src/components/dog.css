@@ -1,0 +1,36 @@
+/* The line-art dog (src/components/dog.ts) */
+.dog-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 3;
+  contain: layout style;
+}
+.dog {
+  position: absolute;
+  inset-block-start: 0;
+  left: 0; /* physical: the dog is placed with translate3d in px from the host's left edge */
+  width: 72px;
+  height: 58px;
+  color: inherit;
+  will-change: transform;
+}
+.dog__flip {
+  width: 100%;
+  height: 100%;
+  transition: transform 0.18s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.dog__svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform-origin: 30% 85%;
+}
+.dog__svg path { stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.dog__far { opacity: 0.5; }
+.dog__dot { fill: currentColor; stroke: none; }

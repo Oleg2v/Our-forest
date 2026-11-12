@@ -1,0 +1,299 @@
+/* ==========================================================================
+   Home 3 — "מתחת לפני השטח" (under the ground).
+   Desktop + motion: a ~320vh pinned stage; the "world" inside is a tall
+   cross-section (cream surface → soil) that the camera descends through
+   while one root system grows from the sapling to the five directions.
+   Phone: one vertical root line through the whole section, nodes light up in
+   turn. Reduced motion: no pin, everything drawn and visible.
+   ========================================================================== */
+.roots {
+  --roots-sky: 30vh;
+  --photo-w: min(26vw, 400px);
+  --dot: 68px;
+  --root: color-mix(in srgb, var(--sage) 70%, transparent);
+  --root-fine: color-mix(in srgb, var(--sage) 36%, transparent);
+  --root-ghost: color-mix(in srgb, var(--sage) 14%, transparent);
+  position: relative;
+  color: var(--cream);
+  background: var(--soil);
+}
+.roots__anchor { position: absolute; inset-inline-start: 0; inset-block-start: 0; width: 1px; height: 1px; pointer-events: none; }
+.roots__stage { position: relative; }
+.roots__world { position: relative; }
+
+/* ---------- above ground → below ground ---------- */
+.roots__sky { height: var(--roots-sky); background: var(--cream); }
+.roots__ground { position: relative; background: var(--soil); }
+.roots__surface {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 0;
+  height: 56px;
+  transform: translateY(-100%);
+  pointer-events: none;
+  z-index: 1;
+}
+.roots__surface svg { width: 100%; height: 100%; overflow: visible; }
+.roots__surface-fill { fill: var(--soil); }
+.roots__surface-edge { fill: none; stroke: var(--bark); stroke-width: 1.5; stroke-linecap: round; opacity: 0.55; vector-effect: non-scaling-stroke; }
+.roots__grass { fill: none; stroke: var(--olive); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+
+/* soil: warm topsoil band + light grain that reads on a dark ground (the site grain is multiply) */
+.roots__texture { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+.roots__texture::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: min(70vh, 640px);
+  background: linear-gradient(to bottom, rgb(107 74 46 / 0.34), rgb(107 74 46 / 0));
+}
+.roots__texture::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.09;
+  mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.98 0 0 0 0 0.94 0 0 0 0 0.9 0 0 0 1.6 -0.55'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* ---------- the story ---------- */
+.roots__story {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  align-items: start;
+  column-gap: clamp(32px, 6vw, 112px);
+  width: min(100% - 2 * var(--gutter), var(--maxw));
+  margin-inline: auto;
+  min-height: calc(100vh - var(--roots-sky));
+  padding-block-start: clamp(28px, 5vh, 60px);
+}
+.roots__photo { grid-column: 2; grid-row: 1; justify-self: center; width: var(--photo-w); margin-block-start: calc(var(--photo-w) * -0.5); }
+.roots__frame {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border-radius: var(--leaf);
+  overflow: hidden;
+  background: var(--bark);
+  transform: translateZ(0);
+}
+.roots__frame picture { display: contents; }
+.roots__img { position: absolute; inset: -6% 0 auto; width: 100%; height: 112%; object-fit: cover; }
+.roots__art {
+  position: absolute; inset: 8% 10% 0; width: 80%; height: 92%;
+  fill: none; stroke: var(--cream); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85;
+}
+.roots__art path { vector-effect: non-scaling-stroke; }
+.roots__art-thin { opacity: 0.55; }
+.roots__frame:has(img:not([data-img-pending])) .roots__art,
+.roots__frame--real .roots__art { display: none; }
+
+.roots__copy { grid-column: 1; grid-row: 1; max-width: 700px; padding-block-start: clamp(4px, 1.5vh, 20px); }
+.roots__eyebrow { color: var(--sage); margin-block-end: clamp(18px, 3.2vh, 36px); }
+.roots__eyebrow::before { content: ''; inline-size: 36px; block-size: 1px; background: currentColor; opacity: 0.8; }
+.roots__title {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(52px, 7vw, 118px);
+  line-height: 0.95;
+  letter-spacing: -0.015em;
+  color: var(--cream);
+  margin-block-end: clamp(22px, 4vh, 44px);
+  text-wrap: balance;
+}
+.roots__text {
+  font-size: clamp(18px, 1.32vw, 21px);
+  font-weight: 300;
+  line-height: 1.7;
+  color: rgb(var(--cream-rgb) / 0.86);
+  max-width: 40ch;
+}
+
+/* ---------- descent ---------- */
+.roots__gap { height: 22vh; }
+
+/* ---------- the five directions ---------- */
+.roots__net { position: relative; z-index: 2; height: max(100vh, 760px); }
+.roots__net-title {
+  position: absolute;
+  inset-inline-start: var(--gutter);
+  inset-block-start: clamp(40px, 7vh, 88px);
+  max-width: 8.5em;
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(40px, 4.4vw, 74px);
+  line-height: 1;
+  color: var(--cream);
+  text-wrap: balance;
+}
+.roots__nodes { list-style: none; padding: 0; position: absolute; inset: 0; pointer-events: none; }
+.roots__node {
+  --w: clamp(190px, 17vw, 260px);
+  position: absolute;
+  width: var(--w);
+  inset-inline-start: calc(var(--x) * 100% - var(--w) / 2);
+  inset-block-start: calc(var(--y) * 100% - var(--dot) / 2);
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  pointer-events: auto;
+}
+/* positions: --x from the inline-start (right) edge, --y down the block */
+.roots__node[data-node='nature']    { --x: 0.2;  --y: 0.36; }
+.roots__node[data-node='dogs']      { --x: 0.8;  --y: 0.46; }
+.roots__node[data-node='teams']     { --x: 0.3;  --y: 0.6; }
+.roots__node[data-node='workshops'] { --x: 0.68; --y: 0.66; }
+.roots__node[data-node='soil']      { --x: 0.5;  --y: 0.76; }
+@media (max-width: 1100px) and (min-width: 769px) {
+  .roots__node { --w: 200px; }
+  .roots__node[data-node='teams']     { --x: 0.24; }
+  .roots__node[data-node='workshops'] { --x: 0.74; --y: 0.64; }
+  .roots__node[data-node='soil']      { --y: 0.75; }
+}
+
+.roots__dot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--dot);
+  height: var(--dot);
+  margin-block-end: 18px;
+  border-radius: 50%;
+  background: var(--soil);
+  box-shadow: inset 0 0 0 1px var(--root-ghost);
+}
+/* soft halo when lit (--lit is tweened 0 → 1) */
+.roots__dot::before {
+  content: '';
+  position: absolute;
+  inset: -55%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(var(--cream-rgb) / 0.2) 0%, color-mix(in srgb, var(--sage) 12%, transparent) 38%, transparent 68%);
+  opacity: calc(var(--lit, 0) * 0.6 + var(--glow, 0) * 0.4);
+  pointer-events: none;
+  z-index: -1;
+}
+.roots__ring {
+  position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible;
+  fill: none; stroke: var(--cream); stroke-width: 1.25; opacity: 0.9;
+}
+.roots__ring circle { vector-effect: non-scaling-stroke; }
+.roots__icon { position: relative; width: calc(var(--dot) * 0.44); height: calc(var(--dot) * 0.44); color: var(--cream); }
+.roots__node-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(24px, 2.05vw, 32px);
+  line-height: 1.1;
+  color: var(--cream);
+  margin-block-end: 8px;
+  text-wrap: balance;
+}
+.roots__node-text { font-size: 16px; font-weight: 300; line-height: 1.5; color: rgb(var(--cream-rgb) / 0.74); max-width: 22ch; text-wrap: balance; }
+
+/* ---------- generated layers ---------- */
+/* SVG user space is physical px of the world box, so the overlay is anchored at its physical origin */
+.roots__lines {
+  position: absolute;
+  inset-block-start: 0;
+  left: 0;
+  z-index: 1;
+  overflow: visible;
+  pointer-events: none;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.roots__root { stroke: var(--root); stroke-width: 1.6; }
+.roots__root--tap { stroke-width: 2.1; }
+.roots__root--thin { stroke-width: 1.15; }
+.roots__rootlet { stroke: var(--root-fine); stroke-width: 1; }
+.roots__glow { stroke: var(--cream); stroke-width: 2.1; }
+.roots__glow--soft { stroke: rgb(var(--cream-rgb) / 0.12); stroke-width: 9; }
+.roots__pebble { stroke: color-mix(in srgb, var(--sage) 22%, transparent); stroke-width: 1; }
+.roots__stratum { stroke: var(--root-ghost); stroke-width: 1; stroke-dasharray: 1 7; }
+
+.roots__flies { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+.roots__fly {
+  position: absolute;
+  inset-block-start: 0;
+  left: 0; /* placed by transform in world px */
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(var(--cream-rgb) / 0.95) 0 1.5px, color-mix(in srgb, var(--sage) 55%, transparent) 2.6px, color-mix(in srgb, var(--sage) 12%, transparent) 7px, transparent 15px);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+/* the dog's world (desktop): a faint ground line it runs on */
+.roots__net .dog-layer { color: var(--cream); }
+
+/* ---------- pinned (desktop, motion) ---------- */
+.roots--pinned .roots__stage { height: 100vh; overflow: hidden; }
+.roots--pinned .roots__world { will-change: transform; }
+.roots--pinned .roots__net { height: 100vh; }
+.roots--pinned .roots__node-title,
+.roots--pinned .roots__node-text { will-change: transform, opacity; }
+
+/* ==========================================================================
+   Phone: designed separately — one vertical root, nodes on it, text beside.
+   ========================================================================== */
+@media (max-width: 768px) {
+  .roots {
+    --roots-sky: 112px;
+    --photo-w: 62vw;
+    --dot: 52px;
+    --col: calc(var(--dot) + 18px);
+  }
+  .roots__surface { height: 44px; }
+  .roots__story {
+    display: block;
+    width: auto;
+    min-height: 0;
+    padding-inline: var(--gutter);
+    padding-block-start: 0;
+  }
+  .roots__photo { width: var(--photo-w); margin-inline-start: auto; margin-block-start: calc(var(--photo-w) * -0.34); }
+  .roots__eyebrow {
+    position: absolute;
+    inset-block-start: 22px;
+    inset-inline-start: var(--gutter);
+    max-width: calc(100% - var(--photo-w) - 2 * var(--gutter) - 12px);
+    margin: 0;
+    flex-wrap: wrap;
+    row-gap: 6px;
+    line-height: 1.35;
+  }
+  .roots__eyebrow::before { inline-size: 24px; }
+  .roots__copy { padding-inline-start: var(--col); padding-block-start: 104px; max-width: none; }
+  .roots__title { font-size: clamp(38px, 10.6vw, 50px); line-height: 1; margin-block-end: 22px; }
+  .roots__text { font-size: 17px; line-height: 1.7; }
+  .roots__gap { height: 88px; }
+  .roots__net { height: auto; padding: 0 var(--gutter) 128px; }
+  .roots__net-title {
+    position: static;
+    max-width: none;
+    padding-inline-start: var(--col);
+    font-size: clamp(34px, 9.4vw, 44px);
+    margin-block-end: 52px;
+  }
+  .roots__nodes { position: static; display: grid; gap: 60px; padding-inline-start: var(--col); }
+  .roots__node {
+    position: relative;
+    inset: auto;
+    width: auto;
+    display: block;
+    text-align: start;
+    min-height: var(--dot);
+    padding-block-start: 6px;
+  }
+  .roots__dot { position: absolute; inset-block-start: -4px; inset-inline-start: calc(-1 * var(--col)); margin: 0; }
+  .roots__node-title { font-size: 26px; margin-block-end: 6px; }
+  .roots__node-text { font-size: 16px; max-width: 26ch; }
+}
+
+/* ---------- reduced motion / static ---------- */
+.roots--static .roots__net,
+.roots--mobile-static .roots__net { --lit: 1; }

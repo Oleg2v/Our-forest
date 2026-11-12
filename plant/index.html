@@ -2,6 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
 <!--#include partials/head-common.html -->
+<link rel="preload" href="/fonts/frank-ruhl-libre-hebrew-500.woff2" as="font" type="font/woff2" crossorigin>
 <title>נוטעים עץ משלכם — היער שלנו</title>
 <meta name="description" content="בוחרים עץ פרי, כותבים הקדשה על שלט עץ חרוט ובוחרים לו מקום על מפת היער במושב פדיה.">
 <meta property="og:title" content="נוטעים עץ משלכם — היער שלנו">
@@ -13,8 +14,15 @@
 <a class="skip-link" href="#main">דלגו לתוכן</a>
 
 <!--#include partials/header.html -->
-<main id="main" tabindex="-1">
-<!-- /plant configurator — owned by the plant agent -->
+<main id="main" tabindex="-1" class="plant-main">
+<!-- /plant configurator — owned by the plant agent. Rendered by src/plant (the shell below is the no-JS / pre-JS state). -->
+<div class="plant-root" data-plant>
+  <div class="plant-root__pre">
+    <h1 class="plant-root__title">העץ שלכם</h1>
+    <p class="plant-root__lead">עץ לציון לידה, זוגיות, אירוע משמעותי או לזכר אדם אהוב</p>
+    <noscript><p>כדי להרכיב עץ צריך JavaScript. אפשר גם לדבר איתנו בוואטסאפ.</p></noscript>
+  </div>
+</div>
 </main>
 <!--#include partials/footer.html -->
 <!--#include partials/chrome-overlays.html -->

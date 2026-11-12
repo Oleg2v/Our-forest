@@ -1,1 +1,80 @@
-<!-- global overlays (cursor, transition, a11y panel, cookie banner, mobile sticky bar) — owned by the chrome agent -->
+<!-- global overlays (sticky bar, a11y panel, cookie banner, cursor, focus ring, page transition) — owned by the chrome agent -->
+
+<!-- phones: sticky bottom bar on every page (hidden by html[data-hide-sticky]) -->
+<div class="mbar" data-mbar>
+  <div class="mbar__inner">
+    <a class="btn btn--fruit mbar__plant" href="/plant">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21v-8"/><path d="M12 13c0-4 2.6-6.6 7-7 0 4.2-2.8 7-7 7Z"/><path d="M12 15.5c0-3-2-5-5.5-5.3 0 3.2 2.2 5.3 5.5 5.3Z"/><path d="M7.5 21h9"/></svg>
+      <span>נוטעים עץ</span>
+    </a>
+    <a class="btn mbar__wa" href="https://wa.me/972500000000" data-wa target="_blank" rel="noopener">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.4a7.9 7.9 0 0 1-11.5 7.1L4 20l1.4-4.2A7.9 7.9 0 1 1 20 11.4Z"/><path d="M8.6 11.6h.01M12 11.6h.01M15.4 11.6h.01"/></svg>
+      <span>וואטסאפ</span>
+    </a>
+  </div>
+</div>
+
+<!-- accessibility panel (normal markup; the site itself stays accessible without it) -->
+<div class="a11y" id="a11y-panel" role="dialog" aria-modal="true" aria-labelledby="a11y-title" aria-describedby="a11y-desc" hidden data-a11y>
+  <div class="a11y__scrim" data-a11y-close></div>
+  <div class="a11y__card">
+    <div class="a11y__head">
+      <h2 class="a11y__title" id="a11y-title">נגישות</h2>
+      <button class="a11y__x" type="button" data-a11y-close aria-label="סגירה">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <p class="a11y__desc" id="a11y-desc">ההגדרות נשמרות בדפדפן שלכם.</p>
+
+    <fieldset class="a11y__group">
+      <legend class="a11y__label">גודל טקסט</legend>
+      <div class="a11y__seg">
+        <label class="a11y__opt"><input type="radio" name="a11y-font" value="0"><span class="a11y__glyph a11y__glyph--0" aria-hidden="true">א</span><span class="a11y__opt-name">רגיל</span></label>
+        <label class="a11y__opt"><input type="radio" name="a11y-font" value="1"><span class="a11y__glyph a11y__glyph--1" aria-hidden="true">א</span><span class="a11y__opt-name">גדול</span></label>
+        <label class="a11y__opt"><input type="radio" name="a11y-font" value="2"><span class="a11y__glyph a11y__glyph--2" aria-hidden="true">א</span><span class="a11y__opt-name">גדול מאוד</span></label>
+      </div>
+    </fieldset>
+
+    <div class="a11y__row">
+      <span class="a11y__label" id="a11y-contrast-label">ניגודיות גבוהה</span>
+      <button class="a11y__switch" type="button" role="switch" aria-checked="false" aria-labelledby="a11y-contrast-label" data-a11y-contrast><span class="a11y__knob"></span></button>
+    </div>
+    <div class="a11y__row">
+      <span class="a11y__label" id="a11y-motion-label">עצירת אנימציות</span>
+      <button class="a11y__switch" type="button" role="switch" aria-checked="false" aria-labelledby="a11y-motion-label" data-a11y-motion><span class="a11y__knob"></span></button>
+    </div>
+
+    <div class="a11y__foot">
+      <a class="a11y__link" href="/legal/accessibility">הצהרת נגישות</a>
+      <button class="a11y__reset" type="button" data-a11y-reset>איפוס</button>
+    </div>
+  </div>
+</div>
+
+<!-- cookie consent — calm, never blocking -->
+<div class="cookie" role="region" aria-labelledby="cookie-title" hidden data-cookie>
+  <svg class="icon cookie__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 12.6A8.5 8.5 0 1 1 11.4 3.5a3 3 0 0 0 3.6 3.6 3 3 0 0 0 3.5 3.5 2.4 2.4 0 0 0 2 2Z"/><path d="M8.5 10.5h.01M12 15.5h.01M8 15h.01M15.5 13h.01"/></svg>
+  <div class="cookie__body">
+    <h2 class="cookie__title" id="cookie-title">עוגיות באתר</h2>
+    <p class="cookie__text">אנחנו משתמשים בעוגיות כדי שהאתר יעבוד טוב ונבין מה עוזר לכם. <a href="/legal/privacy">מדיניות פרטיות</a></p>
+  </div>
+  <div class="cookie__actions">
+    <button class="btn btn--sm cookie__accept" type="button" data-cookie-accept>מאשרים</button>
+    <button class="btn btn--sm btn--outline cookie__decline" type="button" data-cookie-decline>רק הכרחיות</button>
+  </div>
+</div>
+
+<!-- desktop custom cursor: a seed and a lagging ring -->
+<div class="cursor" aria-hidden="true" data-cursor-root>
+  <div class="cursor__ring-pos"><div class="cursor__ring"><span class="cursor__icon"></span><span class="cursor__label"></span></div></div>
+  <div class="cursor__dot-pos"><div class="cursor__dot"></div></div>
+</div>
+
+<!-- keyboard focus: one leaf-shaped contour that travels between elements -->
+<div class="focus-ring" aria-hidden="true" data-focus-ring></div>
+
+<!-- page transition: a leaf grows from the click point and covers the page in moss -->
+<div class="pt" aria-hidden="true" data-pt>
+  <div class="pt__leaf"></div>
+  <svg class="pt__mark" viewBox="0 0 24 24"><path d="M4 20A16 16 0 0 1 20 4A16 16 0 0 1 4 20Z"/><path d="M3 21L15.5 8.5"/></svg>
+</div>

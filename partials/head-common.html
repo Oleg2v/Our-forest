@@ -8,11 +8,41 @@ h.classList.add(off||rm?'no-motion':'motion');if(off)h.setAttribute('data-a11y-m
 var f=g('a11y:font');if(f)h.setAttribute('data-a11y-font',String(f));if(g('a11y:contrast')==='high')h.setAttribute('data-a11y-contrast','high');
 })(document);
 </script>
+<script>
+/* chrome pre-paint (src/chrome): reveal hidden-states with a 3 s failsafe, and the incoming
+   leaf page transition — a moss cover from the first paint, opened by a View Transition
+   (Chrome/Safari 18.2+) or by src/chrome/transition.ts everywhere else. */
+(function(w,d){var h=d.documentElement,m=h.classList.contains('motion');
+if(m){h.classList.add('reveals-on');setTimeout(function(){if(!w.__ofChrome)h.classList.remove('reveals-on')},3000)}
+var pt=null;try{pt=JSON.parse(sessionStorage.getItem('of:pt'));sessionStorage.removeItem('of:pt')}catch(e){}
+if(pt&&m&&Date.now()-pt.t<8000){w.__ofPT=pt;h.classList.add('pt-in')}
+function leaf(x,y,s){var r=s/2,a=x-r,b=y-r,c=x+r,e=y+r;return"path('M"+a+" "+(b+r)+"A"+r+" "+r+" 0 0 1 "+(a+r)+" "+b+"L"+c+" "+b+"L"+c+" "+(e-r)+"A"+r+" "+r+" 0 0 1 "+(c-r)+" "+e+"L"+a+" "+e+"Z')"}
+w.__ofLeaf=leaf;
+w.addEventListener('pagereveal',function(ev){w.__ofRevealed=1;var vt=ev.viewTransition;if(!vt)return;
+if(!h.classList.contains('motion')){vt.skipTransition();return}
+if(!w.__ofPT)return;
+h.classList.remove('pt-in');h.classList.add('pt-vt');w.__ofPTvt=1;
+vt.ready.then(function(){var W=innerWidth,H=innerHeight,S=Math.hypot(W,H)*1.03+8;
+h.animate({clipPath:[leaf(W/2,H/2,1),leaf(W/2,H/2,S)]},{duration:1000,easing:'cubic-bezier(.65,0,.35,1)',fill:'both',pseudoElement:'::view-transition-new(root)'})}).catch(function(){});
+vt.finished.finally(function(){h.classList.remove('pt-vt')});});
+})(window,document);
+</script>
+<style>
+@view-transition{navigation:auto}
+@media (prefers-reduced-motion:reduce){@view-transition{navigation:none}}
+::view-transition-group(root){animation-duration:.45s}
+html.pt-vt::view-transition-old(root),html.pt-vt::view-transition-new(root){animation:none;mix-blend-mode:normal}
+html.pt-in::after{content:'';position:fixed;inset:0;z-index:950;pointer-events:none;background:#232E1C url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23C9CFA0' stroke-width='1' stroke-linecap='round'%3E%3Cpath d='M4 20A16 16 0 0 1 20 4A16 16 0 0 1 4 20Z'/%3E%3Cpath d='M3 21L15.5 8.5'/%3E%3C/svg%3E") center/40px no-repeat;animation:of-pt-fs .5s ease 3s forwards}
+@keyframes of-pt-fs{to{opacity:0;visibility:hidden}}
+</style>
+<link rel="expect" href="#main" blocking="render">
+<script type="speculationrules">{"prefetch":[{"source":"document","where":{"and":[{"href_matches":"/*"},{"not":{"selector_matches":"[target], [download], [data-no-transition], [href*='#']"}}]},"eagerness":"moderate"}]}</script>
 <meta name="theme-color" content="#232E1C">
 <meta name="format-detection" content="telephone=no">
 <link rel="preload" href="/fonts/frank-ruhl-libre-hebrew-300.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/heebo-hebrew-400.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" id="of-favicon">
+<script>/* seasonal favicon: a small leaf that changes with the Israeli season */(function(){var m=new Date().getMonth()+1,s=m==12||m<3?'winter':m<6?'spring':m<10?'summer':'autumn',l=document.getElementById('of-favicon');if(l)l.href='/favicons/'+s+'.svg'})();</script>
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <meta property="og:locale" content="he_IL">
 <meta property="og:site_name" content="היער שלנו">
