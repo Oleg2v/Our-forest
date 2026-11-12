@@ -596,9 +596,11 @@ export function initFooter(): void {
     const r = field.getBoundingClientRect();
     if (r.top > window.innerHeight * 0.9) {
       introPending = true;
-      gsap.set(chars.filter((c) => c.low).map((c) => c.inner), { yPercent: 108 });
-      gsap.set(chars.filter((c) => !c.low).map((c) => c.inner), { yPercent: 40, opacity: 0 });
-      gsap.set(rootPaths, { drawSVG: '0%' });
+      const low = chars.filter((c) => c.low).map((c) => c.inner);
+      const upper = chars.filter((c) => !c.low).map((c) => c.inner);
+      if (low.length) gsap.set(low, { yPercent: 108 });
+      if (upper.length) gsap.set(upper, { yPercent: 40, opacity: 0 });
+      if (rootPaths.length) gsap.set(rootPaths, { drawSVG: '0%' });
     }
   }
   if (planted && Number.isFinite(savedRatio)) growSprout(savedRatio * fieldW, false);
