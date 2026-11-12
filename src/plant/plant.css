@@ -767,6 +767,13 @@ html.motion .pmini__pulse { animation: pmini-pulse 2.4s var(--ease-out) infinite
     background: var(--pc-bg);
     transition: background-color calc(var(--t-appear) * var(--pc-speed)) var(--ease-inout);
   }
+  /* while it waits over a long step, the cards behind it fade out above its line instead of being cut by a hard edge
+     (in place it falls inside the row's own 28 px top margin, over nothing) */
+  .pc__nav::before {
+    content: ''; position: absolute; inset-inline: 0; inset-block-end: calc(100% + 1px); height: 28px;
+    background: linear-gradient(to top, var(--pc-bg), transparent);
+    pointer-events: none;
+  }
   /* payment below 1024 px: "חזרה" sits under the pay button, in the flow (from 1024 px they share a row, below) */
   .pc:has(.pcs--checkout:not([hidden])) .pc__nav { position: static; padding-block-end: 0; }
 }
