@@ -1,0 +1,13 @@
+{
+  // Cloudflare Workers static-assets deploy → https://our-forest.kikkey.com
+  // Account is taken from CLOUDFLARE_ACCOUNT_ID at deploy time (not committed).
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "our-forest",
+  "compatibility_date": "2026-11-02",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash"
+  },
+  "routes": [{ "pattern": "our-forest.kikkey.com", "custom_domain": true }]
+}

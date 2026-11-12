@@ -10,7 +10,8 @@
     "build:fast": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "assets:fonts": "node scripts/copy-fonts.mjs"
+    "assets:fonts": "node scripts/copy-fonts.mjs",
+    "deploy": "npm run build && npx --yes wrangler@4 deploy"
   },
   "dependencies": {
     "detect-gpu": "^5.0.70",
