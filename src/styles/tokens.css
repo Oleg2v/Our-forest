@@ -1,0 +1,95 @@
+/* ==========================================================================
+   Design tokens — היער שלנו
+   Palette: the forest's own colours, slightly deepened for contrast,
+   plus one warm accent (--fruit, "ripe pomegranate").
+   ========================================================================== */
+:root {
+  /* palette */
+  --cream: #FBF1E6;       /* main background */
+  --sand: #EDE5D4;        /* alternating sections */
+  --olive: #8F8E45;       /* brand olive: icons, headings >= 32px only */
+  --olive-deep: #626630;  /* regular buttons, white text ≈ 6:1 */
+  --bark: #6B4A2E;        /* headings brown */
+  --soil: #2A2118;        /* body text, underground section bg */
+  --moss: #232E1C;        /* dark sections, hero dim, menu, page transition */
+  --sage: #C9CFA0;        /* light chips, strokes, secondary icons */
+  --fruit: #B4492E;       /* ONLY: prices, free map spots, main buy button */
+
+  /* derived */
+  --cream-rgb: 251 241 230;
+  --soil-rgb: 42 33 24;
+  --moss-rgb: 35 46 28;
+  --fruit-rgb: 180 73 46;
+  --line: rgb(var(--soil-rgb) / 0.14);
+  --line-strong: rgb(var(--soil-rgb) / 0.28);
+
+  /* page theme (animated between sections by the bg system) */
+  --page-bg: var(--cream);
+  --ink: var(--soil);
+  --ink-soft: rgb(var(--soil-rgb) / 0.72);
+
+  /* type */
+  --font-display: 'Frank Ruhl Libre', 'David Libre', 'Times New Roman', serif;
+  --font-body: 'Heebo', 'Assistant', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  --fs-body: 18px;
+  --lh-body: 1.6;
+  --fs-small: 15px;
+  --fs-eyebrow: 14px;
+  --fs-h3: clamp(24px, 2.2vw, 32px);
+  --fs-h2: clamp(40px, 5.4vw, 88px);
+  --fs-h1: clamp(56px, 9vw, 140px);
+  --fs-hero: clamp(72px, 14vw, 220px);
+  --lh-tight: 0.95;
+  --lh-heading: 1.05;
+
+  /* the leaf — brand shape (two opposite rounded corners) */
+  --leaf-r: 120px;
+  --leaf: var(--leaf-r) 0 var(--leaf-r) 0;
+  --leaf-flip: 0 var(--leaf-r) 0 var(--leaf-r);
+  --leaf-sm: 32px 0 32px 0;
+  --pill: 999px;
+
+  /* layout */
+  --gutter: clamp(16px, 4vw, 56px);
+  --maxw: 1440px;
+  --header-h: 76px;
+  --section-pad: clamp(96px, 14vh, 180px);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* motion (mirrors src/core/gsap.ts) */
+  --t-micro: 0.25s;
+  --t-ui: 0.5s;
+  --t-appear: 1.2s;
+  --t-page: 0.9s;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);     /* ≈ expo.out */
+  --ease-inout: cubic-bezier(0.65, 0, 0.35, 1);  /* ≈ power3.inOut */
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);   /* ≈ power4.out */
+
+  /* z-index scale */
+  --z-base: 1;
+  --z-sticky: 50;
+  --z-header: 100;
+  --z-sheet: 200;
+  --z-menu: 300;
+  --z-modal: 400;
+  --z-cursor: 900;
+  --z-transition: 950;
+  --z-preloader: 1000;
+  --z-grain: 1100;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --leaf-r: 56px;
+    --fs-body: 17px;
+    --header-h: 64px;
+  }
+}
+
+/* user a11y preferences (set by the accessibility panel on <html>) */
+:root[data-a11y-font='1'] { font-size: 112.5%; --fs-body: 20px; }
+:root[data-a11y-font='2'] { font-size: 125%; --fs-body: 22px; }
+:root[data-a11y-contrast='high'] {
+  --olive: #4E5126; --sage: #8F955F; --ink-soft: var(--soil); --line: rgb(var(--soil-rgb) / 0.4);
+}

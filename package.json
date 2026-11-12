@@ -1,0 +1,32 @@
+{
+  "name": "our-forest",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "היער שלנו — demo site (Vite + TypeScript, multi-page, RTL)",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "build:fast": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "assets:fonts": "node scripts/copy-fonts.mjs"
+  },
+  "dependencies": {
+    "detect-gpu": "^5.0.70",
+    "gsap": "^3.15.1",
+    "lenis": "^1.3.27",
+    "qrcode-generator": "^2.0.4",
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "@fontsource/frank-ruhl-libre": "^5.3.0",
+    "@fontsource/heebo": "^5.3.0",
+    "@types/node": "^26.6.6",
+    "@types/three": "^0.187.0",
+    "axe-core": "^4.14.0",
+    "sharp": "^0.35.5",
+    "typescript": "5.9",
+    "vite": "^8.3.8"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "0427",
+  "seed": 427,
+  "species": "fig",
+  "mode": "celebration",
+  "plantedAt": "2026-02-14",
+  "dedication": "לכבוד הולדת נועה",
+  "plantedBy": "משפחת כהן",
+  "owner": "נועה",
+  "stage": "young",
+  "heightCm": 120,
+  "rootDepthCm": 40,
+  "lastTeamWatering": "2026-11-10",
+  "lastPrune": "2026-10-28",
+  "harvest": null,
+  "events": [
+    { "date": "2026-02-14", "type": "planted", "photo": "/img/0427-planted.jpg", "imageKey": "treePlanted" },
+    { "date": "2026-04-02", "type": "firstLeaves", "photo": "/img/0427-leaves.jpg", "imageKey": "treeLeaves" },
+    { "date": "2026-07-15", "type": "firstSummer", "photo": "/img/0427-summer.jpg", "imageKey": "treeSummer" },
+    { "date": "2026-10-28", "type": "pruned" },
+    { "date": "2026-11-10", "type": "teamWatering" }
+  ],
+  "greetings": [
+    { "id": "g1", "from": "ד.ל.", "initials": "ד״ל", "text": "שתגדלו יחד, נועה והתאנה", "date": "2026-05-03", "amount": 36 },
+    { "id": "g2", "from": "סבתא רותי", "initials": "ר", "text": "מזל טוב! מחכים לתאנה הראשונה", "date": "2026-06-21", "amount": 54 },
+    { "id": "g3", "from": "הגן של נועה", "initials": "ג", "text": "השקינו מרחוק, באהבה", "date": "2026-11-09", "amount": 18 }
+  ],
+  "community": { "wateringsToday": 1284, "sponsor": "שם החברה", "goal": 1000 },
+  "siblings": []
+}

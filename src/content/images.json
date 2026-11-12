@@ -1,0 +1,170 @@
+{
+  "hero": {
+    "pending": true,
+    "w": 2400,
+    "h": 1500,
+    "color": "#8F8E45",
+    "alt": "",
+    "purpose": "Hero 'Crown': edible forest / orchard in golden hour, foliage dominant in the upper part, a few people and a wooden bench (static) — wind shader moves only foliage"
+  },
+  "heroPortrait": {
+    "pending": true,
+    "w": 1200,
+    "h": 1800,
+    "color": "#8F8E45",
+    "alt": "",
+    "purpose": "Mobile crop of the hero (portrait 2:3), same photo or same mood"
+  },
+  "rootsHands": {
+    "pending": true,
+    "w": 1200,
+    "h": 1500,
+    "color": "#6B4A2E",
+    "alt": "",
+    "purpose": "Hands holding a young sapling with soil — shown in the leaf shape in the underground section"
+  },
+  "expTeams": {
+    "pending": true,
+    "w": 1200,
+    "h": 1500,
+    "color": "#8F8E45",
+    "alt": "",
+    "purpose": "Seasons card 1 'ימי גיבוש לחברות' — group/team working outdoors in nature"
+  },
+  "expGift": {
+    "pending": true,
+    "w": 1200,
+    "h": 1500,
+    "color": "#C9CFA0",
+    "alt": "",
+    "purpose": "Seasons card 2 'מעניקים יום חוויה' — people gardening / activity day"
+  },
+  "expEvents": {
+    "pending": true,
+    "w": 1200,
+    "h": 1500,
+    "color": "#6B4A2E",
+    "alt": "",
+    "purpose": "Seasons card 3 'אירועים וחוויות ביער' — outdoor gathering / long table under trees / evening lights"
+  },
+  "wsCarpentry": {
+    "pending": true,
+    "w": 1200,
+    "h": 900,
+    "color": "#6B4A2E",
+    "alt": "",
+    "purpose": "Workshop: carpentry — hands, wood, bench building"
+  },
+  "wsDogs": {
+    "pending": true,
+    "w": 1200,
+    "h": 900,
+    "color": "#8F8E45",
+    "alt": "",
+    "purpose": "Workshop: dogs in nature"
+  },
+  "wsGarden": {
+    "pending": true,
+    "w": 1200,
+    "h": 900,
+    "color": "#626630",
+    "alt": "",
+    "purpose": "Workshop: gardening in an edible forest for beginners"
+  },
+  "companies": {
+    "pending": true,
+    "w": 2400,
+    "h": 1350,
+    "color": "#626630",
+    "alt": "",
+    "purpose": "Companies banner — team planting trees together / group in an orchard"
+  },
+  "bizHero": {
+    "pending": true,
+    "w": 2400,
+    "h": 1350,
+    "color": "#626630",
+    "alt": "",
+    "purpose": "/business hero — colleagues outdoors among trees"
+  },
+  "bizGallery1": {
+    "pending": true,
+    "w": 1200,
+    "h": 1500,
+    "color": "#6B4A2E",
+    "alt": "",
+    "purpose": "Business gallery — wood plaque / carpentry"
+  },
+  "bizGallery2": {
+    "pending": true,
+    "w": 1200,
+    "h": 900,
+    "color": "#8F8E45",
+    "alt": "",
+    "purpose": "Business gallery — planting day"
+  },
+  "bizGallery3": {
+    "pending": true,
+    "w": 1200,
+    "h": 900,
+    "color": "#C9CFA0",
+    "alt": "",
+    "purpose": "Business gallery — dogs with people"
+  },
+  "bizGallery4": {
+    "pending": true,
+    "w": 1200,
+    "h": 1500,
+    "color": "#626630",
+    "alt": "",
+    "purpose": "Business gallery — hands in soil"
+  },
+  "bizGallery5": {
+    "pending": true,
+    "w": 1200,
+    "h": 900,
+    "color": "#B4492E",
+    "alt": "",
+    "purpose": "Business gallery — figs / pomegranates harvest"
+  },
+  "bizGallery6": {
+    "pending": true,
+    "w": 1200,
+    "h": 900,
+    "color": "#8F8E45",
+    "alt": "",
+    "purpose": "Business gallery — bench under a tree"
+  },
+  "treePlanted": {
+    "pending": true,
+    "w": 1200,
+    "h": 1200,
+    "color": "#6B4A2E",
+    "alt": "",
+    "purpose": "Tree 0427 timeline polaroid — planting day (sapling going into the ground)"
+  },
+  "treeLeaves": {
+    "pending": true,
+    "w": 1200,
+    "h": 1200,
+    "color": "#8F8E45",
+    "alt": "",
+    "purpose": "Tree 0427 timeline polaroid — first fig leaves"
+  },
+  "treeSummer": {
+    "pending": true,
+    "w": 1200,
+    "h": 1200,
+    "color": "#626630",
+    "alt": "",
+    "purpose": "Tree 0427 timeline polaroid — young fig tree in summer"
+  },
+  "forestPlace": {
+    "pending": true,
+    "w": 2400,
+    "h": 1500,
+    "color": "#8F8E45",
+    "alt": "",
+    "purpose": "Real-place feel: wide shot of a young food forest / orchard rows — used on /plant and trust blocks"
+  }
+}
