@@ -93,6 +93,7 @@ function wireSoundToggles() {
     qsa('[data-sound-toggle]').forEach((b) => {
       b.setAttribute('aria-pressed', String(on));
       b.dataset.state = on ? 'on' : 'off';
+      if (b.dataset.tip) b.dataset.tip = on ? 'צלילי היער · פועלים' : 'צלילי היער · כבויים';
     });
   };
   document.addEventListener('click', (e) => {
