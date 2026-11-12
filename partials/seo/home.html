@@ -1,4 +1,4 @@
-<!-- seo/home: OG image, canonical, JSON-LD (LocalBusiness, WebSite, Event × 3) — owned by the business (SEO) agent. SITE = https://ourforest.kikkey.com (see docs/agent-notes/business.md) -->
+<!-- seo/home: OG image, canonical, JSON-LD (LocalBusiness, WebSite, WebPage) + #ld-events (Event × 3) — owned by the business (SEO) agent. SITE = https://ourforest.kikkey.com (see docs/agent-notes/business.md) -->
 <link rel="canonical" href="https://ourforest.kikkey.com/">
 <meta property="og:url" content="https://ourforest.kikkey.com/">
 <meta property="og:image" content="https://ourforest.kikkey.com/og/home.jpg">
@@ -58,11 +58,18 @@
    "about": {
     "@id": "https://ourforest.kikkey.com/#forest"
    }
-  },
+  }
+ ]
+}
+</script>
+<script type="application/ld+json" id="ld-events">
+{
+ "@context": "https://schema.org",
+ "@graph": [
   {
    "@type": "Event",
    "name": "סדנת נגרות: בונים ספסל ליער",
-   "startDate": "2026-11-27",
+   "startDate": "2026-11-13",
    "eventStatus": "https://schema.org/EventScheduled",
    "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
    "location": {
@@ -85,44 +92,14 @@
     "price": "280",
     "priceCurrency": "ILS",
     "availability": "https://schema.org/InStock",
-    "url": "https://ourforest.kikkey.com/plant/?product=workshop&ws=carpentry",
-    "validFrom": "2026-11-01"
-   }
-  },
-  {
-   "@type": "Event",
-   "name": "כלבנות בטבע: יום עם הכלבים",
-   "startDate": "2026-12-04",
-   "eventStatus": "https://schema.org/EventScheduled",
-   "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
-   "location": {
-    "@type": "Place",
-    "name": "היער שלנו",
-    "address": {
-     "@type": "PostalAddress",
-     "addressLocality": "מושב פדיה",
-     "addressCountry": "IL"
-    }
-   },
-   "organizer": {
-    "@id": "https://ourforest.kikkey.com/#forest"
-   },
-   "image": "https://ourforest.kikkey.com/og/home.jpg",
-   "description": "סדנת נגרות, כלבנות, גינון ועוד. יום חוויות לקבוצות",
-   "inLanguage": "he",
-   "offers": {
-    "@type": "Offer",
-    "price": "216",
-    "priceCurrency": "ILS",
-    "availability": "https://schema.org/InStock",
-    "url": "https://ourforest.kikkey.com/plant/?product=workshop&ws=dogs",
+    "url": "https://ourforest.kikkey.com/plant/?product=workshop&ws=carpentry&date=2026-11-13",
     "validFrom": "2026-11-01"
    }
   },
   {
    "@type": "Event",
    "name": "גינון ביער מאכל למתחילים",
-   "startDate": "2026-12-12",
+   "startDate": "2026-11-14",
    "eventStatus": "https://schema.org/EventScheduled",
    "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
    "location": {
@@ -145,7 +122,37 @@
     "price": "150",
     "priceCurrency": "ILS",
     "availability": "https://schema.org/InStock",
-    "url": "https://ourforest.kikkey.com/plant/?product=workshop&ws=garden",
+    "url": "https://ourforest.kikkey.com/plant/?product=workshop&ws=garden&date=2026-11-14",
+    "validFrom": "2026-11-01"
+   }
+  },
+  {
+   "@type": "Event",
+   "name": "כלבנות בטבע: יום עם הכלבים",
+   "startDate": "2026-11-20",
+   "eventStatus": "https://schema.org/EventScheduled",
+   "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+   "location": {
+    "@type": "Place",
+    "name": "היער שלנו",
+    "address": {
+     "@type": "PostalAddress",
+     "addressLocality": "מושב פדיה",
+     "addressCountry": "IL"
+    }
+   },
+   "organizer": {
+    "@id": "https://ourforest.kikkey.com/#forest"
+   },
+   "image": "https://ourforest.kikkey.com/og/home.jpg",
+   "description": "סדנת נגרות, כלבנות, גינון ועוד. יום חוויות לקבוצות",
+   "inLanguage": "he",
+   "offers": {
+    "@type": "Offer",
+    "price": "216",
+    "priceCurrency": "ILS",
+    "availability": "https://schema.org/InStock",
+    "url": "https://ourforest.kikkey.com/plant/?product=workshop&ws=dogs&date=2026-11-20",
     "validFrom": "2026-11-01"
    }
   }

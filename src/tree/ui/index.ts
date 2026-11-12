@@ -90,6 +90,8 @@ export function initTreePage(main: HTMLElement) {
       const s = deriveScene(ctx.tree, { ...ctx.demo, state: ctx.flow }, ctx.store.facts(), quality);
       const o = ctx.override;
       const out: TreeSceneState = { ...s };
+      // a birth is the news itself: no blinking "יש חדש" dot over the seed / the new sapling
+      if (ctx.flow === 'birth' || ctx.flow === 'gift') out.hasNews = false;
       for (const k of Object.keys(o) as (keyof TreeSceneState)[]) if (o[k] !== undefined) (out as any)[k] = o[k];
       return out;
     },

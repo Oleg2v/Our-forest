@@ -13,7 +13,7 @@ var f=g('a11y:font');if(f)h.setAttribute('data-a11y-font',String(f));if(g('a11y:
    leaf page transition — a moss cover from the first paint, opened by a View Transition
    (Chrome/Safari 18.2+) or by src/chrome/transition.ts everywhere else. */
 (function(w,d){var h=d.documentElement,m=h.classList.contains('motion');
-if(m){h.classList.add('reveals-on');setTimeout(function(){if(!w.__ofChrome)h.classList.remove('reveals-on')},3000)}
+if(m)h.classList.add('reveals-on');setTimeout(function(){if(!w.__ofChrome){h.classList.remove('reveals-on');h.classList.add('chrome-off')}},3000);
 var pt=null;try{pt=JSON.parse(sessionStorage.getItem('of:pt'));sessionStorage.removeItem('of:pt')}catch(e){}
 if(pt&&m&&Date.now()-pt.t<8000){w.__ofPT=pt;h.classList.add('pt-in')}
 function leaf(x,y,s){var r=s/2,a=x-r,b=y-r,c=x+r,e=y+r;return"path('M"+a+" "+(b+r)+"A"+r+" "+r+" 0 0 1 "+(a+r)+" "+b+"L"+c+" "+b+"L"+c+" "+(e-r)+"A"+r+" "+r+" 0 0 1 "+(c-r)+" "+e+"L"+a+" "+e+"Z')"}

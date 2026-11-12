@@ -59,8 +59,9 @@ export function initSticky(page: PageName) {
   bus.on('theme:section', () => setTimeout(tone, 40));
   setTimeout(tone, 300);
 
-  // entrance a beat after first paint
+  // entrance a beat after first paint (CSS keeps it down until data-ready — no flash before JS)
   bar.toggleAttribute('data-hidden', true);
   bar.inert = true;
+  requestAnimationFrame(() => bar.setAttribute('data-ready', ''));
   setTimeout(update, page === 'home' ? 0 : 450);
 }

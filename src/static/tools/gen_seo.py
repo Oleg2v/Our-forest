@@ -36,6 +36,7 @@ def page(path, name, desc, extra=None):
            'inLanguage': 'he-IL', 'isPartOf': { '@id': f'{SITE}/#website' }, **(extra or {}) }
 
 def ev(name, date, price, ws):
+  # date = the session the home page lists (src/plant/catalog.ts workshopDates: next Fridays; garden on Saturdays)
   return {
     '@type': 'Event', 'name': name, 'startDate': date,
     'eventStatus': 'https://schema.org/EventScheduled',
@@ -44,7 +45,7 @@ def ev(name, date, price, ws):
     'description': 'סדנת נגרות, כלבנות, גינון ועוד. יום חוויות לקבוצות',
     'inLanguage': 'he',
     'offers': { '@type': 'Offer', 'price': str(price), 'priceCurrency': 'ILS', 'availability': 'https://schema.org/InStock',
-                'url': f'{SITE}/plant/?product=workshop&ws={ws}', 'validFrom': '2026-11-01' },
+                'url': f'{SITE}/plant/?product=workshop&ws={ws}&date={date}', 'validFrom': '2026-11-01' },
   }
 
 def head(path, image, alt, canonical=True, robots=None, w=1200, h=630):
@@ -64,8 +65,9 @@ def head(path, image, alt, canonical=True, robots=None, w=1200, h=630):
   ]
   return out
 
-def ld(graph):
-  return '<script type="application/ld+json">\n' + json.dumps({ '@context': 'https://schema.org', '@graph': graph }, ensure_ascii=False, indent=1) + '\n</script>'
+def ld(graph, el_id=None):
+  attr = f' id="{el_id}"' if el_id else ''
+  return f'<script type="application/ld+json"{attr}>\n' + json.dumps({ '@context': 'https://schema.org', '@graph': graph }, ensure_ascii=False, indent=1) + '\n</script>'
 
 def write(name, lines, comment):
   txt = f'<!-- seo/{name}: {comment} — owned by the business (SEO) agent. SITE = {SITE} (see docs/agent-notes/business.md) -->\n' + '\n'.join(lines) + '\n'
@@ -75,11 +77,13 @@ def write(name, lines, comment):
 write('home', head('/', 'home.jpg', 'היער שלנו — יער מאכל במושב פדיה') + [ld([
   ORG, WEBSITE,
   page('/', 'היער שלנו — יער מאכל במושב פדיה', 'יער מאכל במושב פדיה שמחבר בין אנשים, אדמה וכלבים.', { 'about': { '@id': ORG_ID } }),
-  # demo dates — keep in sync with the workshops list on the page (production: from the CMS)
-  ev('סדנת נגרות: בונים ספסל ליער', '2026-11-27', 280, 'carpentry'),
-  ev('כלבנות בטבע: יום עם הכלבים', '2026-12-04', 216, 'dogs'),
-  ev('גינון ביער מאכל למתחילים', '2026-12-12', 150, 'garden'),
-])], 'OG image, canonical, JSON-LD (LocalBusiness, WebSite, Event × 3)')
+]), ld([
+  # demo sessions = the first session of each workshop the home list shows on the demo date (12.11.2026).
+  # The list itself is relative to "today" (src/plant/catalog.ts); #ld-events can be rewritten at runtime. Production: from the CMS.
+  ev('סדנת נגרות: בונים ספסל ליער', '2026-11-13', 280, 'carpentry'),
+  ev('גינון ביער מאכל למתחילים', '2026-11-14', 150, 'garden'),
+  ev('כלבנות בטבע: יום עם הכלבים', '2026-11-20', 216, 'dogs'),
+], 'ld-events')], 'OG image, canonical, JSON-LD (LocalBusiness, WebSite, WebPage) + #ld-events (Event × 3)')
 
 # ---------------------------------------------------------------- plant
 plant_desc = 'עץ פרי משלכם ביער, שלט עץ חרוט עם ההקדשה, מקום קבוע על מפת היער, עמוד אישי לעץ עם עדכונים ותעודה דיגיטלית. אם העץ לא נקלט, נוטעים חדש.'
