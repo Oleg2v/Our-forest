@@ -378,17 +378,19 @@ class Roots {
     const tapTimeAt = (l: number) => (l <= lenTease ? (l / Math.max(1, lenTease)) * TL.descentAt
       : l <= tipEnd ? TL.descentAt + ((l - lenTease) / Math.max(1, tipEnd - lenTease)) * TL.descentDur
         : TL.netAt + ((l - tipEnd) / Math.max(1, tapLen - tipEnd)) * TL.tapNetDur);
+    // The root reaching a node is scrubbed; the node itself lights with a short TIME-based draw (ring, icon,
+    // title, caption) once the root gets there — so a node is never left half-drawn when scrolling stops.
+    // Scrolling back above the ignition point plays it backwards (faster).
     const ignite: number[] = [];
-    const lightNode = (i: number, at: number) => {
-      const { n, ring, icon, title, text } = nodeParts[i];
-      tl.set(ring.ownerSVGElement, { autoAlpha: 0.9 }, at)
-        .to(ring, { drawSVG: '100%', duration: 0.55, ease: 'power2.out' }, at)
-        .to(n, { '--lit': 1, duration: 0.6, ease: 'power2.out' }, at)
-        .to(icon, { drawSVG: '100%', duration: 0.7, stagger: 0.06, ease: 'power2.inOut' }, at + 0.1)
-        .to(title, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, at + 0.15)
-        .to(text, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, at + 0.25);
-      ignite[i] = at;
-    };
+    const nodeTls = nodeParts.map(({ n, ring, icon, title, text }) => gsap.timeline({ paused: true })
+      .set(ring.ownerSVGElement, { autoAlpha: 0.9, immediateRender: false }, 0.001)
+      .to(ring, { drawSVG: '100%', duration: 0.7, ease: 'power2.out' }, 0)
+      .to(n, { '--lit': 1, duration: 0.8, ease: 'power2.out' }, 0)
+      .to(icon, { drawSVG: '100%', duration: 0.9, stagger: 0.08, ease: 'power2.inOut' }, 0.12)
+      .to(title, { opacity: 1, y: 0, duration: 0.8, ease: 'expo.out' }, 0.2)
+      .to(text, { opacity: 1, y: 0, duration: 0.8, ease: 'expo.out' }, 0.32));
+    const nodeOn = nodeParts.map(() => false);
+    const lightNode = (i: number, at: number) => { ignite[i] = at; };
     branches.forEach((b, i) => {
       const start = Math.max(TL.netAt + i * TL.branchEvery, tapTimeAt(b.lenB) + 0.05);
       tl.to(b.path, { drawSVG: '0 100%', duration: TL.branchDur, ease: 'power1.inOut' }, start);
@@ -444,13 +446,15 @@ class Roots {
 
     // dog: appears with its node, follows the cursor along the bottom of the section
     this.dog = mountDog(this.net, { mode: 'follow', home: nodeParts[1].n.querySelector<HTMLElement>('.roots__dot')!, hidden: true });
-    let lit = 0;
     let dogShown = false;
     tl.eventCallback('onUpdate', () => {
       const t = tl.time();
-      const nowLit = ignite.filter((at) => t >= at + 0.2).length;
-      if (nowLit > lit) sound.play('pop', { volume: 0.25 });
-      lit = nowLit;
+      nodeTls.forEach((ntl, i) => {
+        const on = t >= ignite[i] - 0.08;
+        if (on === nodeOn[i]) return;
+        nodeOn[i] = on;
+        if (on) { ntl.timeScale(1).play(); sound.play('pop', { volume: 0.25 }); } else ntl.timeScale(1.8).reverse();
+      });
       const show = t >= ignite[1] + 0.5;
       if (show !== dogShown) { dogShown = show; show ? this.dog?.show() : this.dog?.hide(); }
     });

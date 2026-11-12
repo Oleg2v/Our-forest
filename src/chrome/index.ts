@@ -26,12 +26,33 @@ import { initHeader } from './header';
 import { initMenu } from './menu';
 import { initSticky } from './sticky';
 import { initTransitions, navigate as leafNavigate } from './transition';
-import { initA11y } from './a11y';
-import { initFocus } from './focus';
-import { initCursor, scanMagnetic } from './cursor';
 import { initReveal, scanReveal } from './reveal';
 import { initCookies } from './cookies';
-import { initDetails, scanImages, scanWhatsApp } from './details';
+import { scanImages } from './images';
+
+/* Non-critical layers load after the first paint (idle), so the first screen only waits for
+   what it shows: the a11y panel (or on its first click), the keyboard focus ring (or on the
+   first Tab), the desktop cursor + magnetic buttons (fine pointers only), and the details
+   (tab title, WhatsApp tracking/prefill, hover sounds, console tree). The sound engine is
+   lazy too (src/core/sound.ts). */
+type A11yMod = typeof import('./a11y');
+type CursorMod = typeof import('./cursor');
+type DetailsMod = typeof import('./details');
+let a11yMod: A11yMod | null = null;
+let cursorMod: CursorMod | null = null;
+let detailsMod: DetailsMod | null = null;
+let a11yLoading: Promise<A11yMod> | null = null;
+let focusLoading: Promise<unknown> | null = null;
+let cursorLoading: Promise<unknown> | null = null;
+const loadA11y = () => (a11yLoading ??= import('./a11y').then((m) => { m.initA11y(); a11yMod = m; return m; }));
+const loadFocus = () => (focusLoading ??= import('./focus').then((m) => m.initFocus()));
+const loadCursor = () => (cursorLoading ??= import('./cursor').then((m) => { m.initCursor(); m.scanMagnetic(document); cursorMod = m; }));
+function afterFirstPaint(fn: () => void) {
+  const idle = (window as any).requestIdleCallback as ((cb: () => void, o?: { timeout: number }) => number) | undefined;
+  const run = () => (idle ? idle(fn, { timeout: 1500 }) : setTimeout(fn, 400));
+  if (document.readyState === 'complete') run();
+  else window.addEventListener('load', run, { once: true });
+}
 
 export type PageName = 'home' | 'plant' | 'tree' | 'business' | 'legal' | 'notfound' | 'credits';
 
@@ -67,14 +88,27 @@ export function initChrome(opts: { page: PageName }): void {
   safe('menu', initMenu);
   safe('sticky', () => initSticky(page));
   safe('transition', initTransitions);
-  safe('a11y', initA11y);
-  safe('focus', initFocus);
-  safe('cursor', initCursor);
   safe('reveal', () => initReveal(hold));
   safe('cookies', () => initCookies(page, hold));
-  safe('details', () => initDetails(page));
   safe('images', () => scanImages(document));
-  safe('magnetic', () => scanMagnetic(document));
+  safe('lazy', () => {
+    const fail = (name: string) => (e: unknown) => console.error(`[chrome:${name}]`, e);
+    // a click on an a11y button before the panel module is there loads it and opens
+    document.addEventListener('click', (e) => {
+      if (a11yMod) return;
+      const b = (e.target as Element | null)?.closest?.<HTMLElement>('[data-a11y-open]');
+      if (b) loadA11y().then((m) => m.openA11y(b)).catch(fail('a11y'));
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Tab') loadFocus().catch(fail('focus')); }, { capture: true, once: true });
+    const fine = matchMedia('(hover: hover) and (pointer: fine)');
+    if (!fine.matches) fine.addEventListener?.('change', (e) => { if (e.matches) loadCursor().catch(fail('cursor')); });
+    afterFirstPaint(() => {
+      loadFocus().catch(fail('focus'));
+      loadA11y().catch(fail('a11y'));
+      if (fine.matches) loadCursor().catch(fail('cursor'));
+      import('./details').then((m) => { m.initDetails(page); detailsMod = m; }).catch(fail('details'));
+    });
+  });
   hold.then(() => requestAnimationFrame(() => document.documentElement.classList.add('chrome-ready')));
   if (import.meta.env.DEV) (window as any).__ofChromeDev = { refreshChrome, navigate };
 }
@@ -84,9 +118,9 @@ export function refreshChrome(root: ParentNode = document): void {
   try {
     scanReveal(root);
     scanBg(root);
-    scanMagnetic(root);
     scanImages(root);
-    scanWhatsApp(root);
+    cursorMod?.scanMagnetic(root);   // not loaded yet → it scans the whole document when it loads
+    detailsMod?.scanWhatsApp(root);  // same
   } catch (e) { console.error('[chrome:refresh]', e); }
 }
 

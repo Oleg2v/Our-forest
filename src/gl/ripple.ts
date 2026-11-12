@@ -91,7 +91,7 @@ class Ripple implements View {
     const cs = getComputedStyle(this.img);
     this.fit = cs.objectFit === 'fill' ? 'fill' : 'cover';
     this.pos = parsePos(cs.objectPosition || '50% 50%');
-    canvas.style.cssText = 'position:absolute;display:block;pointer-events:none;margin:0;';
+    canvas.style.cssText = 'position:absolute;display:block;pointer-events:none;margin:0;max-width:none;max-height:none;';
     this.anchor.after(canvas);
     this.layout();
   }

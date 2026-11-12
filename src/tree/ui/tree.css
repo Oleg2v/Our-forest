@@ -538,9 +538,11 @@
     left: 50%;
     translate: -50% 0;
     z-index: 5;
-    top: calc((var(--tree-scene-cy) + var(--tree-scene-fill) * 0.5) * 100% - 8px);
+    top: calc((var(--tree-scene-cy) + var(--tree-scene-fill) * 0.5) * 100% + 2px);
     margin: 0;
   }
+  /* several trees: the island steps back a little so the pager sits under it, not on its soil */
+  .tree-stage:has(.tree-pager) { --tree-scene-fill: 0.37; }
   .tree-stage:has(.tree-pager) .tree-caption, .tree-stage:has(.tree-offline) .tree-caption, .tree-stage[data-time] .tree-caption { opacity: 0; }
   .tree-offline__more { display: none; }
   .tree-offline {
@@ -554,6 +556,7 @@
 }
 @media (max-width: 768px) and (max-height: 700px) {
   .tree-stage { --tree-scene-cy: 0.33; --tree-scene-fill: 0.34; }
+  .tree-stage:has(.tree-pager) { --tree-scene-fill: 0.31; }
 }
 
 /* reduced motion: no pulsing */

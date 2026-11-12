@@ -69,6 +69,8 @@
 .tree-feed__grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: clamp(32px, 6vw, 110px); align-items: start; }
 .tree-feed__intro { position: sticky; top: calc(var(--header-h) + 32px); display: grid; gap: 18px; justify-items: start; }
 .tree-feed__lead { font-size: 18px; color: var(--ink-soft); max-width: 40ch; }
+/* the fruit price on sand: the deeper fruit tone keeps 4.5:1 at 18px */
+.tree-feed__lead .price { color: #9E3D25; }
 .tree-feed__ctas { display: flex; flex-wrap: wrap; gap: 10px; margin-block-start: 6px; }
 .tree-feed__list { list-style: none; padding: 0; position: relative; }
 .tree-feed__list::before {
@@ -179,12 +181,12 @@
 .hb-label__date {
   font-size: 13px;
   letter-spacing: 0.06em;
-  color: rgb(var(--soil-rgb) / 0.42);
-  /* embossed */
+  color: rgb(var(--soil-rgb) / 0.68);
+  /* embossed (the ink stays ≥ 4.5:1 on the label paper) */
   text-shadow: 0 1px 0 rgb(255 255 255 / 0.9), 0 -0.5px 0 rgb(var(--soil-rgb) / 0.15);
 }
-.hb-label__latin { font-size: 11px; font-style: italic; color: rgb(var(--soil-rgb) / 0.5); text-align: start; }
-.hb-label__wait { font-size: 12px; color: rgb(var(--soil-rgb) / 0.5); }
+.hb-label__latin { font-size: 11px; font-style: italic; color: rgb(var(--soil-rgb) / 0.68); text-align: start; }
+.hb-label__wait { font-size: 12px; color: rgb(var(--soil-rgb) / 0.68); }
 .hb-sheet:not(.is-filled) { background: transparent; border-style: dashed; }
 .hb-grid--two .hb-sheet { aspect-ratio: 3 / 3.6; }
 

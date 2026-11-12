@@ -486,7 +486,7 @@ html.menu-open .site-header { transform: none; }
 .a11y__opt-name { font-size: 0.8125rem; color: var(--ink-soft); }
 .a11y__opt:hover { border-color: var(--olive-deep); }
 .a11y__opt:has(input:checked) { background: var(--olive-deep); border-color: var(--olive-deep); color: var(--cream); }
-.a11y__opt:has(input:checked) .a11y__opt-name { color: rgb(var(--cream-rgb) / 0.85); }
+.a11y__opt:has(input:checked) .a11y__opt-name { color: var(--cream); }
 .a11y__row {
   display: flex;
   align-items: center;

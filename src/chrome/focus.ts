@@ -40,6 +40,13 @@ export function initFocus() {
   window.addEventListener('resize', () => visible && place(false), { passive: true });
   // the page colour changed under the ring (focus scrolled into a dark/light section)
   bus.on('theme:section', () => { if (visible) setTimeout(() => visible && place(false), 40); });
+  // loaded lazily: the element focused before this module arrived gets the ring now
+  const a = document.activeElement;
+  if (a && a !== document.body && a !== document.documentElement) {
+    let fv = false;
+    try { fv = a.matches(':focus-visible'); } catch { /* old engines */ }
+    if (fv && !a.closest('[data-focus-ring="none"]')) { target = a; place(false); show(); }
+  }
 }
 
 function show() {

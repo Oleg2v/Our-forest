@@ -2,12 +2,10 @@
    Winner-level details:
    · favicon = a small leaf that changes with the Israeli season
    · tab hidden → title "העץ מחכה לכם"
-   · lazy photos sharpen in from their own blurred colour preview
    · a tree drawn in characters + credits in the console
    · every WhatsApp link (a[href*="wa.me"]) → track('whatsapp_click'); [data-wa] links get the prefilled text
    · soft wooden click on hover for links/buttons/[data-sound-hover] (only while sound is on)
    ========================================================================== */
-import { env } from '../core/env';
 import { sound } from '../core/sound';
 import { track } from '../core/analytics';
 import { seasonOf, waLink } from '../core/format';
@@ -71,23 +69,6 @@ function hoverSounds() {
     last = t;
     if (t && !t.closest('[data-sound-hover="off"]')) sound.play('hover');
   }, { passive: true });
-}
-
-/* ---------------------------------------------------------------- lazy images */
-const seenImg = new WeakSet<HTMLImageElement>();
-export function scanImages(scope: ParentNode = document) {
-  if (!env.motionAllowed()) return;
-  qsa<HTMLImageElement>('img[data-img-key][loading="lazy"]:not([data-img-pending])', scope).forEach((img) => {
-    if (seenImg.has(img)) return;
-    seenImg.add(img);
-    if (img.complete && img.naturalWidth > 0) return;
-    img.classList.add('img-sharpen');
-    const clear = () => setTimeout(() => img.classList.remove('img-sharpen', 'is-loaded'), 1100);
-    img.addEventListener('load', () => {
-      img.decode?.().catch(() => {}).finally(() => requestAnimationFrame(() => { img.classList.add('is-loaded'); clear(); }));
-    }, { once: true });
-    img.addEventListener('error', () => img.classList.remove('img-sharpen'), { once: true });
-  });
 }
 
 /* ---------------------------------------------------------------- console */

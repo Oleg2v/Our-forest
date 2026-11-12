@@ -131,11 +131,19 @@ function readWords(rec: Rec) {
   const el = rec.el;
   rec.split = SplitText.create(el, { type: 'words', wordsClass: 'rv-w', aria: 'none' } as any);
   el.style.setProperty('opacity', '1');
-  const tween = gsap.fromTo(rec.split.words, { opacity: 0.2 }, {
-    opacity: 1, ease: 'none', stagger: 0.1,
-    scrollTrigger: { trigger: el, start: startOf(el, 'top 82%'), end: 'bottom 52%', scrub: 0.6 },
+  const words = rec.split.words;
+  const start = startOf(el, 'top 82%');
+  // words turn pale only once the paragraph enters the viewport — text nobody can see yet keeps
+  // its full colour (so contrast checks and find-in-page never meet a page of faded text)
+  const tween = gsap.fromTo(words, { opacity: 0.2 }, {
+    opacity: 1, ease: 'none', stagger: 0.1, immediateRender: false,
+    scrollTrigger: { trigger: el, start, end: 'bottom 52%', scrub: 0.6 },
   });
-  rec.anims.push(tween);
+  const pale = ScrollTrigger.create({
+    trigger: el, start: 'top bottom', endTrigger: el, end: start,
+    onToggle: (self) => { if (self.isActive && !tween.progress()) gsap.set(words, { opacity: 0.2 }); },
+  });
+  rec.anims.push(tween, pale as unknown as gsap.core.Animation);
 }
 
 /* ---------------------------------------------------------------- fade */

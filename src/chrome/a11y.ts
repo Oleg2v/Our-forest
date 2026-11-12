@@ -25,7 +25,7 @@ export function initA11y() {
   if (!dlg || !card) return;
   document.addEventListener('click', (e) => {
     const b = (e.target as Element | null)?.closest?.<HTMLElement>('[data-a11y-open]');
-    if (b) { opener = b; open(); }
+    if (b) openA11y(b);
   });
   dlg.querySelectorAll('[data-a11y-close]').forEach((b) => b.addEventListener('click', () => close()));
   dlg.querySelectorAll<HTMLInputElement>('input[name="a11y-font"]').forEach((r) => r.addEventListener('change', () => { if (r.checked) setFont(Number(r.value)); }));
@@ -38,6 +38,12 @@ export function initA11y() {
   });
   bus.on('motion:change', sync);
   sync();
+}
+
+/** open the panel (the chrome loads this module lazily — the first click calls this directly) */
+export function openA11y(from?: HTMLElement | null) {
+  if (from) opener = from;
+  open();
 }
 
 function sync() {
