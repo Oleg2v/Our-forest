@@ -39,20 +39,31 @@ export function initDoc() {
     .filter((s): s is HTMLElement => !!s);
   if (!sections.length) return;
 
+  // The spy reads every section's position and writes the TOC: worth a scroll frame only while the TOC can be seen
+  // as a reading root — the sticky side column (wide screens) or an unfolded TOC on a phone; the folded phone TOC
+  // catches up when it opens. Writes only on change (a scroll frame usually changes nothing).
   let ticking = false;
+  let lastCurrent = -1;
+  let lastRead = '';
+  const live = () => wide.matches || !!toc?.open;
   const update = () => {
     ticking = false;
+    if (!live()) return;
     const line = window.innerHeight * 0.32;
     let current = 0;
     sections.forEach((s, i) => { if (s.getBoundingClientRect().top <= line) current = i; });
-    links.forEach((a, i) => a.setAttribute('aria-current', i === current ? 'true' : 'false'));
+    if (current !== lastCurrent) {
+      lastCurrent = current;
+      links.forEach((a, i) => a.setAttribute('aria-current', i === current ? 'true' : 'false'));
+    }
     const r = article.getBoundingClientRect();
-    const read = Math.min(1, Math.max(0, (line - r.top) / Math.max(1, r.height - window.innerHeight * 0.4)));
-    list.style.setProperty('--read', read.toFixed(3));
+    const read = Math.min(1, Math.max(0, (line - r.top) / Math.max(1, r.height - window.innerHeight * 0.4))).toFixed(3);
+    if (read !== lastRead) { lastRead = read; list.style.setProperty('--read', read); }
   };
-  const onScroll = () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } };
+  const onScroll = () => { if (!ticking && live()) { ticking = true; requestAnimationFrame(update); } };
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', onScroll, { passive: true });
+  toc?.addEventListener('toggle', onScroll);
   update();
   if (!env.motionAllowed()) list.style.setProperty('transition', 'none');
 }

@@ -21,10 +21,13 @@ function initHero() {
   // a slow parallax inside the leaf (desktop, motion on) — the leaf itself stays put
   whenMotion(() => {
     if (env.isTouch || env.isMobile()) return;
+    // its own layer only while the parallax exists (phones and reduced motion never move it)
+    media.classList.add('is-parallax');
     gsap.fromTo(media, { yPercent: -3 }, {
       yPercent: 5, ease: 'none',
       scrollTrigger: { trigger: hero, start: 'top top', end: 'bottom top', scrub: true },
     });
+    return () => media.classList.remove('is-parallax');
   });
 }
 

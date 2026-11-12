@@ -31,8 +31,13 @@ export function initSteps() {
   const SAMPLES = 160;
   let samples: DOMPoint[] = [];
   let length = 1;
-  let rootlets: { el: SVGPathElement; at: number; len: number }[] = [];
+  let rootlets: { el: SVGPathElement; at: number; len: number; off: number }[] = [];
   let tip: SVGCircleElement | null = null;
+  // what draw() last wrote: a scrub frame only touches what changed (the dash pattern is written once per layout)
+  let dashSet = false;
+  let lastOff = -1;
+  let lastTip = '';
+  let tipShown = false;
   let st: ScrollTrigger | null = null;
   let live = false;
 
@@ -120,13 +125,23 @@ export function initSteps() {
       path.setAttribute('class', 'biz-steps__rootlet');
       path.setAttribute('d', d2);
       rootletsG!.append(path);
-      rootlets.push({ el: path, at, len: path.getTotalLength() || 1 });
+      rootlets.push({ el: path, at, len: path.getTotalLength() || 1, off: -1 });
     }
     tip = document.createElementNS(NS, 'circle');
     tip.setAttribute('class', 'biz-steps__tip');
     tip.setAttribute('r', '2.6');
     tip.style.opacity = '0';
     rootletsG!.append(tip);
+    dashSet = false; lastOff = -1; lastTip = ''; tipShown = false;
+  }
+
+  /** a point on the root from the samples taken at layout — no getPointAtLength in a scroll frame
+      (WebKit updates layout for every call). Linear between samples a few px apart: a fraction of a px off. */
+  function pointAt(p: number) {
+    const f = Math.min(1, Math.max(0, p)) * SAMPLES;
+    const k = Math.min(SAMPLES - 1, Math.floor(f));
+    const a = samples[k], b = samples[k + 1] ?? a, t = f - k;
+    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
   }
 
   function nearestAt(c: { x: number; y: number }) {
@@ -148,18 +163,29 @@ export function initSteps() {
 
   /* ------------------------------------------------------------ drawing */
   function draw(p: number) {
-    line!.style.strokeDasharray = `${length} ${length}`;
-    line!.style.strokeDashoffset = `${length * (1 - p)}`;
+    if (!dashSet) {
+      dashSet = true;
+      line!.style.strokeDasharray = `${length} ${length}`;
+      rootlets.forEach((r) => { r.el.style.strokeDasharray = `${r.len} ${r.len}`; });
+    }
+    // offsets to a tenth of a px: finer steps change nothing on screen, they only cost a repaint
+    const off = Math.round(length * (1 - p) * 10) / 10;
+    if (off !== lastOff) { lastOff = off; line!.style.strokeDashoffset = String(off); }
     rootlets.forEach((r) => {
       const local = Math.min(1, Math.max(0, (p - r.at) / 0.07));
-      r.el.style.strokeDasharray = `${r.len} ${r.len}`;
-      r.el.style.strokeDashoffset = `${r.len * (1 - local)}`;
+      const o = Math.round(r.len * (1 - local) * 10) / 10;
+      if (o !== r.off) { r.off = o; r.el.style.strokeDashoffset = String(o); }
     });
-    if (tip) {
-      const pt = line!.getPointAtLength(p * length);
-      tip.setAttribute('cx', pt.x.toFixed(1));
-      tip.setAttribute('cy', pt.y.toFixed(1));
-      tip.style.opacity = p > 0.003 && p < 0.997 ? '1' : '0';
+    if (tip && samples.length > SAMPLES) {
+      const pt = pointAt(p);
+      const key = `${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`;
+      if (key !== lastTip) {
+        lastTip = key;
+        tip.setAttribute('cx', pt.x.toFixed(1));
+        tip.setAttribute('cy', pt.y.toFixed(1));
+      }
+      const show = p > 0.003 && p < 0.997;
+      if (show !== tipShown) { tipShown = show; tip.style.opacity = show ? '1' : '0'; }
     }
     nodes.forEach((n, i) => {
       const on = p >= n.at - 0.004;
@@ -180,6 +206,9 @@ export function initSteps() {
       const paths = n.icon ? Array.from(n.icon.querySelectorAll('path, rect, circle')) : [];
       const tl = gsap.timeline({ paused: true });
       if (paths.length) tl.fromTo(paths, { drawSVG: '0%' }, { drawSVG: '100%', duration: 1.1, ease: 'power2.out', stagger: 0.08 }, 0.05);
+      // initialise DrawSVG here (it measures every path: getBBox + getTotalLength, a forced layout) instead of in
+      // the scroll frame where the node first lights; to the end and back renders the same 0% start state
+      tl.progress(1).progress(0);
       n.tl = tl;
     });
   }
@@ -189,8 +218,9 @@ export function initSteps() {
     section!.removeAttribute('data-live');
     line!.style.strokeDasharray = '';
     line!.style.strokeDashoffset = '';
-    rootlets.forEach((r) => { r.el.style.strokeDasharray = ''; r.el.style.strokeDashoffset = ''; });
+    rootlets.forEach((r) => { r.el.style.strokeDasharray = ''; r.el.style.strokeDashoffset = ''; r.off = -1; });
     if (tip) tip.style.opacity = '0';
+    dashSet = false; lastOff = -1; lastTip = ''; tipShown = false;
     nodes.forEach((n) => {
       n.tl?.kill(); n.tl = null;
       n.lit = true;

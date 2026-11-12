@@ -1,6 +1,7 @@
 /* The watering can + the water arc (7.5): a line-art can slides in from the corner and tilts;
    water flies in an arc — 200–400 particles with gravity and small splashes — on a 2D canvas
-   over the scene. The RAF loop runs only while water is in the air. */
+   over the scene. The RAF loop runs only while water is in the air, and the canvas has a backing store
+   (stage × DPR, ≈ 4 MB on a phone — another full-screen layer over the WebGL one) only for that time. */
 import { gsap } from '../../core/gsap';
 
 const CAN_SVG = `
@@ -46,22 +47,34 @@ export class WaterFx {
     this.can.setAttribute('aria-hidden', 'true');
     this.can.innerHTML = CAN_SVG;
     stage.appendChild(this.can);
-    this.resize();
-    window.addEventListener('resize', () => this.resize(), { passive: true });
+    // no bitmap until water flies (a canvas without size attributes would hold a 300×150 one)
+    this.release();
+    // iOS fires resize while scrolling (the address bar): no layout read, no reallocation then — the stage is
+    // measured when the can comes in, and the bitmap resized only while water is actually in the air
+    window.addEventListener('resize', () => { if (this.raf) { this.measure(); this.alloc(); } }, { passive: true });
   }
 
   setTone(t: 'light' | 'dark') { this.tone = t; }
 
-  resize() {
+  private measure() {
     const r = this.stage.getBoundingClientRect();
     this.w = Math.max(1, r.width); this.h = Math.max(1, r.height);
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
-    this.canvas.width = Math.round(this.w * this.dpr);
-    this.canvas.height = Math.round(this.h * this.dpr);
+  }
+  /** the bitmap at stage × DPR — assigning width/height reallocates and clears even with the same value, so only on a change */
+  private alloc() {
+    const cw = Math.round(this.w * this.dpr), ch = Math.round(this.h * this.dpr);
+    if (this.canvas.width !== cw) this.canvas.width = cw;
+    if (this.canvas.height !== ch) this.canvas.height = ch;
+  }
+  private release() {
+    if (this.canvas.width) this.canvas.width = 0;
+    if (this.canvas.height) this.canvas.height = 0;
   }
 
   /** place the can so its spout pours onto `target` (stage coords), slide in from the corner and tilt */
   enter(target: { x: number; y: number }, motion: boolean) {
+    this.measure();
     this.dst = { ...target };
     const mobile = this.w < 700;
     const canW = mobile ? 118 : 150;
@@ -115,6 +128,7 @@ export class WaterFx {
   }
 
   start() {
+    this.alloc();
     this.emitting = true;
     this.emitted = 0;
     this.rate = 0;
@@ -135,6 +149,7 @@ export class WaterFx {
       this.step(dt);
       this.draw();
       if (this.emitting || this.drops.length) this.raf = requestAnimationFrame(tick);
+      else this.release(); // the last drop has landed (draw() just cleared it): give the bitmap back
     };
     this.raf = requestAnimationFrame(tick);
   }

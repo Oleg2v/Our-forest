@@ -3,7 +3,8 @@
    Hidden: html[data-hide-sticky] (a page's own sticky bar, e.g. /plant), while the
    first screen of the home page is in view (the hero has its own CTAs), over the
    footer, while a sheet/dialog/menu is open, and while the on-screen keyboard is up.
-   Respects safe-area-inset-bottom. Sets html.mbar-on + --mbar-space for neighbours.
+   Respects safe-area-inset-bottom. Sets html.mbar-on + --mbar-space for neighbours (chrome.css lists the
+   boxes that read --mbar-space: it is not a root variable, so the bar coming/going restyles only them).
    ========================================================================== */
 import { bus } from '../core/bus';
 import { isDarkAt, qs } from './util';
@@ -17,10 +18,14 @@ export function initSticky(page: PageName) {
   const reasons = new Set<string>();
   let modals = 0;
 
+  let toneStale = false;
   const update = () => {
     const hidden = !mq.matches || reasons.size > 0 || root.hasAttribute('data-hide-sticky');
     // writes only on change: this runs on every scroll event on the home page
-    if (hidden !== bar.hasAttribute('data-hidden')) bar.toggleAttribute('data-hidden', hidden);
+    if (hidden !== bar.hasAttribute('data-hidden')) {
+      bar.toggleAttribute('data-hidden', hidden);
+      if (!hidden && toneStale) tone(); // coming back: the right colour as it slides in
+    }
     if (bar.inert !== hidden) bar.inert = hidden;
     if (root.classList.contains('mbar-on') === hidden) root.classList.toggle('mbar-on', !hidden);
   };
@@ -31,7 +36,7 @@ export function initSticky(page: PageName) {
   };
 
   // home: wait until the visitor leaves the hero. Read in the capture phase of the scroll event, before
-  // ScrollTrigger and the sections write this frame's styles: scrollY then never forces a layout.
+  // ScrollTrigger's handler reads (and the scrubs write): scrollY shares the flush that read needs anyway.
   if (page === 'home') {
     const onScroll = () => set('intro', window.scrollY < window.innerHeight * 0.55);
     window.addEventListener('scroll', onScroll, { passive: true, capture: true });
@@ -53,14 +58,18 @@ export function initSticky(page: PageName) {
   new MutationObserver(update).observe(root, { attributes: true, attributeFilter: ['data-hide-sticky'] });
   mq.addEventListener?.('change', update);
 
-  // tone: over dark sections the dock turns moss
+  // tone: over dark sections the dock turns moss. A hit test of the whole stack — so only once a scroll settles,
+  // and not at all while the bar is away (it looks again when it comes back)
   let t = 0;
-  const tone = () => {
+  function tone() {
     if (!mq.matches) return;
+    if (bar!.hasAttribute('data-hidden')) { toneStale = true; return; }
+    toneStale = false;
     const y = window.innerHeight - 30;
     const dark = isDarkAt(window.innerWidth / 2, y, (el) => !!el.closest('.mbar, .cookie, .cursor, .focus-ring, .pt'));
-    bar.dataset.tone = dark ? 'light' : 'dark';
-  };
+    const v = dark ? 'light' : 'dark';
+    if (bar!.dataset.tone !== v) bar!.dataset.tone = v;
+  }
   window.addEventListener('scroll', () => { clearTimeout(t); t = window.setTimeout(tone, 120); }, { passive: true });
   bus.on('theme:section', () => setTimeout(tone, 40));
   setTimeout(tone, 300);

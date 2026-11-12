@@ -114,6 +114,20 @@ export function specimenSvg(sp: SpeciesId, season: Season | 'firstFruit' | 'firs
   return `<svg class="hb-svg" viewBox="0 0 120 150" aria-hidden="true">${defs}<g class="hb-spec">${body}</g></svg>`;
 }
 
+/** where the drawing sits in its <svg> box (viewBox 120×150, "meet"): the px per viewBox unit and, in box px,
+    the point at 50% / 80% of the drawing's own bounds — the pivot the fall used to have on the <g> */
+function spot(svg: SVGSVGElement): { scale: number; origin: string } {
+  const r = svg.getBoundingClientRect();
+  const scale = Math.min(r.width / 120, r.height / 150) || 1;
+  const ox = (r.width - 120 * scale) / 2, oy = (r.height - 150 * scale) / 2;
+  let ux = 60, uy = 120;
+  try {
+    const b = svg.querySelector<SVGGraphicsElement>('.hb-spec')?.getBBox();
+    if (b && b.width) { ux = b.x + b.width * 0.5; uy = b.y + b.height * 0.8; }
+  } catch { /* not rendered */ }
+  return { scale, origin: `${(ox + ux * scale).toFixed(1)}px ${(oy + uy * scale).toFixed(1)}px` };
+}
+
 /* ------------------------------------------------------------------ the book */
 export class Herbarium {
   private root: HTMLElement;
@@ -192,16 +206,20 @@ export class Herbarium {
       this.io?.disconnect();
       const motion = this.ctx.motion();
       fresh.forEach((s, i) => {
-        const spec = s.querySelector('.hb-spec');
+        const svg = s.querySelector<SVGSVGElement>('.hb-svg');
         const tapes = s.querySelectorAll('.hb-tape');
         const label = s.querySelectorAll('.hb-label > *');
-        if (motion) {
+        if (motion && svg) {
+          // The leaf falls in on the outer <svg> (a box the compositor can move), not on the <g> inside it: an SVG
+          // child's transform repaints the whole drawing every frame, its paper-grain filter (feTurbulence) included.
+          // Same motion as before: 60 viewBox units of drop, the pivot at 50% / 80% of the drawing itself.
+          const k = spot(svg);
           const tl = gsap.timeline({ delay: 0.3 + i * 0.35 });
           tl.call(() => sound.play('paper', { volume: 0.6 }))
-            .fromTo(spec, { y: -60, rotation: -14, opacity: 0, transformOrigin: '50% 80%' }, { y: 0, rotation: 0, opacity: 1, duration: 1.4, ease: 'expo.out' })
+            .fromTo(svg, { y: -60 * k.scale, rotation: -14, opacity: 0, transformOrigin: k.origin }, { y: 0, rotation: 0, opacity: 1, duration: 1.4, ease: 'expo.out', clearProps: 'transform' })
             .fromTo(tapes, { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: 'power3.out', stagger: 0.12 }, 0.8)
             .fromTo(label, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.9, ease: 'expo.out', stagger: 0.08 }, 0.9);
-        }
+        } else if (svg) gsap.set(svg, { clearProps: 'opacity' }); // motion turned off meanwhile: no leaf left invisible
         s.classList.remove('is-new');
       });
       this.ctx.store.markLaid(fresh.map((s) => s.dataset.key ?? ''));
@@ -210,7 +228,7 @@ export class Herbarium {
       this.ctx.announce(`עלה חדש נכנס להרבריום: ${fresh.map((s) => s.querySelector('.hb-label__t')?.textContent).join(', ')}`);
     };
     if (!('IntersectionObserver' in window)) { lay(); return; }
-    if (this.ctx.motion()) fresh.forEach((s) => gsap.set(s.querySelector('.hb-spec'), { opacity: 0 }));
+    if (this.ctx.motion()) fresh.forEach((s) => gsap.set(s.querySelector('.hb-svg'), { opacity: 0 }));
     this.io = new IntersectionObserver((en) => { if (en.some((e) => e.isIntersecting)) lay(); }, { threshold: 0.3 });
     this.io.observe(this.book);
   }

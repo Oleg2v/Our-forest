@@ -445,7 +445,11 @@ html.menu-open .site-header { transform: none; }
   .mbar__plant { flex: 1 1 auto; }
   .mbar__wa { --btn-bg: var(--olive-deep); --btn-fg: var(--cream); flex: 0 0 auto; padding-inline: 18px 20px; }
   .mbar__wa:hover { --btn-bg: #545829; }
-  html.mbar-on { --mbar-space: calc(70px + var(--safe-bottom)); }
+  /* --mbar-space is set on the boxes that keep clear of the bar, not on <html>: a custom property on the root
+     restyles every element of the page (≈ 1500 on the home page, 70 ms at 4× CPU) each time the bar comes or
+     goes (leaving the hero, reaching the footer). Consumers: the cookie card, the home map's legend, the 404
+     ground. A new consumer of var(--mbar-space) adds its class here. */
+  html.mbar-on :is(.cookie, .fmap__legend, .nf__ground, .nf__grass, .nf__stage) { --mbar-space: calc(70px + var(--safe-bottom)); }
 }
 
 /* ---------------------------------------------------------------- overlays share a fixed light theme */

@@ -79,6 +79,8 @@
     radial-gradient(70% 55% at 50% 45%, rgb(var(--cream-rgb) / 0.86), rgb(var(--cream-rgb) / 0.97) 70%);
 }
 .tree-stage__veil.is-on { pointer-events: auto; }
+/* idle (opacity 0, intro.ts toggles is-on around every fade): nothing to paint, so no full-stage layer over the scene */
+.tree-stage__veil:not(.is-on) { visibility: hidden; }
 
 /* ---------------- the UI column ---------------- */
 .tree-stage__ui {

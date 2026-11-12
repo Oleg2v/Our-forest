@@ -31,6 +31,8 @@ export function initGallery() {
     ctx?.revert(); ctx = null;
     viewport.removeEventListener('scroll', onNativeScroll);
     section!.classList.toggle('biz-gal--rows', next === 'rows');
+    // compositor layers (will-change) only while the drift moves the strip — not on the phone's swipe strip
+    section!.classList.toggle('biz-gal--drift', next === 'drift');
     mode = next;
     if (next === 'swipe') {
       viewport.addEventListener('scroll', onNativeScroll, { passive: true });

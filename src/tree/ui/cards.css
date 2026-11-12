@@ -73,14 +73,21 @@
   pointer-events: none;
   overflow: visible;
   opacity: 0;
-  transition: opacity 0.3s;
+  /* hidden, not only transparent, once faded out: an idle full-stage layer over the scene has nothing to paint */
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0s 0.3s;
 }
-.tdock-lead.is-on { opacity: 1; }
+.tdock-lead.is-on { opacity: 1; visibility: visible; transition: opacity 0.3s, visibility 0s; }
 .tdock-lead__path { fill: none; stroke: var(--t-ink); stroke-width: 1; stroke-dasharray: 1 1; opacity: 0.6; }
 .tdock-lead__dot { fill: var(--t-ink); }
-.tdock-lead__ring { fill: none; stroke: var(--t-ink); stroke-width: 1; opacity: 0.45; transform-box: fill-box; transform-origin: center; animation: tdock-ring 2.6s var(--ease-out) infinite; }
+.tdock-lead__ring { fill: none; stroke: var(--t-ink); stroke-width: 1; opacity: 0.45; transform-box: fill-box; transform-origin: center; }
+/* the ring pulses only while the leader line is shown: an SVG child's animation is main-thread work every frame
+   (style + paint), and while the line is hidden (opacity 0) it was running for nothing, scrolled away included */
+.tdock-lead.is-on .tdock-lead__ring { animation: tdock-ring 2.6s var(--ease-out) infinite; }
 @keyframes tdock-ring { 0% { transform: scale(0.5); opacity: 0.6; } 100% { transform: scale(1.5); opacity: 0; } }
 html.no-motion .tdock-lead__ring { animation: none; }
+/* the stage scrolled out of view (index.ts): its endless loops (this ring, the news dot, the memorial candle) wait */
+.tree-stage[data-away] *, .tree-stage[data-away] *::after { animation-play-state: paused !important; }
 
 /* the dedication, large, under the zoomed plaque */
 .tplaque {

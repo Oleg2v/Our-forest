@@ -67,10 +67,10 @@ export function initHeader(page: PageName) {
     else if (dy < -4) setAttr('data-hidden', false);
     lastY = y;
   };
-  // Reads (scrollY, the tone hit test) happen in the scroll event's capture phase — before ScrollTrigger and the
-  // sections write this frame's styles — so they find layout clean. Read inside rAF, after GSAP's tick, every
-  // scrollY forced a style + layout pass of whatever the scrubs had just written (WebKit and Blink both flush
-  // layout for scrollY).
+  // Reads (scrollY, the tone hit test) happen in the scroll event's capture phase, before ScrollTrigger's own
+  // scroll handler, which reads the position too (WebKit and Blink both flush style + layout for scrollY) and
+  // then lets the scrubs write: both reads share that one flush. Read inside rAF — after GSAP's tick had written
+  // the scrubs — it was a second style + layout pass every scroll frame (measured: −37 % layout passes).
   const onScroll = () => {
     y = Math.max(0, window.scrollY);
     if (performance.now() - lastTone > toneEvery) tone();

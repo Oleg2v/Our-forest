@@ -457,6 +457,8 @@ export function initTreePage(main: HTMLElement) {
     const root = document.documentElement;
     new IntersectionObserver(([e]) => {
       if (e.isIntersecting && e.intersectionRatio > 0.35) root.setAttribute('data-hide-sticky', ''); else root.removeAttribute('data-hide-sticky');
+      // off screen: the stage's endless CSS loops pause (cards.css) — the scene pauses its own render loop
+      stage.toggleAttribute('data-away', !e.isIntersecting);
     }, { threshold: [0, 0.35, 0.6] }).observe(stage);
   }
 
