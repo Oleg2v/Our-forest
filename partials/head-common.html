@@ -1,5 +1,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>
+/* pre-paint boot: js/motion classes + saved a11y prefs (no flash). Storage access is guarded. */
+(function(d){var h=d.documentElement,g=function(k){try{return JSON.parse(localStorage.getItem('of:'+k))}catch(e){return null}};
+h.classList.add('js');var off=g('a11y:motionOff')===true,rm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+h.classList.add(off||rm?'no-motion':'motion');if(off)h.setAttribute('data-a11y-motion','off');
+var f=g('a11y:font');if(f)h.setAttribute('data-a11y-font',String(f));if(g('a11y:contrast')==='high')h.setAttribute('data-a11y-contrast','high');
+})(document);
+</script>
 <meta name="theme-color" content="#232E1C">
 <meta name="format-detection" content="telephone=no">
 <link rel="preload" href="/fonts/frank-ruhl-libre-hebrew-300.woff2" as="font" type="font/woff2" crossorigin>

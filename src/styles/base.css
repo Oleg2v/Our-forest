@@ -157,9 +157,11 @@ body::after {
 .field input:focus-visible, .field textarea:focus-visible, .field select:focus-visible { border-color: var(--olive-deep); outline-offset: 2px; }
 
 /* ---------- reveal hooks (initial states only when JS + motion are on) ---------- */
-html.js.motion [data-reveal='fade'] { opacity: 0; }
-html.js.motion [data-reveal='lines'], html.js.motion [data-reveal='letters'] { visibility: hidden; }
-html.js.motion [data-reveal='leaf'] { clip-path: inset(0 0 100% 0 round var(--leaf-r) 0 var(--leaf-r) 0); }
+/* `reveals-on` is added by the chrome reveal system (src/chrome) — with a failsafe —
+   so content is never hidden if JS fails or before that system exists. */
+html.reveals-on.motion [data-reveal='fade'] { opacity: 0; }
+html.reveals-on.motion [data-reveal='lines'], html.reveals-on.motion [data-reveal='letters'] { visibility: hidden; }
+html.reveals-on.motion [data-reveal='leaf'] { clip-path: inset(0 0 100% 0 round var(--leaf-r) 0 var(--leaf-r) 0); }
 
 /* ---------- reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
