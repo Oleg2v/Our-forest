@@ -44,6 +44,15 @@ const TU_BISHVAT = '2027-01-23';
 const qs = <T extends Element = HTMLElement>(s: string, r: ParentNode) => r.querySelector<T>(s)!;
 const qsa = <T extends Element = HTMLElement>(s: string, r: ParentNode) => Array.from(r.querySelectorAll<T>(s));
 
+/** Run fn once, the first time the trigger is active — entering from above OR from below
+    (a deep link such as /#map lands under the section; scrolling back up must still reveal it). */
+function whenSeen(trigger: Element, start: string, fn: () => void) {
+  ScrollTrigger.create({
+    trigger, start, end: 'bottom top',
+    onToggle: (self) => { if (self.isActive) { self.kill(); fn(); } },
+  });
+}
+
 /** Keep the static markup in sync with the single source of copy (src/content/he.ts). */
 function syncCopy(root: HTMLElement) {
   qsa<HTMLElement>('[data-he]', root).forEach((el) => {
@@ -88,7 +97,10 @@ class SeasonsSection {
   private sp = -1;
   private seasonIdx = -1;
   private lastSound = 0;
+  /** entrances play once per page view — anything already seen stays visible across mode rebuilds */
   private revealed = new WeakSet<Element>();
+  private headShown = false;
+  private branchShown = false;
   private st: ScrollTrigger | null = null;
   private tlHold = { start: 0.05, end: 0.07 };
   private resizeTimer = 0;
@@ -165,16 +177,15 @@ class SeasonsSection {
   }
 
   private headIn(trigger: Element, start: string) {
+    if (this.headShown) return;
     const lines = qsa('.seasons__tl > span', this.head);
     const plaque = this.plaque && this.head.contains(this.plaque) ? this.plaque : null;
     if (lines.length) gsap.set(lines, { yPercent: 108 });
-    if (plaque) gsap.set(plaque, { autoAlpha: 0, y: 28 });
-    ScrollTrigger.create({
-      trigger, start, once: true,
-      onEnter: () => {
-        if (lines.length) gsap.to(lines, { yPercent: 0, duration: T.appear, ease: EASE.appear, stagger: T.lineStep });
-        if (plaque) gsap.to(plaque, { autoAlpha: 1, y: 0, duration: T.appear, ease: EASE.appear, delay: 0.35 });
-      },
+    if (plaque) gsap.set(plaque, { opacity: 0, y: 28 });
+    whenSeen(trigger, start, () => {
+      this.headShown = true;
+      if (lines.length) gsap.to(lines, { yPercent: 0, duration: T.appear, ease: EASE.appear, stagger: T.lineStep });
+      if (plaque) gsap.to(plaque, { opacity: 1, y: 0, duration: T.appear, ease: EASE.appear, delay: 0.35 });
     });
   }
 
@@ -210,7 +221,7 @@ class SeasonsSection {
     if (this.variant === variant) return;
     this.variant = variant;
     const o = variant === 'wide' ? WIDE : COMPACT;
-    this.branchHost.innerHTML = `<svg class="seasons__branch-svg" viewBox="0 0 ${o.w} ${o.h}" preserveAspectRatio="xMaxYMin slice" focusable="false">${buildBranch(o)}</svg>`;
+    this.branchHost.innerHTML = `<svg class="seasons__branch-svg" viewBox="0 0 ${o.w} ${o.h}" preserveAspectRatio="xMaxYMin meet" focusable="false">${buildBranch(o)}</svg>`;
     this.syncUnits();
   }
 
@@ -221,7 +232,7 @@ class SeasonsSection {
     const o = this.variant === 'wide' ? WIDE : COMPACT;
     const wpx = svg.getBoundingClientRect().width || window.innerWidth;
     const hpx = svg.getBoundingClientRect().height || wpx * (o.h / o.w);
-    const scale = Math.max(wpx / o.w, hpx / o.h); // "slice"
+    const scale = Math.min(wpx / o.w, hpx / o.h); // "meet"
     svg.style.setProperty('--u', (1 / Math.max(0.2, scale)).toFixed(4));
   }
 
@@ -262,7 +273,7 @@ class SeasonsSection {
   /* ------------------------------------------------------------ entrance (branch + cards) */
   private branchIn(trigger: Element, start: string) {
     const svg = this.branchHost.firstElementChild;
-    if (!svg) return;
+    if (!svg || this.branchShown) return;
     const stem = qsa<SVGPathElement>('.seasons__stem', svg);
     const fill = qsa('.seasons__stem-fill', svg);
     const twigs = qsa<SVGPathElement>('.seasons__twig, .seasons__stalk', svg);
@@ -277,16 +288,18 @@ class SeasonsSection {
       .to(fill, { opacity: 1, duration: 1, ease: EASE.soft }, 1.1)
       .to(twigs, { drawSVG: '100%', duration: 0.7, ease: 'power2.out', stagger: 0.05 }, 0.5)
       .to(parts, { '--in': 1, duration: 0.9, ease: 'back.out(1.6)', stagger: { each: 1.4 / Math.max(1, parts.length) } }, 0.7);
-    ScrollTrigger.create({ trigger, start, once: true, onEnter: () => tl.play() });
+    whenSeen(trigger, start, () => { this.branchShown = true; tl.play(); });
   }
 
   private hideCard(card: HTMLElement) {
+    if (this.revealed.has(card)) return;
     const media = card.querySelector('.seasons__media');
     const img = card.querySelector('.seasons__img');
     const body = qsa(':scope > .seasons__body > *', card);
     gsap.set(media, { clipPath: 'inset(24% 16% 24% 16% round 48px 0px 48px 0px)' });
     gsap.set(img, { scale: 1.2 });
-    gsap.set(body, { autoAlpha: 0, y: 24 });
+    // opacity only (never visibility): buttons in cards that are not revealed yet stay focusable
+    gsap.set(body, { opacity: 0, y: 24 });
   }
 
   private revealCard(card: HTMLElement, delay = 0) {
@@ -302,7 +315,7 @@ class SeasonsSection {
     const tl = gsap.timeline({ delay });
     tl.to(media, { clipPath: `inset(0% 0% 0% 0% round ${radius})`, duration: T.image, ease: EASE.image })
       .to(img, { scale: 1, duration: T.image, ease: EASE.image }, 0)
-      .to(body, { autoAlpha: 1, y: 0, duration: T.appear, ease: EASE.appear, stagger: T.lineStep }, 0.3)
+      .to(body, { opacity: 1, y: 0, duration: T.appear, ease: EASE.appear, stagger: T.lineStep }, 0.3)
       .add(() => gsap.set(media, { clearProps: 'clipPath' }));
   }
 
@@ -320,6 +333,31 @@ class SeasonsSection {
     let entered = false;
     const travel = () => Math.max(0, this.track.scrollWidth - this.viewport.clientWidth);
     const dist = () => Math.max(travel() * 1.75, window.innerHeight * 1.6);
+    const imgs = this.cards.map((c) => c.querySelector<HTMLElement>('.seasons__photo'));
+    const setters = imgs.map((im) => (im ? gsap.quickSetter(im, 'xPercent') : null));
+    // card positions with the strip at x = 0, measured on refresh → no layout reads per frame
+    let base: { l: number; w: number }[] = [];
+    let tr = 0, vw = window.innerWidth;
+    const measure = () => {
+      const x = Number(gsap.getProperty(this.track, 'x')) || 0;
+      base = this.cards.map((c) => { const b = c.getBoundingClientRect(); return { l: b.left - x, w: b.width }; });
+      tr = travel();
+      vw = window.innerWidth;
+    };
+    const update = () => {
+      const x = Number(gsap.getProperty(this.track, 'x')) || 0;
+      this.setSp(tr > 0 ? (x / tr) * 3 : 0);
+      this.cards.forEach((card, i) => {
+        const b = base[i];
+        if (!b) return;
+        const left = b.l + x, right = left + b.w;
+        if (right < -40 || left > vw + 40) return;
+        const k = gsap.utils.clamp(-1, 1, ((left + b.w / 2) - vw / 2) / (vw * 0.7));
+        setters[i]?.(k * -5);
+        if (!this.revealed.has(card) && entered && left < vw * 0.92 && right > vw * 0.08) this.revealCard(card);
+      });
+    };
+    measure();
     const H = this.tlHold;
     const tl = gsap.timeline({
       defaults: { ease: 'none' },
@@ -331,7 +369,7 @@ class SeasonsSection {
         scrub: 0.6,
         invalidateOnRefresh: true,
         anticipatePin: 1,
-        onRefresh: () => this.syncUnits(),
+        onRefresh: () => { this.syncUnits(); measure(); update(); },
       },
     });
     tl.to({}, { duration: H.start })
@@ -340,37 +378,19 @@ class SeasonsSection {
     this.st = tl.scrollTrigger ?? null;
 
     // parallax inside each photo + reveals, all from the same update
-    const imgs = this.cards.map((c) => c.querySelector<HTMLElement>('.seasons__photo'));
-    const setters = imgs.map((im) => (im ? gsap.quickSetter(im, 'xPercent') : null));
-    const update = () => {
-      const tr = travel();
-      const x = Number(gsap.getProperty(this.track, 'x')) || 0;
-      this.setSp(tr > 0 ? (x / tr) * 3 : 0);
-      const vw = window.innerWidth;
-      this.cards.forEach((card, i) => {
-        const b = card.getBoundingClientRect();
-        if (b.right < -40 || b.left > vw + 40) return;
-        const k = gsap.utils.clamp(-1, 1, ((b.left + b.width / 2) - vw / 2) / (vw * 0.7));
-        setters[i]?.(k * -5);
-        if (!this.revealed.has(card) && entered && b.left < vw * 0.92 && b.right > vw * 0.08) this.revealCard(card);
-      });
-    };
     tl.eventCallback('onUpdate', update);
 
     // first reveals when the section scrolls into view (the strip is still at its start)
     this.cards.forEach((c) => this.hideCard(c));
     this.headIn(this.root, 'top 72%');
-    ScrollTrigger.create({
-      trigger: this.root, start: 'top 62%', once: true,
-      onEnter: () => {
-        entered = true;
-        const vw = window.innerWidth;
-        let n = 0;
-        this.cards.forEach((card) => {
-          const b = card.getBoundingClientRect();
-          if (b.left < vw * 0.92 && b.right > vw * 0.08) this.revealCard(card, 0.25 + 0.12 * n++);
-        });
-      },
+    whenSeen(this.root, 'top 62%', () => {
+      entered = true;
+      const vw = window.innerWidth;
+      let n = 0;
+      this.cards.forEach((card) => {
+        const b = card.getBoundingClientRect();
+        if (b.left < vw * 0.92 && b.right > vw * 0.08) this.revealCard(card, 0.25 + 0.12 * n++);
+      });
     });
     this.branchIn(this.root, 'top 75%');
     update();
@@ -380,6 +400,7 @@ class SeasonsSection {
       const card = (e.target as Element).closest<HTMLElement>('.seasons__card, .seasons__intro');
       const st = this.st;
       if (!card || !st) return;
+      if (card.classList.contains('seasons__card')) this.revealCard(card);
       const tr = travel();
       if (tr <= 0) return;
       const x = Number(gsap.getProperty(this.track, 'x')) || 0;
@@ -416,31 +437,53 @@ class SeasonsSection {
     const n = slides.length;
     // progress dots (one per slide) + the season's name
     this.dots.hidden = false;
-    this.dots.innerHTML = `<span class="seasons__dots-row">${slides.map((_, i) => `<button type="button" class="seasons__dot" data-i="${i}" aria-label="${i + 1} / ${n}"><span></span></button>`).join('')}</span>`
+    const label = (el: HTMLElement) => (el.querySelector('h3')?.textContent ?? he.seasonalBanner.split(':')[0]).trim().replace(/"/g, '&quot;');
+    this.dots.innerHTML = `<span class="seasons__dots-row">${slides.map((sl, i) => `<button type="button" class="seasons__dot" data-i="${i}" aria-label="${label(sl)}"><span></span></button>`).join('')}</span>`
       + `<span class="seasons__dots-season" aria-hidden="true"></span>`;
     const dotEls = qsa<HTMLButtonElement>('.seasons__dot', this.dots);
     const seasonEl = qs('.seasons__dots-season', this.dots);
     let active = -1;
     const vp = this.viewport;
 
+    // the scroll offset at which each slide snaps (RTL: its right edge on the snapport's right edge)
+    let snaps: number[] = [];
+    const measure = () => {
+      const max = Math.max(0, vp.scrollWidth - vp.clientWidth);
+      const vb = vp.getBoundingClientRect();
+      const pad = parseFloat(getComputedStyle(vp).scrollPaddingInlineStart) || 0;
+      const sx = Math.abs(vp.scrollLeft);
+      snaps = slides.map((sl) => Math.min(max, Math.max(0, sx + (vb.right - pad) - sl.getBoundingClientRect().right)));
+    };
+    /** fractional slide index: exactly i when slide i is snapped, continuous while dragging */
+    const position = () => {
+      const sx = Math.abs(vp.scrollLeft);
+      for (let i = 0; i < snaps.length - 1; i++) {
+        if (sx <= snaps[i + 1] || i === snaps.length - 2) {
+          const span = snaps[i + 1] - snaps[i];
+          return i + (span > 0 ? Math.max(0, Math.min(1, (sx - snaps[i]) / span)) : 0);
+        }
+      }
+      return 0;
+    };
     const update = () => {
-      const max = vp.scrollWidth - vp.clientWidth;
-      const p = max > 1 ? Math.min(1, Math.abs(vp.scrollLeft) / max) : 0;
-      if (live) this.setSp(p * 3); else this.setSp(this.real);
-      const i = Math.round(p * (n - 1));
+      const f = position();
+      if (live) this.setSp(n > 1 ? (f / (n - 1)) * 3 : 0); else this.setSp(this.real);
+      const i = Math.round(f);
       if (i !== active) {
         if (active >= 0 && live) sound.haptic(8);
         active = i;
         dotEls.forEach((d, k) => d.toggleAttribute('aria-current', k === i));
       }
-      const s = SEASONS[Math.round(live ? p * 3 : this.real)];
+      const s = SEASONS[Math.round(live ? this.sp : this.real)];
       if (seasonEl.textContent !== NAME[s]) seasonEl.textContent = NAME[s];
-      this.dots.style.setProperty('--p', p.toFixed(4));
     };
     let raf = 0;
     const onScroll = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; update(); }); };
     vp.addEventListener('scroll', onScroll, { passive: true });
-    this.offs.push(() => { vp.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf); });
+    const ro = new ResizeObserver(() => { measure(); update(); });
+    ro.observe(vp);
+    this.offs.push(() => { vp.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf); ro.disconnect(); });
+    measure();
     dotEls.forEach((d) => d.addEventListener('click', () => {
       const s = slides[Number(d.dataset.i)];
       const b = s.getBoundingClientRect(), vb = vp.getBoundingClientRect();
@@ -453,15 +496,12 @@ class SeasonsSection {
     if (live) {
       this.headIn(this.root, 'top 78%');
       this.cards.forEach((c) => this.hideCard(c));
-      const plaque = this.plaque && this.track.contains(this.plaque) ? this.plaque : null;
-      if (plaque) gsap.set(plaque, { autoAlpha: 0, y: 32 });
-      ScrollTrigger.create({
-        trigger: vp, start: 'top 82%', once: true,
-        onEnter: () => {
-          let k = 0;
-          if (plaque) gsap.to(plaque, { autoAlpha: 1, y: 0, duration: T.appear, ease: EASE.appear, delay: 0.1 + 0.12 * k++ });
-          this.cards.forEach((c) => this.revealCard(c, 0.1 + 0.12 * k++));
-        },
+      const plaque = this.plaque && this.track.contains(this.plaque) && !this.revealed.has(this.plaque) ? this.plaque : null;
+      if (plaque) { gsap.set(plaque, { opacity: 0, y: 32 }); this.revealed.add(plaque); }
+      whenSeen(vp, 'top 82%', () => {
+        let k = 0;
+        if (plaque) gsap.to(plaque, { opacity: 1, y: 0, duration: T.appear, ease: EASE.appear, delay: 0.1 + 0.12 * k++ });
+        this.cards.forEach((c) => this.revealCard(c, 0.1 + 0.12 * k++));
       });
       this.branchIn(this.branchHost, 'top 85%');
     }

@@ -55,7 +55,9 @@ export class Proxies {
     if (!h) return;
     sound.unlock();
     if (h.kind === 'trunk') { this.ctx.scene.shake(); this.ctx.announce('העץ מתנער, וכמה עלים נושרים'); return; }
-    if (h.kind === 'leaf') { sound.play('rustle', { volume: 0.4 }); return; }
+    if (h.kind === 'leaf') { if (this.ctx.scene.poke) this.ctx.scene.poke(h.id); else sound.play('rustle', { volume: 0.4 }); return; }
+    // the same motion as a tap: the fruit swings, the greeting leaf pulses, the roots glow
+    if (h.kind === 'fruit' || h.kind === 'greeting' || h.kind === 'ground') this.ctx.scene.poke?.(h.id);
     this.dock.fromHotspot(h, viaKeyboard);
   }
 }

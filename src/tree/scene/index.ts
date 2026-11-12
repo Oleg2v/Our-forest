@@ -132,7 +132,7 @@ class TreeSceneImpl {
     const self = this;
     this.api = {
       get kind() { return self.kindNow; },
-      mount: (c) => this.mount(c),
+      mount: (c, o) => this.mount(c, o),
       setState: (p) => this.setState(p),
       getState: () => ({ ...this.state, greetings: [...this.state.greetings] }),
       playBirth: (o) => this.playBirth(o),
@@ -149,13 +149,16 @@ class TreeSceneImpl {
       snapshot: (w, h) => this.snapshot(w, h),
       setPaused: (p) => { this.paused.user = !!p; this.kick(); },
       dispose: () => this.dispose(),
+      poke: (id) => this.poke(id),
+      hitTest: (x, y) => (this.mounted ? this.pick(x, y)?.kind ?? null : null),
     };
   }
 
   /* ================================================================ mount */
-  private async mount(container: HTMLElement) {
+  private async mount(container: HTMLElement, opts?: { birth?: boolean }) {
     if (this.mounted) return;
     this.mounted = true;
+    if (opts?.birth) this.preBirthPose();
     this.container = container;
     if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
     const root = document.createElement('div');
@@ -192,6 +195,17 @@ class TreeSceneImpl {
     if (this.webglAllowed()) void this.loadGL();
     await new Promise<void>((r) => requestAnimationFrame(() => r()));
   }
+
+  /** mount({ birth }): the first frame is the birth's opening (empty paper, then the soil close-up) —
+   *  never the grown tree for a split second. (WebGL still loads right away: shaders compile with
+   *  compileAsync where KHR_parallel_shader_compile exists, and the swap mid-sequence is seamless.) */
+  private preBirthPose() {
+    const B = this.birth;
+    B.active = true; B.tl = null; B.resolve = null; B.g = 0; B.root = 0; B.cot = 0;
+    if (this.motion) Object.assign(this.a, { birthClose: 1, closeY: ISLAND.SEED_Y + 0.03, seed: 1, seedPulse: 0, crack: 0, plaqueRise: 0, appear: 0, fog: 0 });
+    else { B.g = growthOf(this.state.ageDays); B.root = rootRevealOf(B.g); this.a.appear = 0; }
+  }
+
 
   private webglAllowed() {
     return this.motion && this.state.quality > 0 && !this.glFailed && hasWebGL();
@@ -702,6 +716,8 @@ class TreeSceneImpl {
 
   private playVisitIntro(): Promise<void> {
     if (!this.mounted) return Promise.resolve();
+    // a birth pose that never played (the flow changed): settle on the grown tree first
+    if (this.birth.active && !this.birth.tl) this.finishBirth();
     const a = this.a;
     const slow = this.slow();
     return new Promise((resolve) => {
@@ -1123,15 +1139,38 @@ class TreeSceneImpl {
     const hit = this.pick(x, y);
     if (!hit || hit.kind !== 'ground') return;
     // the roots answer: a soft glow from the tips
-    if (this.motion) {
-      gsap.timeline({ onUpdate: () => this.kick() })
-        .fromTo(this.a, { rootGlow: 0 }, { rootGlow: 1, duration: 0.8 * this.slow(), ease: 'power2.inOut' }, 0)
-        .to(this.a, { rootGlowA: 0.75, duration: 0.25 }, 0)
-        .to(this.a, { rootGlowA: 0, duration: 1.2 }, 1.6 * this.slow());
-    }
+    this.glowRoots();
     navigator.vibrate?.(12);
     const hs = this.hotspots.find((h) => h.id === 'ground');
     this.emit('hotspot', { ...(hs ?? { id: 'ground', kind: 'ground', label: 'האדמה והשורשים', visible: true }), x: Math.round(x), y: Math.round(y) });
+  }
+
+  private glowRoots() {
+    if (!this.motion) return;
+    gsap.timeline({ onUpdate: () => this.kick() })
+      .fromTo(this.a, { rootGlow: 0 }, { rootGlow: 1, duration: 0.8 * this.slow(), ease: 'power2.inOut' }, 0)
+      .to(this.a, { rootGlowA: 0.75, duration: 0.25 }, 0)
+      .to(this.a, { rootGlowA: 0, duration: 1.2 }, 1.6 * this.slow());
+  }
+
+  /** the visible answer of a tap, asked for from the DOM (keyboard proxies) — no 'hotspot' event is emitted */
+  private poke(id: string) {
+    if (!this.mounted || this.birth.active) return;
+    const kind = this.hotspots.find((q) => q.id === id)?.kind
+      ?? (id.startsWith('fruit-') ? 'fruit' : id.startsWith('greeting-') ? 'greeting' : id);
+    switch (kind) {
+      case 'fruit': { const i = Number(id.slice(6)); if (Number.isFinite(i)) this.swingFruit(i); break; }
+      case 'greeting': {
+        const gi = this.state.greetings.findIndex((g) => `greeting-${g.id}` === id);
+        if (gi >= 0) this.pulseGreeting(gi);
+        break;
+      }
+      case 'trunk': this.shake(); break;
+      case 'leaf': this.rustleCrown(); break;
+      case 'plaque': case 'qr': void this.focus('plaque'); break;
+      case 'ground': this.glowRoots(); break;
+      default: break;
+    }
   }
 
   private swingFruit(i: number) {

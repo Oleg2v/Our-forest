@@ -68,12 +68,16 @@ export class SvgRenderer implements Renderer {
   private colorSig = '';
   private plaqueVer = -1;
   private tokenSrc = '';
+  private tokenCanvas: HTMLCanvasElement | null = null;
   private w = 1; private h = 1;
   private tmp: V3 = [0, 0, 0];
   private baseScreen: Pt = [0, 0];
   private plaqueRest: { a: number; b: number; c: number; d: number; e: number; f: number; groundY: number; liftPx: number } | null = null;
   private lastBuildT = -1;
   private plaqueT = 0;
+  private plaqueBusy = false;
+  private plaqueUrl = '';
+  private disposed = false;
 
   constructor(host: HTMLElement) {
     this.el = document.createElement('div');
@@ -734,16 +738,32 @@ export class SvgRenderer implements Renderer {
       // clip at the ground line (in the moving group's coordinates)
       sa(this.plaqueClip, 'height', String(Math.round(Math.max(0, 9999 + pr.groundY - dy + 1) * 10) / 10));
     }
-    if (f.plaque.version !== this.plaqueVer) {
-      // data-URL updates are throttled during the burn (SVG fallback only)
+    if (f.plaque.version !== this.plaqueVer && !this.plaqueBusy && (this.plaqueVer < 0 || a.plaqueRise > 0.01)) {
+      // the engraving texture: encoded off the main thread (toBlob) and throttled during the burn — a synchronous
+      // PNG toDataURL of the 1024 px plank every ~110 ms blocked whole seconds of the birth on a slow device
       const now = performance.now();
       if (this.plaqueVer < 0 || now - this.plaqueT > 110) {
-        try { this.plaqueImg.setAttribute('href', f.plaque.canvas.toDataURL('image/png')); } catch { /* ignore */ }
-        this.plaqueVer = f.plaque.version;
+        const ver = f.plaque.version, cv = f.plaque.canvas;
         this.plaqueT = now;
+        this.plaqueBusy = true;
+        const done = (b: Blob | null) => {
+          this.plaqueBusy = false;
+          this.plaqueVer = ver;
+          if (!b || this.disposed) return;
+          const url = URL.createObjectURL(b);
+          this.plaqueImg.setAttribute('href', url);
+          const old = this.plaqueUrl;
+          this.plaqueUrl = url;
+          if (old) window.setTimeout(() => URL.revokeObjectURL(old), 1500);
+        };
+        try {
+          if (typeof cv.toBlob === 'function') cv.toBlob(done, 'image/png');
+          else { this.plaqueImg.setAttribute('href', cv.toDataURL('image/png')); this.plaqueBusy = false; this.plaqueVer = ver; }
+        } catch { this.plaqueBusy = false; this.plaqueVer = ver; }
       }
     }
-    if (this.tokenSrc === '') {
+    if (this.tokenSrc === '' || this.tokenCanvas !== f.token) {
+      this.tokenCanvas = f.token;
       try { this.tokenSrc = f.token.toDataURL('image/png'); this.tokenImg.setAttribute('href', this.tokenSrc); } catch { /* ignore */ }
     }
     // watering (attributes change only while something moves)
@@ -831,7 +851,11 @@ export class SvgRenderer implements Renderer {
     return c;
   }
 
-  dispose() { this.el.remove(); }
+  dispose() {
+    this.disposed = true;
+    this.el.remove();
+    if (this.plaqueUrl) { const u = this.plaqueUrl; this.plaqueUrl = ''; window.setTimeout(() => URL.revokeObjectURL(u), 1500); }
+  }
 }
 
 /* ------------------------------------------------------------------ geometry helpers */

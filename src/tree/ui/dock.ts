@@ -167,7 +167,7 @@ export class Dock {
           title: he.tree.gestures.whenHarvest,
           body: ripe
             ? `<p>הפירות בשלים עכשיו. הצוות קוטף אותם בימים האלה, ואתם מוזמנים לבוא לקטוף איתנו.</p>`
-            : `<p>ה${sp.he} מבשילה ב־${sp.harvest}. כשהפירות יהיו בשלים, נזמין אתכם ליום קטיף ביער.</p>`,
+            : `<p>ה${sp.he} ${sp.fem ? 'מבשילה' : 'מבשיל'} ב־${sp.harvest}. כשהפירות יהיו בשלים, נזמין אתכם ליום קטיף ביער.</p>`,
           actions: `<a class="btn btn--sm" href="${waLink(`שלום! נשמח לבוא לקטוף מהעץ שלנו, מס׳ ${ctx.tree.id}`)}" target="_blank" rel="noopener" data-track="tree_card">${icon('basket')}<span>באים לקטוף</span></a>
                     <a class="tdock-link" href="/plant?x=box">מארז מהיער <bdi>${priceHtml(prices.forestBox)}</bdi></a>`,
         });
@@ -272,7 +272,7 @@ export class Dock {
     const fruit = ctx.hotspots().find((h) => h.kind === 'fruit' && h.visible);
     this.show({
       id: 'harvest', kind: 'joy', anchor: fruit?.id ?? null,
-      eyebrow: `ה${sp.he} מבשילה`,
+      eyebrow: `ה${sp.he} ${sp.fem ? 'מבשילה' : 'מבשיל'}`,
       title: 'הפירות בשלים. באים לקטוף?',
       body: `<p>מזמינים אתכם ליום קטיף ביער, או שנשלח אליכם מארז מהפירות של העץ.</p>`,
       actions: `<a class="btn btn--sm" href="${waLink(`שלום! נשמח להגיע ליום הקטיף של עץ מס׳ ${ctx.tree.id}`)}" target="_blank" rel="noopener" data-track="tree_card">${icon('basket')}<span>באים לקטוף</span></a>

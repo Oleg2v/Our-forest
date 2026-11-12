@@ -75,6 +75,9 @@
   -webkit-tap-highlight-color: transparent;
 }
 .seasons__plaque-art { display: none; }
+.seasons__plaque-art path { fill: none; stroke: var(--bark); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.seasons__plaque-art .seasons__almond-flower { fill: var(--cream); stroke: color-mix(in oklab, var(--bark) 80%, var(--fruit)); }
+.seasons__plaque-art .seasons__almond-bud { fill: color-mix(in oklab, var(--cream) 70%, var(--fruit)); }
 .seasons__plaque-body {
   position: relative;
   display: grid;
@@ -140,7 +143,16 @@
 .seasons__bloom path { fill: currentColor !important; fill-opacity: 0.16; }
 
 /* ---------------------------------------------------------------- cards (base = static grid) */
-.seasons__branch { margin-block: clamp(20px, 3vw, 40px) clamp(28px, 4vw, 56px); }
+/* static order: heading → branch (the fruit hangs over the cards) → cards */
+.seasons__pin { display: flex; flex-direction: column; }
+.seasons__head { order: 0; }
+.seasons__branch { order: 1; margin-block: clamp(8px, 2vw, 28px) clamp(4px, 1vw, 16px); }
+.seasons__viewport { order: 2; }
+.seasons__ruler, .seasons__dots { order: 3; }
+@media (min-width: 769px) {
+  .seasons__head { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+  .seasons__plaque { justify-self: end; }
+}
 .seasons__viewport { position: relative; }
 .seasons__track {
   width: min(100% - 2 * var(--gutter), var(--maxw));
@@ -164,6 +176,8 @@
 }
 .seasons__img { position: absolute; inset: 0; display: block; overflow: hidden; transform-origin: 50% 60%; }
 .seasons__img picture { display: block; height: 100%; }
+/* the hero's WebGL ripple slips its canvas in here, sized like the (wider-than-frame) photo */
+.seasons__img canvas { max-width: none; }
 .seasons__photo {
   display: block;
   width: 110%; max-width: none; height: 100%;
@@ -199,10 +213,12 @@
 /* ---------------------------------------------------------------- desktop: pinned strip */
 .seasons--pinned { padding-block: 0; }
 .seasons--pinned .seasons__pin {
-  --branch-h: clamp(120px, 10.5vw, 190px);
+  --branch-h: min(13vw, 21svh);
   --ruler-h: 92px;
-  --img-h: min(44svh, 520px, 30vw);
+  --img-h: min(42svh, 520px, 30vw);
+  --card-w: clamp(260px, 22vw, 400px);
   position: relative;
+  display: block;
   height: 100svh;
   overflow: hidden;
 }
@@ -216,7 +232,7 @@
   position: absolute; inset: 0;
   display: flex; align-items: center;
   overflow: clip;
-  padding-block: calc(var(--branch-h) - 12px) var(--ruler-h);
+  padding-block: calc(var(--branch-h) - 30px) var(--ruler-h);
 }
 .seasons--pinned .seasons__track {
   display: flex; align-items: center;
@@ -229,9 +245,10 @@
   flex: none;
   width: min(40vw, 680px);
 }
-.seasons--pinned .seasons__head { width: auto; margin: 0; display: grid; gap: clamp(28px, 4.4vh, 48px); }
+.seasons--pinned .seasons__head { width: auto; margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(28px, 4.4vh, 48px); }
+.seasons--pinned .seasons__plaque { justify-self: start; }
 .seasons--pinned .seasons__title { font-size: clamp(54px, 5.6vw, 100px); }
-.seasons--pinned .seasons__card { flex: none; width: calc(var(--img-h) * 0.8); }
+.seasons--pinned .seasons__card { flex: none; width: var(--card-w); }
 .seasons--pinned .seasons__media { aspect-ratio: auto; height: var(--img-h); }
 .seasons--pinned .seasons__card[data-card='teams'] { margin: 0; translate: 0 -2svh; }
 .seasons--pinned .seasons__card[data-card='gift'] { margin: 0; translate: 0 2.5svh; }
@@ -242,6 +259,10 @@
 @media (max-height: 760px) {
   .seasons--pinned .seasons__card-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .seasons--pinned .seasons__pin { --img-h: min(40svh, 30vw); --ruler-h: 80px; }
+  .seasons--pinned .seasons__card-title { font-size: 26px; }
+  .seasons--pinned .seasons__body { padding-block-start: 16px; gap: 6px; }
+  .seasons--pinned .seasons__idx { top: calc(16px + 0.5em); }
+  .seasons--pinned .seasons__buy { margin-block-start: 4px; padding-block-start: 12px; }
 }
 
 /* the year as a ruler (= the strip's progress) */
@@ -249,10 +270,10 @@
   display: block;
   position: absolute; z-index: 3;
   inset-inline: var(--gutter);
-  bottom: clamp(18px, 3.4svh, 36px);
-  height: 52px;
+  bottom: clamp(16px, 3svh, 32px);
+  height: 44px;
 }
-.seasons__ruler-line { position: absolute; inset-inline: 0; top: 22px; height: 1px; background: var(--line-strong); }
+.seasons__ruler-line { position: absolute; inset-inline: 0; top: 4px; height: 1px; background: var(--line-strong); }
 .seasons__ruler-fill {
   position: absolute; inset: 0; background: var(--ink);
   transform-origin: 100% 50%;
@@ -263,24 +284,25 @@
   position: absolute; top: 0;
   inset-inline-start: calc(var(--i) / 3 * 100%);
   translate: 50% 0;
-  display: grid; justify-items: center; grid-template-rows: 18px 10px auto; row-gap: 4px;
-  min-width: 56px; min-height: 52px; padding: 0 6px;
+  display: grid; justify-items: center; grid-template-rows: 10px auto; row-gap: 6px;
+  min-width: 56px; min-height: 44px; padding: 0 6px;
   color: var(--ink);
   font-size: 14px; font-weight: 500; letter-spacing: 0.02em;
 }
 .seasons__tick:first-of-type { translate: 0 0; justify-items: start; padding-inline-start: 0; }
 .seasons__tick:last-of-type { inset-inline-start: auto; inset-inline-end: 0; translate: 0 0; justify-items: end; padding-inline-end: 0; }
 .seasons__tick-dot {
-  grid-row: 2;
+  grid-row: 1;
   width: 9px; height: 9px; margin-block-start: -2px; border-radius: 50%;
   border: 1.5px solid var(--ink);
   background: color-mix(in oklab, var(--ink) calc(var(--near) * 100%), var(--season-bg));
   scale: calc(0.8 + 0.4 * var(--near));
 }
-.seasons__tick-name { grid-row: 3; opacity: calc(0.42 + 0.58 * var(--near)); transition: opacity var(--t-micro); }
+.seasons__tick-name { grid-row: 2; opacity: calc(0.42 + 0.58 * var(--near)); transition: opacity var(--t-micro); }
 .seasons__tick-now {
-  grid-row: 1;
-  font-size: 12px; font-weight: 500; letter-spacing: 0.06em;
+  position: absolute; top: calc(10px + 6px); inset-inline-start: calc(100% + 2px);
+  white-space: nowrap;
+  font-size: 12px; font-weight: 500; letter-spacing: 0.06em; line-height: 1.6;
   color: var(--olive-deep);
   display: inline-flex; align-items: center; gap: 5px;
 }
@@ -361,12 +383,8 @@
 /* ---------------------------------------------------------------- phones: swipe carousel */
 @media (max-width: 768px) {
   .seasons { padding-block: clamp(72px, 11svh, 104px) 0; }
-  /* phone order: heading → branch → carousel → dots */
-  .seasons__pin { display: flex; flex-direction: column; }
-  .seasons__head { order: 0; gap: 22px; }
-  .seasons__branch { order: 1; margin-block: 4px 2px; width: 100%; }
-  .seasons__viewport { order: 2; }
-  .seasons__dots { order: 3; }
+  .seasons__head { gap: 22px; }
+  .seasons__branch { margin-block: 4px 2px; width: 100%; }
   .seasons__title { font-size: clamp(38px, 11vw, 48px); }
   .seasons__viewport {
     overflow-x: auto; overflow-y: hidden;
@@ -387,7 +405,6 @@
     flex: none;
     width: min(78vw, 360px);
     scroll-snap-align: start;
-    scroll-snap-stop: always;
   }
   .seasons__card[data-card] { margin: 0; }
   .seasons__media { aspect-ratio: auto; height: min(46svh, 400px); }
@@ -437,22 +454,24 @@
   .seasons__row, .seasons--thumbs .seasons__row {
     grid-template-columns: 64px minmax(0, 1fr) auto;
     grid-template-areas:
-      'thumb when price'
+      'thumb when when'
       'thumb title title'
-      'seats seats cta';
-    gap: 6px 14px;
+      'thumb seats seats'
+      'price price cta';
+    gap: 4px 16px;
     padding-block: 22px;
   }
-  .seasons__thumb { display: block; align-self: start; margin-block-start: 4px; }
-  .seasons__when { display: flex; align-items: baseline; gap: 8px; }
+  .seasons__thumb { display: block; grid-row: 1 / 4; align-self: start; margin-block-start: 4px; }
+  .seasons__when { display: flex; align-items: baseline; gap: 10px; white-space: nowrap; }
   .seasons__date { font-size: 20px; }
-  .seasons__wd { font-size: 13px; }
+  .seasons__wd { font-size: 14px; }
   .seasons__row-title { font-size: 21px; }
-  .seasons__row-price { align-self: baseline; }
-  .seasons__row-price .price { font-size: 20px; }
-  .seasons__row-price .seasons__unit { font-size: 13px; }
-  .seasons__seats { font-size: 15px; margin-block-start: 6px; }
-  .seasons__reserve { margin-block-start: 6px; }
+  .seasons__row:hover .seasons__row-title { transform: none; }
+  .seasons__seats { font-size: 15px; }
+  .seasons__seats .icon { width: 18px; height: 18px; }
+  .seasons__row-price { align-self: center; margin-block-start: 12px; }
+  .seasons__row-price .price { font-size: 22px; }
+  .seasons__reserve { margin-block-start: 12px; }
   .seasons__float { display: none; }
 }
 

@@ -84,7 +84,8 @@
 .contact__field :is(input, textarea, select)[aria-invalid='true'] { border-block-end-color: var(--bark); border-block-end-width: 2px; }
 .contact__select { position: relative; }
 .contact__select select { padding-inline-end: 34px; cursor: pointer; }
-.contact__select select:invalid, .contact__select select.is-empty { color: rgb(var(--soil-rgb) / 0.55); }
+.contact__select select.is-empty { color: rgb(var(--soil-rgb) / 0.55); }
+.contact__select option { color: var(--soil); }
 .contact__select .icon { position: absolute; inset-inline-end: 2px; inset-block-start: 50%; width: 20px; height: 20px; margin-block-start: -12px; color: var(--olive-deep); pointer-events: none; }
 .contact__err {
   display: flex; align-items: center; gap: 6px;

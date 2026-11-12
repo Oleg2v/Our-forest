@@ -599,19 +599,26 @@ class GLRenderer implements Renderer {
   private updatePlaque(f: Frame) {
     const a = f.a;
     // texture (the engraver's canvas) — re-uploaded only when it changed
-    if (!this.plaqueTex) {
+    if (!this.plaqueTex || this.plaqueTex.image !== f.plaque.canvas) {
+      this.plaqueTex?.dispose();
       this.plaqueTex = new CanvasTexture(f.plaque.canvas);
       this.plaqueTex.colorSpace = NoColorSpace;
       this.plaqueTex.anisotropy = 4;
-      (this.plaque.material as ShaderMaterial).uniforms.uMap.value = this.plaqueTex;
+      this.plaqueVer = -1;
     }
+    // setModel() rebuilds the materials: re-bind the textures every frame (a cheap uniform assignment)
+    const pmU = (this.plaque.material as ShaderMaterial).uniforms;
+    if (pmU.uMap.value !== this.plaqueTex) pmU.uMap.value = this.plaqueTex;
     if (f.plaque.version !== this.plaqueVer) { this.plaqueTex.needsUpdate = true; this.plaqueVer = f.plaque.version; }
-    if (!this.tokenTex) {
+    // the token's QR canvas is replaced when the tree id changes (multi: another tree)
+    if (!this.tokenTex || this.tokenTex.image !== f.token) {
+      this.tokenTex?.dispose();
       this.tokenTex = new CanvasTexture(f.token);
       this.tokenTex.colorSpace = NoColorSpace;
       this.tokenTex.minFilter = LinearFilter;
-      (this.token.material as ShaderMaterial).uniforms.uMap.value = this.tokenTex;
     }
+    const tkU = (this.token.material as ShaderMaterial).uniforms;
+    if (tkU.uMap.value !== this.tokenTex) tkU.uMap.value = this.tokenTex;
     const visible = (f.state.planted || a.plaqueRise > 0.01) && a.plaqueRise > 0.005;
     const lift = PLAQUE.y + PLAQUE.h * 0.6 + 0.02;
     const dy = -(1 - clamp(a.plaqueRise)) * lift;

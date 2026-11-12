@@ -156,6 +156,9 @@ export interface TreeModel {
   rootsys: RootSys;
   /** subset of leaf indices for the SVG renderer (≈ 420 at adult) and its size multiplier */
   svgLeafStride: number;
+  /** leaves are generated `leafYouth`× denser than the adult shows: a young tree keeps most of them on its
+   *  few branches (an evergreen olive sapling is leafy, not bare), the adult thins back to its budget */
+  leafYouth: number;
 }
 
 export interface LeafSet {
@@ -412,7 +415,8 @@ export function generateModel(seed: number, speciesId: SpeciesId | string, quali
   const budget = Math.round(leafBudget(quality, mobile) * sp.leaf.budget);
   let adultSlots = 0;
   for (let i = 0; i < n; i++) if (tHide[i] > 1.5 && py[i] > trunkTop * 0.5) adultSlots++;
-  const perNode = Math.max(1, budget / Math.max(1, adultSlots));
+  const youth = sp.evergreen ? 2.4 : 1.7;
+  const perNode = Math.max(1, budget / Math.max(1, adultSlots)) * youth;
   const LX: number[] = [], LY: number[] = [], LZ: number[] = [], LDX: number[] = [], LDY: number[] = [], LDZ: number[] = [];
   const LNX: number[] = [], LNY: number[] = [], LNZ: number[] = [], LS: number[] = [], LN: number[] = [], LT0: number[] = [], LT1: number[] = [];
   const R1: number[] = [], R2: number[] = [], R3: number[] = [], AO: number[] = [];
@@ -499,11 +503,12 @@ export function generateModel(seed: number, speciesId: SpeciesId | string, quali
   }
 
   const rootsys = makeRoots(sp, island, rng);
-  const adultVisible = (() => { let c = 0; for (let i = 0; i < lc; i++) if (leaves.tHide[i] > 1.2) c++; return c; })();
+  const adultVisible = (() => { let c = 0; for (let i = 0; i < lc; i++) if (leaves.tHide[i] > 1.2) c++; return c / youth; })();
   return {
     species: sp, seed, island, n, px, py, pz, parent, t, hTip, order, phase, flex, children, roots: stems, chains, chainOrder,
     tHide, pd, step: G.step, height, crownC: cc, crownR, leaves, fruits, blossoms, pruneSites, rootsys,
     svgLeafStride: Math.max(1, Math.round(adultVisible / (sp.leaf.shape === 'fig' ? 260 : sp.leaf.shape === 'olive' ? 760 : 520))),
+    leafYouth: youth,
   };
 }
 
@@ -771,10 +776,13 @@ export function grow(M: TreeModel, P: GrowParams, prev?: GrowResult): GrowResult
   let minX = 1e9, minY = 1e9, minZ = 1e9, maxX = -1e9, maxY = -1e9, maxZ = -1e9;
   let cx = 0, cy = 0, cz = 0, cw = 0;
   const density = look.density;
+  // young trees keep (almost) all the generated leaves on their few branches; the adult thins to its budget
+  const keep = lerp(1, 1 / Math.max(1, M.leafYouth || 1), smooth(0.3, 1, g));
   if (P.planted) {
     for (let i = 0; i < L.count; i++) {
       const ni = L.node[i];
       if (vis[ni] !== 1) continue;
+      if (keep < 1 && hash1(i * 3.17 + 0.71) > keep) continue;
       const rl = reachLen * (0.75 + 0.5 * hash1(i * 1.37));
       const dt = dTip[ni];
       if (dt > rl) continue;

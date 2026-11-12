@@ -43,11 +43,11 @@ export interface Demo {
 }
 
 /* ------------------------------------------------------------------ species */
-export interface SpeciesInfo { he: string; latin: string; evergreen: boolean; harvest: string; seasonNote: Record<Season, string> }
+export interface SpeciesInfo { he: string; latin: string; evergreen: boolean; /** grammatical gender of the name (תאנה is feminine) */ fem?: boolean; harvest: string; seasonNote: Record<Season, string> }
 /** short honest notes per species & season (the fig/autumn one is the brief's own line) */
 export const SPECIES: Record<SpeciesId, SpeciesInfo> = {
   fig: {
-    he: 'תאנה', latin: 'Ficus carica', evergreen: false, harvest: 'אוגוסט–ספטמבר',
+    he: 'תאנה', latin: 'Ficus carica', evergreen: false, fem: true, harvest: 'אוגוסט–ספטמבר',
     seasonNote: { autumn: he.tree.seasonNote.fig_autumn, winter: 'התאנה נחה, בלי עלים', spring: 'התאנה מוציאה עלים חדשים', summer: 'התאנה ירוקה ועבותה' },
   },
   olive: {

@@ -135,9 +135,9 @@ export function initCompanies(): void {
         ease: 'none',
         onUpdate: () => render(proxy.p),
         scrollTrigger: {
-          trigger: banner,
-          start: pin ? 'top top' : 'top 72%',
-          end: pin ? 'bottom bottom' : 'top 4%',
+          trigger: pin ? banner : stage,
+          start: pin ? 'top top' : 'top 84%',
+          end: pin ? 'bottom bottom' : 'top 6%',
           scrub: pin ? 0.6 : 0.35,
           invalidateOnRefresh: true,
           onRefresh: () => { measure(); render(proxy.p); },

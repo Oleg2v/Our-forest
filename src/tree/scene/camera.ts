@@ -125,7 +125,7 @@ export interface Composition { cx: number; cy: number; fracH: number; fracW: num
 /** where the island sits in the viewport: phone → top 60 %; desktop → centred */
 export function composition(w: number, h: number, el?: HTMLElement | null): Composition {
   const portrait = w / Math.max(1, h) < 0.8;
-  let cx = 0.5, cy = portrait ? 0.335 : 0.515, fracH = portrait ? 0.5 : 0.76, fracW = portrait ? 0.9 : 0.62;
+  let cx = 0.5, cy = portrait ? 0.335 : 0.515, fracH = portrait ? 0.5 : 0.76, fracW = portrait ? 0.8 : 0.62;
   if (el) {
     try {
       const cs = getComputedStyle(el);

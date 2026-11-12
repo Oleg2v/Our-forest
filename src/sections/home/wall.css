@@ -174,6 +174,8 @@ html:not(.js) .wall__band { display: none; }
   .wall--static .wall__row--a .wall__item:nth-child(n + 5) { display: none; }
   .wall--static .wall__row--b .wall__item:nth-child(n + 7) { display: none; }
   .wall--static .wall__row--a .wall__ded { font-size: 28px; }
+  .wall--static .wall__item::after { display: none; }
+  .wall--static .wall__list { row-gap: 10px; }
 
   .wall__slots { grid-template-columns: 1fr; gap: 22px; }
   .wall__slot:nth-child(3) { display: none; } /* two empty places are enough on a phone */

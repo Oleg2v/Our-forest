@@ -50,8 +50,10 @@ export interface Hotspot {
 
 export interface TreeScene {
   readonly kind: 'webgl' | 'svg';
-  /** resolves after the first frame is on screen (the static SVG of the same tree is shown first for LCP) */
-  mount(container: HTMLElement): Promise<void>;
+  /** resolves after the first frame is on screen (the static SVG of the same tree is shown first for LCP).
+   *  (added) `birth: true` — the first frame is already the birth's opening pose (empty paper → soil close-up),
+   *  not the grown tree; WebGL waits until the birth is over so the sequence never stutters. */
+  mount(container: HTMLElement, opts?: { birth?: boolean }): Promise<void>;
   setState(patch: Partial<TreeSceneState>): void;
   getState(): TreeSceneState;
 
@@ -79,4 +81,9 @@ export interface TreeScene {
   snapshot(width: number, height: number): Promise<HTMLCanvasElement>;
   setPaused(paused: boolean): void;    // pause rendering when tab hidden / offscreen
   dispose(): void;
+  /** (added, optional) the same visible answer as a tap on that hotspot, for the keyboard / DOM proxies:
+   *  fruit swings, greeting leaf pulses, trunk shakes, crown rustles, ground → roots glow, plaque → focus. */
+  poke?(id: string): void;
+  /** (added, optional) what is under a point (CSS px in the container), null = empty paper around the island */
+  hitTest?(x: number, y: number): HotspotKind | null;
 }

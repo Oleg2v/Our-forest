@@ -47,6 +47,15 @@ export function initTreePage(main: HTMLElement) {
   const base: TreeRecord = { ...TREE, greetings: [...TREE.greetings], events: [...TREE.events] };
   if (flags.species) base.species = flags.species;
   if (flags.text) base.dedication = flags.text;
+  // the hand-off from /plant (?birth=1&species=…&text=…): the visitor's own tree, planted today (in the demo the
+  // birth comes right away, 7.3) — a sapling with a fresh history, not the demo tree's nine months
+  if (flags.birth && (flags.species || flags.text)) {
+    const today = israelDateKey();
+    Object.assign(base, {
+      plantedAt: today, lastTeamWatering: today, lastPrune: null, harvest: null, heightCm: 60, rootDepthCm: 25, stage: 'sapling',
+      events: [{ date: today, type: 'planted' }], greetings: [],
+    });
+  }
   const demo: Demo = { state: 'visit', mode: 'celebration', hours: null, weather: 'clear', wind: 0.22, season: null, harvest: false, ...fromUrl };
   if (demo.weather === 'wind') demo.wind = 0.75; else if (demo.weather === 'rain') demo.wind = 0.45; else if (demo.weather === 'hamsin') demo.wind = 0.15;
   if (demo.mode === 'memorial' && !flags.text) base.dedication = MEMORIAL_DEMO.dedication;
@@ -135,6 +144,25 @@ export function initTreePage(main: HTMLElement) {
     if (h.kind === 'trunk' || h.kind === 'leaf') return; // the scene shakes / rustles by itself
     dock.fromHotspot(h, false, true);
   });
+
+  // the custom cursor (desktop) says "גררו" only over the island and the tree, not over the empty paper
+  // around it (a label parked at the window's corner read as a stray "ג")
+  let curOver = false, curT = 0;
+  const setCursor = (over: boolean) => {
+    if (over === curOver) return;
+    curOver = over;
+    if (over) sceneEl.dataset.cursor = 'גררו'; else delete sceneEl.dataset.cursor;
+    bus.emit('cursor:set', over ? { label: 'גררו' } : null);
+  };
+  sceneEl.addEventListener('pointermove', (e) => {
+    if (e.pointerType !== 'mouse' || e.buttons) return;
+    const now = performance.now();
+    if (now - curT < 60) return;
+    curT = now;
+    const r = sceneEl.getBoundingClientRect();
+    setCursor(!!scene.hitTest?.(e.clientX - r.left, e.clientY - r.top));
+  }, { passive: true });
+  sceneEl.addEventListener('pointerleave', () => setCursor(false));
 
   // the scene element: focusable, Enter waters, arrows rotate (7.6 keyboard)
   sceneEl.tabIndex = 0;
@@ -320,7 +348,6 @@ export function initTreePage(main: HTMLElement) {
     panel.render();
     push();
     about.render();
-    sceneEl.style.opacity = '';
     switch (f) {
       case 'birth': void intro.birth(ctx.tree.plantedAt); break;
       case 'before':
@@ -411,9 +438,9 @@ export function initTreePage(main: HTMLElement) {
   about.render();
   push();
   stage.dataset.intro = flow === 'birth' || flow === 'gift' ? '1' : '';
-  if (flow === 'birth' || flow === 'gift') sceneEl.style.opacity = '0';
   const boot = async () => {
-    await scene.mount(sceneEl);
+    // a birth (or the gift envelope before it) opens on empty paper → the soil close-up, never on the grown tree
+    await scene.mount(sceneEl, { birth: flow === 'birth' || flow === 'gift' });
     tone();
     runFlow(flow, !!fromUrl.state);
     if (flags.greet) setTimeout(() => feed.open(), env.motionAllowed() ? 1400 : 200);
