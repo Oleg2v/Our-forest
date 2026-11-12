@@ -177,7 +177,9 @@ class Hero {
     // dev: ?mode=gl|video|still forces a path (headless browsers report a weak GPU)
     const forced = import.meta.env.DEV ? new URLSearchParams(location.search).get('mode') as Mode | null : null;
     if (forced) this.setMode(forced);
-    else if (this.phone) this.setMode(tier >= 2 ? 'gl' : 'video');
+    // phones: the 7 s wind loop rendered from the same shader (brief §11: video on phones). A live full-screen
+    // shader under a scrolling page measurably drops iPhone scrolling to 10–15 fps; hardware video decode does not
+    else if (this.phone) this.setMode('video');
     else this.setMode(tier >= 1 ? 'gl' : 'still');
     this.quality = !this.phone && tier >= 2 ? 'full' : 'light';
     this.dprCap = this.phone ? 2 : tier >= 3 ? 2 : tier >= 2 ? 1.5 : 1;

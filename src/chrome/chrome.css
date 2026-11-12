@@ -54,6 +54,13 @@ html.focus-ring-on :focus-visible { outline-color: transparent; }
   --hd-line: rgb(var(--cream-rgb) / 0.1);
   --hd-hover: rgb(var(--cream-rgb) / 0.1);
 }
+/* touch: no backdrop blur (see base.css) — a denser tint keeps the glass readable over photos */
+@media (hover: none) and (pointer: coarse) {
+  .site-header { --hd-bg: rgb(var(--cream-rgb) / 0.95); }
+  .site-header[data-tone='light'] { --hd-bg: rgb(var(--moss-rgb) / 0.92); }
+  html .mbar .mbar__inner { background: rgb(var(--cream-rgb) / 0.95); }
+  html .mbar[data-tone='light'] .mbar__inner { background: rgb(var(--moss-rgb) / 0.9); }
+}
 [data-a11y-contrast='high'] .site-header { --hd-bg: var(--cream); }
 [data-a11y-contrast='high'] .site-header[data-tone='light'] { --hd-bg: var(--moss); }
 .site-header[data-hidden] { transform: translate3d(0, -110%, 0); }

@@ -19,11 +19,16 @@ export function initSticky(page: PageName) {
 
   const update = () => {
     const hidden = !mq.matches || reasons.size > 0 || root.hasAttribute('data-hide-sticky');
+    // writes only on change: this runs on every scroll event on the home page
     if (hidden !== bar.hasAttribute('data-hidden')) bar.toggleAttribute('data-hidden', hidden);
-    bar.inert = hidden;
-    root.classList.toggle('mbar-on', !hidden);
+    if (bar.inert !== hidden) bar.inert = hidden;
+    if (root.classList.contains('mbar-on') === hidden) root.classList.toggle('mbar-on', !hidden);
   };
-  const set = (r: string, on: boolean) => { if (on) reasons.add(r); else reasons.delete(r); update(); };
+  const set = (r: string, on: boolean) => {
+    if (reasons.has(r) === on) return;
+    if (on) reasons.add(r); else reasons.delete(r);
+    update();
+  };
 
   // home: wait until the visitor leaves the hero
   if (page === 'home') {

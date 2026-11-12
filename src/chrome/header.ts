@@ -26,11 +26,18 @@ export function initHeader(page: PageName) {
   let lastTone = 0;
   let toneTimer = 0;
 
-  const setAttr = (name: string, on: boolean) => { if (on) h.setAttribute(name, ''); else h.removeAttribute(name); };
+  // write only on change: an attribute write per scroll frame invalidates the header's style every frame
+  const setAttr = (name: string, on: boolean) => { if (h.hasAttribute(name) !== on) { if (on) h.setAttribute(name, ''); else h.removeAttribute(name); } };
+  // the tone probe (3 × elementsFromPoint + computed styles) forces a layout + hit test: during a scroll it runs
+  // at most every 140 ms with a mouse and every 450 ms on touch screens, and always once the scroll settles
+  const toneEvery = window.matchMedia('(hover: none) and (pointer: coarse)').matches ? 450 : 140;
+  let headerH = 0;
+  window.addEventListener('resize', () => { headerH = 0; }, { passive: true });
 
   const tone = () => {
     lastTone = performance.now();
-    const y = (parseFloat(getComputedStyle(h).height) || 64) / 2 + 2;
+    if (!headerH) headerH = parseFloat(getComputedStyle(h).height) || 64;
+    const y = headerH / 2 + 2;
     const w = window.innerWidth;
     let dark = 0;
     for (const x of [w * 0.2, w * 0.5, w * 0.8]) if (isDarkAt(x, y, skip)) dark++;
@@ -48,7 +55,7 @@ export function initHeader(page: PageName) {
     else if (dy > 4 && y > 160) setAttr('data-hidden', true);
     else if (dy < -4) setAttr('data-hidden', false);
     lastY = y;
-    if (performance.now() - lastTone > 140) tone();
+    if (performance.now() - lastTone > toneEvery) tone();
     clearTimeout(toneTimer);
     toneTimer = window.setTimeout(tone, 160);
   };
