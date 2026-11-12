@@ -107,8 +107,8 @@ function consoleTree() {
       '· Design & code — a hand-made demo: Vite · TypeScript · GSAP · Lenis · Three.js\n' +
       '· Sound — synthesised live with WebAudio, no recordings (try “צלילי היער” in the header)\n' +
       '· Type — Frank Ruhl Libre & Heebo (SIL Open Font License)\n' +
-      '· Photos and licences — /credits\n' +
-      `· ${he.cta.plant} → /plant`,
+      '· Photos and licences — /credits/\n' +
+      `· ${he.cta.plant} → /plant/`,
       body,
     );
   } catch { /* consoles without styling */ }

@@ -3,7 +3,13 @@
    a quiet aside (WhatsApp, address) and a sand leaf panel with underline fields.
    After sending: a seed falls into the ground and sprouts (contact.ts).
    ========================================================================== */
-.contact { position: relative; padding-block: var(--section-pad); color: var(--ink); }
+.contact {
+  position: relative; padding-block: var(--section-pad); color: var(--ink);
+  /* the wall above is moss: until this section reaches the reading line the page is still dark, so the
+     big title follows the theme (bark on cream, cream on moss) like the wall's own text does */
+  --ct-head: var(--bark);
+}
+html[data-theme='dark'] .contact { --ct-head: var(--cream); }
 .contact__grid {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
@@ -17,16 +23,18 @@
   font-size: clamp(64px, 9.4vw, 160px);
   line-height: 0.92;
   letter-spacing: -0.025em;
-  color: var(--bark);
+  color: var(--ct-head);
   margin-block-end: clamp(8px, 1.4vw, 20px);
+  transition: color var(--t-page) var(--ease-inout);
 }
 .contact__sub {
   font-family: var(--font-display);
   font-size: clamp(26px, 2.3vw, 36px);
   line-height: 1.15;
-  color: var(--bark);
+  color: var(--ct-head);
   max-width: 18ch;
   text-wrap: balance;
+  transition: color var(--t-page) var(--ease-inout);
 }
 .contact__text { font-size: clamp(18px, 1.35vw, 20px); color: var(--ink-soft); max-width: 32ch; }
 .contact__direct {
@@ -45,6 +53,7 @@
   transition: border-color var(--t-ui) var(--ease-out);
 }
 .contact__place .icon { width: 20px; height: 20px; color: var(--olive); }
+html[data-theme='dark'] .contact__place .icon { color: var(--sage); }
 .contact__place:hover > span { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.25em; }
 
 /* ---------------------------------------------------------------- panel + fields */
@@ -58,6 +67,8 @@
 .contact__form { display: grid; gap: clamp(22px, 2.4vw, 34px); }
 .contact__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(22px, 2.4vw, 34px) clamp(18px, 2.4vw, 36px); }
 .contact__field { position: relative; display: grid; gap: 6px; align-content: start; }
+/* a focused field (or the first error) never lands under the header or the phone's bottom bar */
+.contact__field :is(input, textarea, select), .contact__box { scroll-margin-block: calc(var(--header-h) + 56px) calc(96px + var(--safe-bottom)); }
 .contact__field label { font-size: var(--fs-small); color: rgb(var(--soil-rgb) / 0.72); }
 .contact__star { color: var(--bark); margin-inline-start: 3px; }
 .contact__field :is(input, textarea, select) {
@@ -84,7 +95,7 @@
 .contact__field :is(input, textarea, select)[aria-invalid='true'] { border-block-end-color: var(--bark); border-block-end-width: 2px; }
 .contact__select { position: relative; }
 .contact__select select { padding-inline-end: 34px; cursor: pointer; }
-.contact__select select.is-empty { color: rgb(var(--soil-rgb) / 0.55); }
+.contact__select select.is-empty { color: rgb(var(--soil-rgb) / 0.7); }
 .contact__select option { color: var(--soil); }
 .contact__select .icon { position: absolute; inset-inline-end: 2px; inset-block-start: 50%; width: 20px; height: 20px; margin-block-start: -12px; color: var(--olive-deep); pointer-events: none; }
 .contact__err {
@@ -101,7 +112,7 @@
 /* consent */
 .contact__consent { position: relative; display: grid; gap: 6px; }
 .contact__box { position: absolute; opacity: 0; width: 26px; height: 26px; margin: 0; inset-block-start: 1px; inset-inline-start: 0; cursor: pointer; }
-.contact__consent-label { display: flex; align-items: flex-start; gap: 12px; font-size: 15px; line-height: 1.55; color: rgb(var(--soil-rgb) / 0.78); cursor: pointer; }
+.contact__consent-label { display: flex; align-items: flex-start; gap: 12px; font-size: 15px; line-height: 1.55; color: rgb(var(--soil-rgb) / 0.78); cursor: pointer; text-wrap: pretty; }
 .contact__consent-label a { color: var(--olive-deep); font-weight: 500; }
 .contact__tick {
   flex: none; display: grid; place-items: center;
@@ -124,9 +135,11 @@
 .contact__send[aria-busy='true'] { pointer-events: none; }
 .contact__send[aria-busy='true'] .contact__seed-ico { animation: contact-wobble 0.7s var(--ease-inout) infinite alternate; }
 @keyframes contact-wobble { from { transform: rotate(-12deg); } to { transform: rotate(12deg) translateY(2px); } }
-.contact__note { font-size: 13.5px; color: rgb(var(--soil-rgb) / 0.62); }
+.contact__note { font-size: 13.5px; color: rgb(var(--soil-rgb) / 0.74); }
 
 /* ---------------------------------------------------------------- done: the seed and the sprout */
+/* desktop: the panel keeps the form's height (contact.ts sets min-height) and the thank-you sits in its middle */
+.contact__panel--held { display: grid; align-content: center; }
 .contact__done { display: grid; justify-items: start; gap: 10px; outline: none; }
 .contact__art { width: min(100%, 380px); height: auto; overflow: visible; margin-block-end: 4px; margin-inline-start: -14px; }
 .contact__art path { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
@@ -138,7 +151,7 @@
 .contact__leaf[data-art='leaf'] { fill: rgb(201 207 160 / 0.35); }
 .contact__done-title { font-family: var(--font-display); font-weight: 300; font-size: clamp(38px, 3.6vw, 56px); line-height: 1.05; color: var(--bark); }
 .contact__done-text { font-size: 18.5px; color: rgb(var(--soil-rgb) / 0.8); max-width: 34ch; }
-.contact__done-demo { font-size: 14px; color: rgb(var(--soil-rgb) / 0.62); }
+.contact__done-demo { font-size: 14px; color: rgb(var(--soil-rgb) / 0.74); }
 .contact__done-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin-block-start: 14px; }
 .contact__again {
   min-height: 44px; padding: 0 2px;

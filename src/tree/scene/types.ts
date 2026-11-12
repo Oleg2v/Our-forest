@@ -34,6 +34,7 @@ export interface Anim {
   greetPulseA: number;
   birthClose: number;   // 1 = camera on the seed … 0 = normal framing
   closeY: number;       // close-up target height
+  closeD: number;       // close-up distance multiplier (the sprout phase steps back a little)
 }
 
 export interface FallingLeaf {

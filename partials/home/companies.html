@@ -2,7 +2,9 @@
      Script: src/sections/home/companies.ts (+ companies.css).
      Motion idea: the banner photo opens on scroll from a small leaf to the full screen; the title changes
      colour exactly at the leaf's edge (a cream copy of the title lives inside the clipped photo layer).
-     Without JS / reduced motion: title, leaf-shaped photo, packages, logos and buttons — all static. -->
+     Without JS / reduced motion: title, leaf-shaped photo, packages, logos and buttons — all static.
+     sizes: the 16:9 photo is cropped to cover a full-screen stage — on a portrait phone that needs ~1.5 screen
+     heights of width, on a desktop narrower than 16:9 it needs 16/9 of the height (else it is upscaled, soft). -->
 <section class="companies" id="companies" data-bg="sand" aria-labelledby="companies-title">
   <div class="companies__banner" data-companies-banner>
     <div class="companies__stage" data-companies-stage>
@@ -15,7 +17,7 @@
       </div>
       <figure class="companies__photo" data-companies-photo>
         <div class="companies__media" data-companies-media>
-          <img data-img="companies" sizes="100vw" class="cover companies__img">
+          <img data-img="companies" sizes="(max-width: 768px) 150vh, (max-aspect-ratio: 16/9) 178vh, 100vw" class="cover companies__img">
         </div>
         <div class="companies__scrim" aria-hidden="true"></div>
       </figure>

@@ -55,3 +55,6 @@ export function radioGroup(group: HTMLElement, onSelect: (value: string, el: HTM
 
 export const escapeHtml = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** escape a label and isolate its prices ("משלמים 540 ₪" keeps "540 ₪" in the site's order inside Hebrew) */
+export const isoPrices = (label: string) => escapeHtml(label).replace(/[\d,]+\u00a0₪/g, (m) => `<bdi>${m}</bdi>`);

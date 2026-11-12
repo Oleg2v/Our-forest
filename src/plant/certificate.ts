@@ -10,12 +10,11 @@ import { sound } from '../core/sound';
 import { track } from '../core/analytics';
 import { navigate, refreshChrome } from '../chrome';
 import { escapeHtml } from './a11y';
-import { icon, treeSvg } from './art';
+import { icon, treeSvg, type IconName } from './art';
 import { speciesName, occasionLabel, WORKSHOPS, BENCH_ITEMS } from './catalog';
 import { giftWhenText } from './steps-flow';
 import type { PlantState } from './store';
 import type { BuyerDetails, Ctx } from './types';
-import './print-certificate.css';
 
 export const DEMO_TREE_ID = '0427';
 
@@ -69,8 +68,13 @@ export function createDoneView(ctx: Ctx, s: PlantState, buyer: BuyerDetails, pla
   const ws = WORKSHOPS.find((w) => w.id === s.ws)!;
   const isWs = s.product === 'workshop';
   const certTitle = isWs ? 'כרטיס לסדנה' : s.product === 'tree' ? 'תעודת נטיעה' : 'תעודת הקדשה'; // micro-copy
+  const isBench = s.product === 'bench';
   const href = treeHref(s);
-  const abs = new URL(href, location.origin).toString();
+  // what the QR and the WhatsApp share open: the tree page for a tree (or a corner with its tree),
+  // the same workshop session for a ticket, the forest map for carpentry (it has no page of its own)
+  const shareHref = isWs ? `/plant?product=workshop&ws=${s.ws}&date=${s.date}` : isBench ? '/#map' : href;
+  const abs = new URL(shareHref, location.origin).toString();
+  const doneTitle = isWs ? escapeHtml(ws.title) : isBench ? he.participate.cards[1].title : he.plant.after.title;
   const pricing = ctx.pricing(s);
 
   const facts: [string, string][] = [];
@@ -86,6 +90,14 @@ export function createDoneView(ctx: Ctx, s: PlantState, buyer: BuyerDetails, pla
     if (s.gift && s.giftTo) facts.push(['מתנה', escapeHtml(`ל${s.giftTo.replace(/^ל/, '')}`)]);
   }
 
+  // one readable line with the essentials: on a phone the certificate is a picture, its small print is not legible
+  const placeText = s.spotMode === 'map' && s.spot ? `מקום מס׳ <bdi>${escapeHtml(s.spot)}</bdi>` : `המקום: ${he.plant.location.forUs}`;
+  const sum = isWs
+    ? [escapeHtml(ws.title), `<bdi>${ilDate(s.date)}</bdi>, <bdi>09:00</bdi>`, `<bdi>${s.seats}</bdi> משתתפים`]
+    : [escapeHtml(isBench ? BENCH_ITEMS.find((b) => b.id === s.item)!.label : `עץ ${speciesName(s.species)}`), `<bdi>${ilDate(now)}</bdi>`, placeText];
+  // "שתפו בוואטסאפ": on a phone's action bar the first word is enough next to the icon (the full text stays the name)
+  const [shareHead, ...shareRest] = he.plant.after.share.split(' ');
+
   const when = s.giftWhen === 'now' ? 'עכשיו' : s.giftWhen === 'tubishvat' ? giftWhenText(s) : `ב־${giftWhenText(s)}`;
   const lead = s.gift
     ? `הברכה תישלח ל${escapeHtml(s.giftTo.replace(/^ל/, ''))} ${when}, ב${s.giftVia === 'wa' ? he.cta.whatsapp : 'אימייל'}.`
@@ -97,13 +109,14 @@ export function createDoneView(ctx: Ctx, s: PlantState, buyer: BuyerDetails, pla
   el.innerHTML = `
     <div class="pdone__copy">
       <p class="eyebrow pdone__eyebrow">${icon('check')}<span>${isWs ? he.workshops.reserve : certTitle}</span></p>
-      <h2 class="pdone__title" id="pdone-t" tabindex="-1">${isWs ? escapeHtml(ws.title) : he.plant.after.title}</h2>
+      <h2 class="pdone__title" id="pdone-t" tabindex="-1" data-focus-ring="none">${doneTitle}</h2>
+      <p class="pdone__sum">${sum.join('<span class="pdone__dot" aria-hidden="true"> · </span>')}</p>
       <p class="pdone__lead">${lead}</p>
       <div class="pdone__actions">
-        ${isWs ? '' : `<a class="btn btn--fruit btn--lg pdone__view" href="${href}" data-cursor="גלו" data-cursor-fill="fruit">${he.plant.after.view}${icon('fwd', 'icon arrow-fwd')}</a>`}
-        <a class="btn btn--outline btn--lg pdone__share" href="${waLink(`${isWs ? ws.title : he.plant.after.title} · ${abs}`, '')}" target="_blank" rel="noopener">${icon('chat')}<span>${he.plant.after.share}</span></a>
-        <button type="button" class="pdone__print">${icon('print')}<span>מדפיסים את ${isWs ? 'הכרטיס' : 'התעודה'}</span></button>
+        ${isWs || isBench ? '' : `<a class="btn btn--fruit btn--lg pdone__view" href="${href}" data-cursor="גלו" data-cursor-fill="fruit">${he.plant.after.view}${icon('fwd', 'icon arrow-fwd')}</a>`}
+        <a class="btn btn--outline btn--lg pdone__share" href="${waLink(`${isWs ? ws.title : isBench ? he.participate.cards[1].title : he.plant.after.title} · ${abs}`, '')}" target="_blank" rel="noopener">${icon('chat')}<span>${shareHead}<span class="pdone__share-x"> ${shareRest.join(' ')}</span></span></a>
       </div>
+      <button type="button" class="pdone__print">${icon('print')}<span>מדפיסים את ${isWs ? 'הכרטיס' : 'התעודה'}</span></button>
     </div>
     <div class="pdone__printer">
       <div class="pdone__slot" aria-hidden="true"></div>
@@ -115,13 +128,13 @@ export function createDoneView(ctx: Ctx, s: PlantState, buyer: BuyerDetails, pla
               <p class="cert__place">${he.place}</p>
             </header>
             <h3 class="cert__title">${certTitle}</h3>
-            <p class="cert__no">${isWs ? escapeHtml(ws.title) : he.tree.number(treeNo)}</p>
-            <div class="cert__art">${isWs ? `<span class="cert__ws-ico">${icon(({ carpentry: 'bench', dogs: 'dog', garden: 'sprout' } as const)[s.ws])}</span>` : treeSvg(s.product === 'bench' ? 'olive' : s.species, { roots: true, className: 'cert__tree', viewBox: '0 36 240 222' })}
+            <p class="cert__no">${isWs ? escapeHtml(ws.title) : isBench ? (s.spotMode === 'map' && s.spot ? `מקום מס׳ <bdi>${escapeHtml(s.spot)}</bdi>` : escapeHtml(BENCH_ITEMS.find((b) => b.id === s.item)!.label)) : he.tree.number(treeNo)}</p>
+            <div class="cert__art">${isWs ? `<span class="cert__ws-ico">${icon(({ carpentry: 'bench', dogs: 'dog', garden: 'sprout' } as const)[s.ws])}</span>` : isBench ? `<span class="cert__ws-ico cert__ws-ico--item">${icon(s.item as IconName)}</span>` : treeSvg(s.species, { roots: true, className: 'cert__tree', viewBox: '0 36 240 222' })}
             ${!isWs && plaqueUrl ? `<img class="cert__plaque" src="${plaqueUrl}" alt="${escapeHtml(s.text.trim() ? `השלט: ${s.text.trim()}` : 'השלט')}">` : ''}</div>
             <dl class="cert__facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
             ${isWs ? '' : `<p class="cert__promise">${icon('guarantee')}<span>${he.plant.includes.items[5]}</span></p>`}
             <footer class="cert__foot">
-              <div class="cert__qr">${qrSvg(abs)}<p>${isWs ? escapeHtml(he.place) : he.tree.qrNote}</p></div>
+              <div class="cert__qr">${qrSvg(abs)}<p>${isWs || isBench ? escapeHtml(he.place) : he.tree.qrNote}</p></div>
               <div class="cert__sign"><span class="cert__sign-line"></span><span>${he.brand}</span></div>
             </footer>
           </div>
@@ -154,8 +167,10 @@ export function createDoneView(ctx: Ctx, s: PlantState, buyer: BuyerDetails, pla
     tl.set(paper, { yPercent: -101 })
       .set(stamp, { opacity: 0, scale: 2.4, rotate: -24 })
       .set(copy, { opacity: 0, y: 24 })
+      // the confirmation reads at once, while the paper prints beside it (below it on a phone)
+      .to(copy, { opacity: 1, y: 0, stagger: 0.08 * sp, duration: 1 * sp, ease: EASE.appear, clearProps: 'transform' }, 0.1)
       // printing: three pushes with tiny pauses, like a real feed
-      .to(paper, { yPercent: -66, duration: 0.7 * sp, ease: 'power2.inOut' })
+      .to(paper, { yPercent: -66, duration: 0.7 * sp, ease: 'power2.inOut' }, 0.3)
       .to(paper, { yPercent: -30, duration: 0.7 * sp, ease: 'power2.inOut' }, '+=0.12')
       .to(paper, { yPercent: 0, duration: 0.95 * sp, ease: 'power3.out' }, '+=0.12')
       .to(stamp, { opacity: 0.92, scale: 1, rotate: -9, duration: (memorial ? 0.9 : 0.42), ease: memorial ? 'power2.out' : 'power4.in' }, '+=0.15')
@@ -163,7 +178,6 @@ export function createDoneView(ctx: Ctx, s: PlantState, buyer: BuyerDetails, pla
     if (!memorial) {
       tl.to(paper, { keyframes: [{ x: -3, rotate: -0.35 }, { x: 2.5, rotate: 0.3 }, { x: -1.2, rotate: -0.12 }, { x: 0, rotate: 0 }], duration: 0.42, ease: 'power1.out' }, '<');
     }
-    tl.to(copy, { opacity: 1, y: 0, stagger: 0.09 * sp, duration: 1.1 * sp, ease: EASE.appear }, '-=0.25');
     await tl.then();
   };
   return { el, play };

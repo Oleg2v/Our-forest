@@ -1,11 +1,11 @@
 /* Flow steps: plaque (live engraving) · gift (postcard + envelope) · summary · checkout (mock payment) */
 import { he } from '../content/he';
-import { ils, ilDate, priceHtml } from '../core/format';
+import { ils, ilDate, priceHtml, waLink } from '../core/format';
 import { track } from '../core/analytics';
 import { sound } from '../core/sound';
 import { gsap, EASE } from '../core/gsap';
 import { PLAQUE_MAX_CHARS } from '../components/plaque';
-import { radioGroup, escapeHtml } from './a11y';
+import { radioGroup, escapeHtml, isoPrices } from './a11y';
 import { icon, treeSvg } from './art';
 import { createOdometer } from './odometer';
 import { occasionLabel, stepShort, TU_BISHVAT, WORKSHOPS, type StepId } from './catalog';
@@ -43,7 +43,8 @@ export function plaqueStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): StepVi
     ctx.store.set({ text: input.value.slice(0, PLAQUE_MAX_CHARS) });
     paintCount();
   });
-  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); ctx.next(); } });
+  // Enter = "next": the on-screen keyboard closes (blur) and focus lands on the next step's title, never on <body>
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); input.blur(); ctx.next({ focus: true }); } });
   // phones: while typing, the stage folds away and the sheet scrolls so the plaque sits right above the field —
   // the keyboard never covers the engraving (the "next" action stays in the bar above the keyboard)
   const slot = body.querySelector<HTMLElement>('[data-plaque-slot]')!;
@@ -140,15 +141,33 @@ export function giftStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): StepView
   const playOpen = () => {
     const paper = card.querySelector('.pcard__paper')!, flap = card.querySelector('.pcard__flap')!;
     // closed flap = rotateX(180) (folded down over the pocket), open = 0 (standing up behind the card)
-    if (!ctx.motion()) { gsap.set(flap, { rotateX: 0, zIndex: 1 }); gsap.set(paper, { yPercent: -58 }); return; }
+    // (y: 0 — the CSS translate is read back as px; without it the paper would rise twice as far and be cut off)
+    if (!ctx.motion()) { gsap.set(flap, { rotateX: 0, zIndex: 1 }); gsap.set(paper, { y: 0, yPercent: -58 }); return; }
     const sp = ctx.speed();
     gsap.timeline()
-      .set(paper, { yPercent: 0 }).set(flap, { rotateX: 180, zIndex: 4 })
+      .set(paper, { y: 0, yPercent: 0 }).set(flap, { rotateX: 180, zIndex: 4 })
       .fromTo(card, { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 * sp, ease: EASE.appear })
       .to(flap, { rotateX: 0, duration: 0.7 * sp, ease: 'power3.inOut' }, '-=0.15')
       .set(flap, { zIndex: 1 }, '-=0.35')
       .to(paper, { yPercent: -58, duration: 1.1 * sp, ease: EASE.appear }, '-=0.1')
       .add(() => sound.play('paper'), '<');
+  };
+
+  /* phones: the fields come first (the name is the one thing to type) and the envelope sits below them —
+     it opens when it scrolls into view, not off-screen */
+  let io: IntersectionObserver | null = null;
+  const openWhenSeen = () => {
+    io?.disconnect(); io = null;
+    const sc = ctx.root.querySelector<HTMLElement>('.pc__scroll');
+    if (!ctx.mobile() || !ctx.motion() || !sc || !('IntersectionObserver' in window)) { playOpen(); return; }
+    const paper = card.querySelector('.pcard__paper')!, flap = card.querySelector('.pcard__flap')!;
+    gsap.set(paper, { y: 0, yPercent: 0 }); gsap.set(flap, { rotateX: 180, zIndex: 4 }); gsap.set(card, { opacity: 0 });
+    io = new IntersectionObserver((es) => {
+      if (!es.some((e) => e.isIntersecting)) return;
+      io?.disconnect(); io = null;
+      playOpen();
+    }, { root: sc, threshold: 0.4 });
+    io.observe(card);
   };
 
   const paint = (s: PlantState, first = false) => {
@@ -168,8 +187,8 @@ export function giftStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): StepView
     else art.innerHTML = `<span class="pcard__ico">${icon('gift')}</span>`;
     pTo.textContent = s.giftTo ? `ל${s.giftTo.replace(/^ל/, '')}` : g.to;
     pMsg.textContent = s.giftMsg || (s.text ? `״${s.text}״` : '');
-    if (s.gift && !opened) { opened = true; if (!first) playOpen(); else requestAnimationFrame(playOpen); }
-    if (!s.gift) opened = false;
+    if (s.gift && !opened) { opened = true; if (!first) openWhenSeen(); else requestAnimationFrame(openWhenSeen); }
+    if (!s.gift) { opened = false; io?.disconnect(); io = null; }
   };
   sw.addEventListener('click', () => {
     tick();
@@ -204,6 +223,9 @@ export function giftWhenText(s: PlantState): string {
   return 'עכשיו';
 }
 
+/** a quiet WhatsApp line at the decision steps (on phones the site's own sticky bar is hidden here) — micro-copy */
+const waLine = () => `<a class="pcs-wa" href="${waLink('שלום, יש לי שאלה לפני ההזמנה באתר')}" target="_blank" rel="noopener">${icon('chat')}<span>שאלה לפני שמשלמים? כתבו לנו ב${he.cta.whatsapp}</span></a>`;
+
 /* ---------------- 7. summary ---------------- */
 export function summaryRows(ctx: Ctx, s: PlantState): { step: StepId; label: string; value: string; price?: string }[] {
   const pr = ctx.pricing(s);
@@ -224,7 +246,10 @@ export function summaryRows(ctx: Ctx, s: PlantState): { step: StepId; label: str
       rows.push({ step: 'extras', label: '', value: escapeHtml(l.label), price: l.monthly ? priceHtml(l.amount, { suffix: he.pricing.perMonth }) : priceHtml(l.amount) });
     }
   }
-  if (s.gift) rows.push({ step: 'gift', label: stepShort('gift', s.product), value: `${s.giftTo ? escapeHtml(`ל${s.giftTo.replace(/^ל/, '')}`) : ''} · ${giftWhenText(s)} · ${s.giftVia === 'wa' ? he.cta.whatsapp : he.contact.form.email}` });
+  if (s.gift) {
+    const to = s.giftTo.trim() ? escapeHtml(`ל${s.giftTo.trim().replace(/^ל/, '')}`) : '';
+    rows.push({ step: 'gift', label: stepShort('gift', s.product), value: [to, giftWhenText(s), s.giftVia === 'wa' ? he.cta.whatsapp : he.contact.form.email].filter(Boolean).join(' · ') });
+  }
   return rows;
 }
 
@@ -237,10 +262,13 @@ export function includesFor(s: PlantState): string[] {
   return [w.title, ilDate(s.date)];
 }
 
+/** the seasonal line ("…והעץ נכנס לאדמה…") belongs to orders that plant a tree */
+const planted = (ctx: Ctx) => { const p = ctx.store.get().product; return p === 'tree' || p === 'corner'; };
+
 export function summaryStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): StepView {
   body.innerHTML = `
     <div class="pcs-sum">
-      <p class="pcs-sum__season">${icon('calendar')}<span>${he.seasonalBanner}</span></p>
+      <p class="pcs-sum__season"${planted(ctx) ? '' : ' hidden'}>${icon('calendar')}<span>${he.seasonalBanner}</span></p>
       <div class="pcs-sum__inc">
         <h3 class="pcs-sum__h">${he.plant.includes.title}</h3>
         <ul class="pcs-sum__list"></ul>
@@ -253,6 +281,7 @@ export function summaryStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): StepV
           <span class="pcs-sum__monthly"></span>
         </div>
       </div>
+      ${waLine()}
     </div>`;
   const list = body.querySelector<HTMLElement>('.pcs-sum__list')!;
   const rowsEl = body.querySelector<HTMLElement>('.pcs-sum__rows')!;
@@ -324,6 +353,7 @@ export function checkoutStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): Step
         <div class="field"><label for="pay-cvv">CVV</label><input id="pay-cvv" type="text" dir="ltr" inputmode="numeric" autocomplete="cc-csc" placeholder="123" maxlength="4"></div>
       </div>
       <p class="pcs-pay__note">${icon('lock')}<span>זו הדגמה: לא מתבצע חיוב אמיתי.</span></p>
+      ${waLine()}
       <p class="pcs-pay__err" role="alert"></p>
       <button type="submit" class="btn btn--fruit btn--lg pcs-pay__submit" data-cursor="שתלו" data-cursor-fill="fruit"><span class="pcs-pay__label"></span></button>
     </form>`;
@@ -344,7 +374,7 @@ export function checkoutStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): Step
   });
   mrg.set(method);
   const payLabel = () => `משלמים ${ils(ctx.pricing().total)}`;
-  const paintLabel = () => { form.querySelector('.pcs-pay__label')!.textContent = payLabel(); };
+  const paintLabel = () => { form.querySelector('.pcs-pay__label')!.innerHTML = isoPrices(payLabel()); };
   paintLabel();
 
   const setErr = (inp: HTMLInputElement, msg: string) => {

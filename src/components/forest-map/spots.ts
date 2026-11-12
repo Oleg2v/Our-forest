@@ -31,7 +31,7 @@ export function spotInner(s: Spot, touch: boolean): { html: string; geom: SpotGe
       const hit = touch ? 30 : 22;
       return {
         geom: { r: rr, hit },
-        html: `<circle class="fmap__hit" r="${hit}"/>`
+        html: `<circle class="fmap__hit" r="${hit}" style="--h:${hit}"/>`
           + `<circle class="fmap__ring" r="${rr}"/><circle class="fmap__seed" r="${(rr * 0.26).toFixed(1)}"/>`
           + `<path class="fmap__check" d="M-4.6 .2l3 3 6.2-6.4"/>`,
       };
@@ -43,7 +43,7 @@ export function spotInner(s: Spot, touch: boolean): { html: string; geom: SpotGe
     if (s.status === 'reserved') {
       return {
         geom: { r: rad, hit },
-        html: `<circle class="fmap__hit" r="${hit}"/><path class="fmap__crown fmap__crown--reserved" d="${crown(rad, c.lobes, r, c.bulge, c.irr)}"/>`
+        html: `<circle class="fmap__hit" r="${hit}" style="--h:${hit}"/><path class="fmap__crown fmap__crown--reserved" d="${crown(rad, c.lobes, r, c.bulge, c.irr)}"/>`
           + `<path class="fmap__stake" d="M-3 -3l6 6M3 -3l-6 6"/>`,
       };
     }
@@ -57,7 +57,7 @@ export function spotInner(s: Spot, touch: boolean): { html: string; geom: SpotGe
     }
     return {
       geom: { r: rad, hit },
-      html: `<circle class="fmap__hit" r="${hit}"/><path class="fmap__crown" d="${crown(rad, c.lobes, r, c.bulge, c.irr)}"/>`
+      html: `<circle class="fmap__hit" r="${hit}" style="--h:${hit}"/><path class="fmap__crown" d="${crown(rad, c.lobes, r, c.bulge, c.irr)}"/>`
         + `<path class="fmap__twig" d="${branches(rad, r, sp === 'carob' ? 4 : 3)}"/>`
         + (extra ? `<path class="fmap__bloom" d="${extra}"/>` : '')
         + `<circle class="fmap__trunk" r="1.9"/>`,
@@ -70,7 +70,7 @@ export function spotInner(s: Spot, touch: boolean): { html: string; geom: SpotGe
     const hit = touch ? 44 : 40;
     return {
       geom: { r: 32, hit },
-      html: `<circle class="fmap__hit" r="${hit}"/>`
+      html: `<circle class="fmap__hit" r="${hit}" style="--h:${hit}"/>`
         + `<path class="fmap__corner" d="${sketchCircle(0, 0, 30, r, 0.04, 14)}"/>`
         + `<path class="fmap__corner-plus" d="M-6 0h12M0 -6v12"/>`
         + `<path class="fmap__check" d="M-4.6 .2l3 3 6.2-6.4"/>`,
@@ -99,7 +99,7 @@ export function spotInner(s: Spot, touch: boolean): { html: string; geom: SpotGe
   }
   return {
     geom: { r: 16, hit },
-    html: `<circle class="fmap__hit" r="${hit}"/>`
+    html: `<circle class="fmap__hit" r="${hit}" style="--h:${hit}"/>`
       + `<path class="fmap__furn${free ? ' fmap__furn--free' : ''}" d="${sym}"/>`
       + (free ? '<path class="fmap__check" d="M-4.6 .2l3 3 6.2-6.4"/>' : ''),
   };

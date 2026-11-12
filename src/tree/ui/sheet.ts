@@ -61,11 +61,28 @@ export function openSheet(opts: { title: string; eyebrow?: string; cls?: string;
   grip.addEventListener('pointerdown', (e) => { y0 = e.clientY; grip.setPointerCapture(e.pointerId); });
   grip.addEventListener('pointerup', (e) => { if (y0 >= 0 && e.clientY - y0 > 60) close(); y0 = -1; });
   requestAnimationFrame(() => (focusables()[1] ?? focusables()[0])?.focus({ preventScroll: true }));
+  // phones: the on-screen keyboard must not cover the field being typed in — the sheet sits on top of
+  // the keyboard (visualViewport), and the focused field scrolls into the visible part of the panel
+  const vv = window.visualViewport;
+  const fitKb = () => {
+    if (!vv) return;
+    const kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+    root.style.setProperty('--kb', `${kb > 60 ? kb : 0}px`);
+  };
+  const onFocusIn = (e: FocusEvent) => {
+    const t = e.target as HTMLElement | null;
+    if (!t || !t.matches('input, textarea, select')) return;
+    window.setTimeout(() => { fitKb(); t.scrollIntoView({ block: 'center', behavior: 'auto' }); }, 320);
+  };
+  if (vv) { vv.addEventListener('resize', fitKb); vv.addEventListener('scroll', fitKb); }
+  panel.addEventListener('focusin', onFocusIn);
   let closed = false;
   function close() {
     if (closed) return;
     closed = true;
     root.removeEventListener('keydown', onKey);
+    if (vv) { vv.removeEventListener('resize', fitKb); vv.removeEventListener('scroll', fitKb); }
+    panel.removeEventListener('focusin', onFocusIn);
     const fin = () => {
       root.remove();
       main.forEach((n) => { n.inert = wasInert.get(n) ?? false; });

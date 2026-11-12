@@ -27,12 +27,12 @@ html.pl-on .preloader.is-js { animation: none; }
 .preloader__disc path { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
 .pl-r {
   --o: .78; stroke-width: 1.1; opacity: var(--o); stroke-dasharray: 1 1; stroke-dashoffset: 1;
-  animation: pl-draw calc(.36s + .26s * var(--s)) cubic-bezier(.45,.05,.25,1) calc(var(--i) * 44ms + 40ms) forwards;
+  animation: pl-draw calc(.34s + .25s * var(--s)) cubic-bezier(.45,.05,.25,1) calc(var(--i) * 40ms + 40ms) forwards;
 }
 .pl-r--late { --o: 1; stroke-width: 1.55; }
 .pl-r--cambium { --o: .55; stroke-width: .9; }
 .pl-r--bark { --o: 1; stroke-width: 2.3; }
-.pl-r--crack { --o: .7; stroke-width: .9; animation-duration: .4s; animation-delay: .9s; }
+.pl-r--crack { --o: .7; stroke-width: .9; animation-duration: .38s; animation-delay: .84s; }
 .pl-pith { fill: currentColor; transform-box: fill-box; transform-origin: center; animation: pl-pith .6s cubic-bezier(.22,1,.36,1) both; }
 .preloader__meta {
   position: absolute; left: 50%; bottom: max(7vh, calc(env(safe-area-inset-bottom, 0px) + 32px)); translate: -50% 0;
@@ -44,12 +44,19 @@ html.pl-on .preloader.is-js { animation: none; }
   font-family: 'Frank Ruhl Libre', 'David Libre', 'Times New Roman', serif; font-weight: 300;
   font-size: clamp(40px, 5vw, 56px); line-height: 1; letter-spacing: -.01em;
   font-variant-numeric: lining-nums tabular-nums;
-  animation: pl-count 1.3s cubic-bezier(.4,.06,.3,1) .06s forwards;
+  animation: pl-count 1.2s cubic-bezier(.4,.06,.3,1) .06s forwards;
 }
 .preloader__count::after { content: counter(pl); }
 .preloader__label {
   font-family: 'Heebo', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif; font-size: 13px; font-weight: 500;
   letter-spacing: .06em; color: #626630;
+}
+/* landscape phones / short windows: the disc fills the height — the counter moves beside it, not onto the bark */
+@media (max-height: 520px) and (orientation: landscape) {
+  .preloader__disc { top: 50%; width: min(66vmin, 80vw, 460px); }
+  .preloader__meta {
+    left: auto; right: max(6vw, calc(env(safe-area-inset-right, 0px) + 24px)); bottom: 50%; translate: 0 50%;
+  }
 }
 @keyframes pl-draw { 0% { stroke-dashoffset: 1; opacity: 0; } 6% { opacity: var(--o); } 100% { stroke-dashoffset: 0; } }
 @keyframes pl-pith { from { transform: scale(0); } }

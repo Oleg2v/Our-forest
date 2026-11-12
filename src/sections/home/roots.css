@@ -7,7 +7,11 @@
    turn. Reduced motion: no pin, everything drawn and visible.
    ========================================================================== */
 .roots {
-  --roots-sky: 30vh;
+  /* the cream band continues the hero's rising cream edge down to the soil line — the one horizon of the
+     descent. Kept short (the critic's "double horizon": wave, a third of a screen of blank cream, then ground);
+     the sapling photo stands across the soil line by 78 % of the band. */
+  --roots-sky: clamp(88px, 11vh, 124px);
+  --story-pad: clamp(28px, 9vh, 100px);
   --photo-w: min(26vw, 400px);
   --dot: 68px;
   --root: color-mix(in srgb, var(--sage) 70%, transparent);
@@ -68,9 +72,10 @@
   width: min(100% - 2 * var(--gutter), var(--maxw));
   margin-inline: auto;
   min-height: calc(100vh - var(--roots-sky));
-  padding-block-start: clamp(28px, 5vh, 60px);
+  padding-block-start: var(--story-pad);
 }
-.roots__photo { grid-column: 2; grid-row: 1; justify-self: center; width: var(--photo-w); margin-block-start: calc(var(--photo-w) * -0.5); }
+/* the photo stands across the soil line (its top ≈ 62 % of the cream band above it); the copy sits lower */
+.roots__photo { grid-column: 2; grid-row: 1; justify-self: center; width: var(--photo-w); margin-block-start: calc(-1 * (var(--story-pad) + var(--roots-sky) * 0.62)); }
 .roots__frame {
   position: relative;
   aspect-ratio: 4 / 5;
@@ -151,6 +156,22 @@
   .roots__node[data-node='teams']     { --x: 0.24; }
   .roots__node[data-node='workshops'] { --x: 0.74; --y: 0.64; }
   .roots__node[data-node='soil']      { --y: 0.75; }
+}
+/* portrait tablets (iPad-like, pinned): a tall stage — bigger photo, type and nodes, and the five nodes spread
+   over the whole height instead of clustering in its upper part */
+@media (min-width: 769px) and (max-width: 1100px) and (orientation: portrait) {
+  .roots { --photo-w: 35vw; --dot: 80px; --story-pad: clamp(40px, 6vh, 80px); }
+  .roots__title { font-size: clamp(52px, 7.6vw, 84px); }
+  .roots__text { font-size: 19px; }
+  .roots__net-title { font-size: clamp(46px, 6.4vw, 70px); }
+  .roots__node { --w: 250px; }
+  .roots__node-title { font-size: 30px; }
+  .roots__node-text { font-size: 17px; }
+  .roots__node[data-node='nature']    { --x: 0.22; --y: 0.3; }
+  .roots__node[data-node='dogs']      { --x: 0.78; --y: 0.42; }
+  .roots__node[data-node='teams']     { --x: 0.26; --y: 0.58; }
+  .roots__node[data-node='workshops'] { --x: 0.74; --y: 0.69; }
+  .roots__node[data-node='soil']      { --x: 0.5;  --y: 0.8; }
 }
 
 .roots__dot {
@@ -240,25 +261,29 @@
 /* ==========================================================================
    Phone: designed separately — one vertical root, nodes on it, text beside.
    ========================================================================== */
-@media (max-width: 768px) {
+/* also landscape phones / very short windows (see COMPACT_MQ in roots.ts) */
+@media (max-width: 768px), (max-height: 560px) and (orientation: landscape) {
   .roots {
-    --roots-sky: 112px;
+    /* no cream "sky" on phones: the hero's soil wave runs straight into the soil here (one dark descent) */
+    --roots-sky: 0px;
     --photo-w: 58vw;
     --dot: 52px;
     --col: calc(var(--dot) + 18px);
   }
-  .roots__surface { height: 44px; }
+  .roots__sky, .roots__surface { display: none; }
   .roots__story {
-    display: block;
+    /* flow-root: the photo's negative top margin must lift the photo across the surface (into the cream band),
+       not collapse through the story and drag the whole soil block up over the sky */
+    display: flow-root;
     width: auto;
     min-height: 0;
     padding-inline: var(--gutter);
     padding-block-start: 0;
   }
-  .roots__photo { width: var(--photo-w); margin-inline-start: auto; margin-block-start: calc(var(--photo-w) * -0.34); }
+  .roots__photo { width: var(--photo-w); margin-inline-start: auto; margin-block-start: 0; padding-block-start: 32px; }
   .roots__eyebrow {
     position: absolute;
-    inset-block-start: 22px;
+    inset-block-start: 40px;
     inset-inline-start: var(--gutter);
     max-width: calc(100% - var(--photo-w) - 2 * var(--gutter) - 12px);
     margin: 0;
@@ -293,6 +318,15 @@
   .roots__dot { position: absolute; inset-block-start: -4px; inset-inline-start: calc(-1 * var(--col)); margin: 0; }
   .roots__node-title { font-size: 26px; margin-block-end: 6px; }
   .roots__node-text { font-size: 16px; max-width: 26ch; }
+}
+
+/* landscape phones: the same single-root layout, scaled for a wide, short screen */
+@media (max-height: 560px) and (orientation: landscape) {
+  .roots { --photo-w: min(36vw, 300px); }
+  .roots__copy { max-width: 64ch; padding-block-start: 96px; }
+  .roots__title { font-size: clamp(38px, 6vw, 56px); }
+  .roots__net-title { font-size: clamp(34px, 5vw, 48px); }
+  .roots__node-text { max-width: 40ch; }
 }
 
 /* ---------- reduced motion / static ---------- */

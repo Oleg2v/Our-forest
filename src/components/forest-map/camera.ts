@@ -30,12 +30,13 @@ export class Camera {
     return { x0: Math.min(a[0], b[0]), y0: Math.min(a[1], b[1]), x1: Math.max(a[0], b[0]), y1: Math.max(a[1], b[1]) };
   }
 
-  /** camera that shows world rect r inside the viewport with padding (px) */
-  fitState(r: Rect, pad = 16, kCap = Infinity): CamState {
+  /** camera that shows world rect r inside the viewport with padding (px); padBottom / padTop keep room
+      for what floats over the frame's edges (the legend, the hint) */
+  fitState(r: Rect, pad = 16, kCap = Infinity, padBottom = pad, padTop = pad): CamState {
     const l = this.layoutRect(r);
     const bw = l.x1 - l.x0, bh = l.y1 - l.y0;
-    const k = Math.min(kCap, Math.max(0.01, Math.min((this.w - pad * 2) / bw, (this.h - pad * 2) / bh)));
-    return { k, x: this.w / 2 - k * (l.x0 + bw / 2), y: this.h / 2 - k * (l.y0 + bh / 2) };
+    const k = Math.min(kCap, Math.max(0.01, Math.min((this.w - pad * 2) / bw, (this.h - padTop - padBottom) / bh)));
+    return { k, x: this.w / 2 - k * (l.x0 + bw / 2), y: padTop + (this.h - padTop - padBottom) / 2 - k * (l.y0 + bh / 2) };
   }
   /** camera with world point p at screen point (sx, sy) and zoom k */
   centerState(p: Pt, k: number, sx = this.w / 2, sy = this.h / 2): CamState {

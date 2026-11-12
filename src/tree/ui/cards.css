@@ -117,9 +117,33 @@ html.no-motion .tdock-lead__ring { animation: none; }
 .tplaque__actions { display: flex; gap: 10px; margin-top: 8px; }
 .tplaque__actions .btn { --btn-bg: var(--t-btn); --btn-fg: var(--t-btn-fg); }
 .tplaque__actions .btn--outline { --btn-bg: transparent; --btn-fg: var(--t-ink); --btn-bd: var(--t-line); }
+/* landscape: the card stands beside the plaque on the reading side (the scene moves the plaque to the left third) */
+@media (min-width: 769px) and (min-aspect-ratio: 4/5) {
+  .tplaque {
+    left: auto; translate: none;
+    inset-inline-start: var(--gutter);
+    top: 50%; bottom: auto; translate: 0 -50%;
+    width: min(440px, 34vw);
+    justify-items: start; text-align: start;
+  }
+  .tplaque__text { font-size: clamp(34px, 3.4vw, 52px); }
+}
 .tree-stage[data-plaque] .tree-stage__ui,
 .tree-stage[data-plaque] .tree-cond,
-.tree-stage[data-plaque] .tree-tl { opacity: 0; visibility: hidden; transition: opacity 0.4s, visibility 0s 0.4s; }
+.tree-stage[data-plaque] .tree-tl,
+.tree-stage[data-zoomed] :is(.tree-stage__ui, .tree-cond, .tree-tl, .tree-caption) { opacity: 0; visibility: hidden; transition: opacity 0.4s, visibility 0s 0.4s; }
+/* pinch-zoomed crown: one quiet way back (double tap and a tap on the paper also reset) */
+.tree-unzoom {
+  position: absolute; z-index: 8; left: 50%; translate: -50% 0;
+  bottom: calc(20px + var(--safe-bottom));
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 20px;
+  font-size: 15px; color: var(--t-ink);
+  background: var(--tree-scene-bg, var(--cream));
+  border: 1px solid var(--t-line); border-radius: var(--pill);
+  opacity: 0; visibility: hidden; transition: opacity 0.4s, visibility 0s 0.4s;
+}
+.tree-unzoom .icon { width: 16px; height: 16px; }
+.tree-stage[data-zoomed] .tree-unzoom { opacity: 1; visibility: visible; transition: opacity 0.4s 0.2s, visibility 0s; }
 
 /* toasts */
 .tdock-toast {
@@ -190,6 +214,22 @@ html.no-motion .tdock-lead__ring { animation: none; }
 .tshare__preview[data-f='square'] img { height: auto; max-width: 100%; }
 .tshare__wait { font-size: 14px; color: var(--ink-soft); }
 .tshare__actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* invite (the owner's ready WhatsApp text) */
+.tsheet--invite .tsheet__panel { max-width: 620px; }
+.tinvite { display: grid; gap: 20px; }
+.tinvite__lead { font-size: 16px; color: var(--ink-soft); max-width: 46ch; }
+.tinvite__msg { margin: 0; display: grid; gap: 8px; }
+.tinvite__text {
+  margin: 0; padding: 18px 20px;
+  font-size: 16px; line-height: 1.6; color: var(--soil);
+  background: var(--sand);
+  border-radius: 28px 0 28px 0;
+  overflow-wrap: anywhere;
+}
+.tinvite__cap { font-size: 13px; color: var(--ink-soft); }
+.tinvite__actions { display: flex; flex-wrap: wrap; gap: 10px; }
+@media (max-width: 768px) { .tinvite__actions .btn { flex: 1 1 100%; } }
 
 /* greet mini-page */
 .tgreet { display: grid; gap: 22px; }
@@ -290,14 +330,25 @@ html.no-motion .tdock-lead__ring { animation: none; }
   }
   .tdock-card { padding: 18px 18px 16px; border-radius: 24px 0 24px 0; gap: 8px; }
   .tdock-card__title { font-size: 22px; }
-  .tree-stage[data-card] .tree-panel { opacity: 0.08; pointer-events: none; transition: opacity 0.4s; }
+  .tree-stage[data-card]:not([data-card-strip]) .tree-panel { opacity: 0.08; pointer-events: none; transition: opacity 0.4s; }
+  /* the guardians card after a watering: a compact strip under the panel's counter, the payoff stays readable */
+  .tree-dock[data-open='strip'] { bottom: calc(6px + var(--safe-bottom)); max-height: none; overflow: visible; }
+  .tdock-card--strip { grid-template-columns: auto 1fr; align-items: center; gap: 2px 12px; padding: 10px 14px 10px 14px; }
+  .tdock-card--strip .tdock-card__eyebrow { display: none; }
+  .tdock-card--strip .tdock-card__title { font-size: 19px; padding-inline-end: 40px; grid-column: 1 / -1; }
+  .tdock-card--strip .tdock-card__body { grid-column: 1; }
+  .tdock-card--strip .tdock-card__body > p:not(.tdock-price) { display: none; }
+  .tdock-card--strip .tdock-price { font-size: 19px; white-space: nowrap; }
+  .tdock-card--strip .tdock-card__actions { grid-column: 2; justify-self: end; margin: 0; }
+  .tdock-card--strip [data-later] { display: none; }
+  .tdock-card--strip .tdock-card__x { width: 44px; height: 44px; inset-block-start: 2px; inset-inline-end: 2px; }
   .tplaque { width: calc(100% - 24px); bottom: calc(16px + var(--safe-bottom)); padding: 22px 18px 20px; border-radius: 28px 0 28px 0; }
   .tplaque__text { font-size: 36px; }
   .tdock-toast { top: calc((var(--tree-scene-cy) + var(--tree-scene-fill) * 0.5) * 100% - 26px); font-size: 14px; }
-  .tsheet { place-items: end stretch; }
+  .tsheet { place-items: end stretch; padding-block-end: var(--kb, 0px); }
   .tsheet__panel {
     width: 100%;
-    max-height: 92svh;
+    max-height: calc(92svh - var(--kb, 0px));
     padding: 12px 20px calc(28px + var(--safe-bottom));
     border-radius: 0;
     border-start-start-radius: 40px;

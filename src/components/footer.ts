@@ -6,13 +6,14 @@
    own base (a damped spring per letter, transform: rotate only):
    · a slow gust travels through them right → left (the reading direction)
    · the cursor brushes them (horizontal pointer speed × proximity × how high you touch)
-   · phones: a finger moving over them, and scrolling, give a gentle push
+   · phones: a finger moving over them, and scrolling, give a gentle push; on a narrow portrait screen the two
+     words stand one over the other («בואו» / «לנטוע»), each line fitted to the full width (≈ 2× the size)
    · on first view they grow out of the soil; the soil has their roots (drawn lines)
    · a seed can be dragged into the ground → it sinks, a sprout grows there, the letters lean
      away from it, and "נוטעים עץ משלכם" appears where the seed was. A press / tap / Enter on
      the seed plants it in the gap between the two words (the button alternative).
      The sprout stays for the session (sessionStorage), on every page.
-   · desktop + motion: the line dog runs across once, the first time the field is in view.
+   · desktop + motion: the line dog runs across once per visit (session), the first time the field is in view.
    Reduced motion: letters still, no intro, no dog; planting still works, without animation.
    Ticker runs only while the field is on screen.
    ========================================================================== */
@@ -23,11 +24,21 @@ import { bus } from '../core/bus';
 import { sound } from '../core/sound';
 import { session } from '../core/storage';
 import { he } from '../content/he';
-import { mountDog, type DogHandle } from './dog';
+import type { DogHandle } from './dog';
 
-interface Ch { el: HTMLElement; inner: HTMLElement; cx: number; w: number; a: number; v: number }
+interface Ch { el: HTMLElement; inner: HTMLElement; cx: number; base: number; w: number; a: number; v: number; low: boolean }
 
 const KEY = 'footer:sprout';
+const DOG_KEY = 'footer:dog'; // the dog has run in this session (once per visit, not on every page)
+/* Frank Ruhl Libre 400, per 1px of font-size — measured once (advance widths of the letters, the descender
+   below the baseline in a line-height 1 box). The fit and every letter's box come from these numbers, NOT
+   from the glyphs on screen, so the boxes are final while the fallback serif is still showing: nothing
+   moves when the web font arrives (CLS-free). footer.css carries the same fit as the pre-JS default.
+   If another font really ends up in use (the web font failed / a user font), it is re-measured once. */
+const FRL_ADV: Record<string, number> = { 'ב': 0.482, 'ו': 0.275, 'א': 0.53, 'ל': 0.486, 'נ': 0.334, 'ט': 0.532, 'ע': 0.475 };
+const FRL_DESC = 0.188;
+const GAP_EM = 0.24; // .site-footer__sp
+const FIT = 0.985;
 const SVGNS = 'http://www.w3.org/2000/svg';
 const heGet = (path: string): unknown => path.split('.').reduce<any>((o, k) => (o == null ? o : o[k]), he);
 const clamp = (min: number, max: number, v: number) => Math.min(max, Math.max(min, v));
@@ -75,7 +86,10 @@ export function initFooter(): void {
   big.append(sr);
   const chars: Ch[] = [];
   let gapEl: HTMLElement | null = null;
-  for (const c of Array.from(text)) {
+  const glyphs = Array.from(text);
+  // every letter gets its Frank Ruhl box up front (when the table knows all of them)
+  let fixed = glyphs.every((c) => c === ' ' || FRL_ADV[c] != null);
+  for (const c of glyphs) {
     if (c === ' ') {
       gapEl = document.createElement('span');
       gapEl.className = 'site-footer__sp';
@@ -86,54 +100,122 @@ export function initFooter(): void {
     const el = document.createElement('span');
     el.className = 'site-footer__ch';
     el.setAttribute('aria-hidden', 'true');
+    if (fixed) el.style.width = `${FRL_ADV[c]}em`;
     const inner = document.createElement('span');
     inner.className = 'site-footer__ch-in';
     inner.textContent = c;
     el.append(inner);
     big.append(el);
-    chars.push({ el, inner, cx: 0, w: 0, a: 0, v: 0 });
+    chars.push({ el, inner, cx: 0, base: 0, w: 0, a: 0, v: 0, low: true });
   }
 
   /* ------------------------------------------------------------ layout */
   let fs = 0;
   let fieldW = 0;
   let groundY = 0;  // field-relative y of the soil line (= field bottom)
-  let topY = 0;     // field-relative y of the letters' tops (approx.)
+  let topY = 0;     // field-relative y of the highest letters' tops (approx.)
   let glyphH = 1;
   let gapX = 0;
+  let stacked = false; // phones: «בואו» over «לנטוע», each line fitted to the width (footer.css --big-lines: 2)
+
+  /** per 1px of font-size: the one-line run, the longer word (the stacked fit), and where the gap's centre sits
+      from the field's centre (physical px / fs) */
+  const runOf = (adv: (c: string) => number) => {
+    let w = 0;
+    let firstWord = 0;
+    let word = 0;
+    let longest = 0;
+    let seenGap = false;
+    for (const c of glyphs) {
+      if (c === ' ') { if (!seenGap) firstWord = w; seenGap = true; w += GAP_EM; longest = Math.max(longest, word); word = 0; }
+      else { const a = adv(c); w += a; word += a; }
+    }
+    longest = Math.max(longest, word);
+    // RTL: the first word is on the right, so the gap is right of the centre
+    return { width: w || 1, longest: longest || 1, gap: seenGap ? w / 2 - firstWord - GAP_EM / 2 : 0 };
+  };
+  let metrics = { ...runOf((c) => FRL_ADV[c] ?? 0.45), desc: FRL_DESC };
+  let calibrated = false;
 
   function layout() {
     const avail = field!.clientWidth;
     if (!avail) return;
-    // fit the two words to the full width
-    big!.style.setProperty('--big-fs', '20px');
-    const first = chars[0].el;
-    const last = chars[chars.length - 1].el;
-    const natural = Math.abs((first.offsetLeft + first.offsetWidth) - last.offsetLeft) || 1;
-    fs = clamp(30, 560, (20 * avail) / natural * 0.985);
-    big!.style.setProperty('--big-fs', `${fs.toFixed(2)}px`);
-    // the baseline: the letters stand on the soil and turn around it
-    const probe = document.createElement('i');
-    probe.style.cssText = 'display:inline-block;width:0;height:0;vertical-align:baseline';
-    chars[0].inner.append(probe);
-    // offset* ignore transforms (letters may be mid-sway or still under the soil)
-    const desc = (first.offsetTop + first.offsetHeight) - probe.offsetTop;
-    probe.remove();
-    big!.style.setProperty('--big-desc', `${Math.max(0, desc).toFixed(2)}px`);
-    big!.style.setProperty('--big-sink', `${Math.max(3, fs * 0.02).toFixed(1)}px`);
-
-    fieldW = field!.clientWidth;
+    stacked = getComputedStyle(field!).getPropertyValue('--big-lines').trim() === '2' && glyphs.includes(' ');
+    // fit the words to the full width (from the font's metrics, not from what is painted right now):
+    // one line on wide screens, or each word on its own line on phones (the longer one sets the size)
+    fs = clamp(30, 560, (avail * FIT) / (stacked ? metrics.longest : metrics.width));
+    field!.style.setProperty('--big-fs', `${fs.toFixed(2)}px`);
+    big!.style.setProperty('--big-desc', `${metrics.desc.toFixed(4)}em`);
+    fieldW = avail;
     groundY = field!.clientHeight;
     glyphH = fs * 0.72;
-    topY = groundY - glyphH;
-    for (const ch of chars) { ch.w = ch.el.offsetWidth; ch.cx = big!.offsetLeft + ch.el.offsetLeft + ch.w / 2; }
-    gapX = gapEl ? big!.offsetLeft + gapEl.offsetLeft + gapEl.offsetWidth / 2 : fieldW / 2;
-    seedbox!.style.setProperty('--gap-shift', `${(gapX - fieldW / 2).toFixed(1)}px`);
-    const sh = clamp(66, 176, fs * 0.64);
+    // offset* ignore transforms (letters may be mid-sway or still under the soil); the letters' offsetParent is
+    // the h2, its own is the field. base = the letter's baseline (its turning point), field-relative
+    const descPx = metrics.desc * fs;
+    let lowest = 0;
+    for (const ch of chars) {
+      ch.w = ch.el.offsetWidth;
+      ch.cx = big!.offsetLeft + ch.el.offsetLeft + ch.w / 2;
+      ch.base = big!.offsetTop + ch.el.offsetTop + ch.el.offsetHeight - descPx;
+      lowest = Math.max(lowest, ch.base);
+    }
+    let highest = lowest;
+    for (const ch of chars) { ch.low = ch.base > lowest - fs * 0.3; highest = Math.min(highest, ch.base); }
+    topY = highest - glyphH;
+    if (stacked) {
+      // a press plants the seed at the letter joint of the lower word nearest the centre (the sprout grows in
+      // front of the letters, its cream halo keeps both readable); the seed waits centred above the words
+      let best = fieldW / 2;
+      let bestD = Infinity;
+      const low = chars.filter((c) => c.low).sort((a, b) => a.cx - b.cx);
+      for (let i = 1; i < low.length; i++) {
+        const x = (low[i - 1].cx + low[i - 1].w / 2 + low[i].cx - low[i].w / 2) / 2;
+        const d = Math.abs(x - fieldW / 2);
+        if (d < bestD) { bestD = d; best = x; }
+      }
+      gapX = best;
+      seedbox!.style.setProperty('--gap-shift', '0px');
+    } else {
+      gapX = fieldW / 2 + fs * metrics.gap;
+      seedbox!.style.setProperty('--gap-shift', `${(fs * metrics.gap).toFixed(1)}px`);
+    }
+    const sh = clamp(66, 176, fs * (stacked ? 0.52 : 0.64));
     root!.style.setProperty('--sprout-h', `${sh.toFixed(1)}px`);
     root!.style.setProperty('--sprout-w', `${(sh * 80 / 124).toFixed(1)}px`);
     drawUnder();
     placeSprout();
+  }
+
+  /** once the font has settled: check the table against the glyphs really in use (normally a no-op) */
+  function calibrate() {
+    if (calibrated) return;
+    calibrated = true;
+    const m = document.createElement('span');
+    m.setAttribute('aria-hidden', 'true');
+    m.style.cssText = 'position:absolute;inset-block-start:0;inset-inline-start:0;visibility:hidden;white-space:nowrap;font-size:100px;line-height:1;letter-spacing:0';
+    const probe = document.createElement('i');
+    probe.style.cssText = 'display:inline-block;width:0;height:0;vertical-align:baseline';
+    const spans = new Map<string, HTMLElement>();
+    for (const c of new Set(glyphs.filter((g) => g !== ' '))) {
+      const sp = document.createElement('span');
+      sp.style.display = 'inline-block';
+      sp.textContent = c;
+      spans.set(c, sp);
+      m.append(sp);
+    }
+    m.append(probe);
+    big!.append(m);
+    const adv = (c: string) => (spans.get(c)?.getBoundingClientRect().width ?? 45) / 100;
+    const run = runOf(adv);
+    const desc = Math.max(0, m.getBoundingClientRect().bottom - probe.getBoundingClientRect().top) / 100;
+    m.remove();
+    const off = !fixed || Math.abs(run.width - metrics.width) / metrics.width > 0.015 || Math.abs(desc - metrics.desc) > 0.03;
+    if (off && run.width > 0.5) {
+      // a different font is in use: its own boxes and fit (a one-time change, only in this fallback case)
+      metrics = { ...run, desc };
+      if (fixed) { fixed = false; chars.forEach((c) => { c.el.style.width = ''; }); }
+    }
+    layout();
   }
 
   /* roots of the letters + a few pebbles in the soil (SVG, field-independent soil coordinates) */
@@ -149,6 +231,7 @@ export function initFooter(): void {
     const r = rng(1405);
     const depth = clamp(26, 96, fs * 0.34);
     chars.forEach((ch) => {
+      if (!ch.low) return; // the upper word (phones) stands on the lower one, not on the soil
       const x0 = off + ch.cx;
       const n = 2 + Math.floor(r() * 2);
       for (let k = 0; k < n; k++) {
@@ -209,12 +292,14 @@ export function initFooter(): void {
       ch.el.style.transform = `rotate(${ch.a.toFixed(2)}deg)`;
     }
   };
+  /** letters upright and at rest (motion switched off) */
+  const still = () => chars.forEach((c) => { c.a = 0; c.v = 0; c.el.style.transform = ''; });
   const syncTicker = () => {
     const want = inView && env.motionAllowed();
     if (want && !ticking) { gsap.ticker.add(tick); ticking = true; }
     else if (!want && ticking) {
       gsap.ticker.remove(tick); ticking = false;
-      if (!env.motionAllowed()) chars.forEach((c) => { c.a = 0; c.v = 0; c.el.style.transform = ''; });
+      if (!env.motionAllowed()) still();
     }
   };
 
@@ -225,8 +310,10 @@ export function initFooter(): void {
     const x = clientX - r.left;
     const y = clientY - r.top;
     if (y < topY - 40 || y > groundY + 16) return;
-    const lev = clamp(0.2, 1.15, (groundY - y) / glyphH);
     for (const ch of chars) {
+      // only the letters of the line being touched (phones: two lines), stronger the higher you touch them
+      if (y < ch.base - glyphH - 40 || y > ch.base + 16) continue;
+      const lev = clamp(0.2, 1.15, (ch.base - y) / glyphH);
       const d = (x - ch.cx) / (ch.w * 0.9 + 18);
       const infl = Math.exp(-d * d);
       if (infl < 0.03) continue;
@@ -428,6 +515,7 @@ export function initFooter(): void {
         gsap.killTweensOf(seed);
         seed.classList.add('is-dragging');
         root.classList.add('site-footer--dragging');
+        document.documentElement.classList.add('sf-seed-drag'); // footer.css: the custom cursor lets go of its disc
         sound.play('rustle', { volume: 0.4 });
       }
       gsap.set(seed, { x: dx, y: dy, rotation: clamp(-50, 50, dx * 0.08) });
@@ -440,6 +528,7 @@ export function initFooter(): void {
       dragging = false;
       seed.classList.remove('is-dragging');
       root.classList.remove('site-footer--dragging');
+      document.documentElement.classList.remove('sf-seed-drag');
       if (!moved) return; // a plain press → the click handler plants it
       suppressClick = true;
       window.setTimeout(() => { suppressClick = false; }, 60);
@@ -466,18 +555,24 @@ export function initFooter(): void {
   function intro() {
     if (!introPending) return;
     introPending = false;
-    if (!env.motionAllowed()) { gsap.set(chars.map((c) => c.inner), { clearProps: 'transform' }); gsap.set(rootPaths, { clearProps: 'all' }); return; }
-    gsap.to(chars.map((c) => c.inner), { yPercent: 0, duration: 1.4, ease: 'expo.out', stagger: 0.055, clearProps: 'transform' });
+    if (!env.motionAllowed()) { gsap.set(chars.map((c) => c.inner), { clearProps: 'transform,opacity' }); gsap.set(rootPaths, { clearProps: 'all' }); return; }
+    gsap.to(chars.map((c) => c.inner), { yPercent: 0, opacity: 1, duration: 1.4, ease: 'expo.out', stagger: 0.055, clearProps: 'transform,opacity' });
     gsap.to(rootPaths, { drawSVG: '100%', duration: 1.6, ease: 'power2.out', stagger: 0.012, delay: 0.35, onComplete() { gsap.set(rootPaths, { clearProps: 'all' }); } });
     chars.forEach((c, i) => { c.v += (i % 2 ? 1 : -1) * 30; });
   }
   function runDog() {
     if (dogDone || !env.motionAllowed() || env.isTouch || env.isMobile()) return;
     dogDone = true;
-    window.setTimeout(() => {
+    // once per visit: a visitor who opens a few pages meets the dog once, not on every footer
+    if (session.get(DOG_KEY)) return;
+    // the dog's code is loaded only here: desktop, motion on, footer in view (never on phones)
+    const wait = new Promise((r) => window.setTimeout(r, 700));
+    Promise.all([import('./dog'), wait]).then(([{ mountDog }]) => {
+      if (!env.motionAllowed() || !inView) { dogDone = false; return; }
+      session.set(DOG_KEY, '1');
       dog = mountDog(field!, { mode: 'runAcross', autoplay: false, ground: 6 });
       dog.runAcross().then(() => { window.setTimeout(() => { dog?.destroy(); dog = null; }, 400); });
-    }, 700);
+    }).catch(() => { /* offline: no dog */ });
   }
 
   /* ------------------------------------------------------------ boot */
@@ -494,15 +589,18 @@ export function initFooter(): void {
       cta.setAttribute('aria-hidden', 'true');
     }
   }
-  // letters wait under the soil until the field is first seen (only if it is not on screen already)
+  layout();
+  // letters wait under the soil until the field is first seen (only if it is not on screen already);
+  // phones: the upper word does not stand on the soil — it rises a little and fades in instead
   if (env.motionAllowed()) {
     const r = field.getBoundingClientRect();
     if (r.top > window.innerHeight * 0.9) {
       introPending = true;
-      gsap.set(chars.map((c) => c.inner), { yPercent: 108 });
+      gsap.set(chars.filter((c) => c.low).map((c) => c.inner), { yPercent: 108 });
+      gsap.set(chars.filter((c) => !c.low).map((c) => c.inner), { yPercent: 40, opacity: 0 });
+      gsap.set(rootPaths, { drawSVG: '0%' });
     }
   }
-  layout();
   if (planted && Number.isFinite(savedRatio)) growSprout(savedRatio * fieldW, false);
 
   const io = new IntersectionObserver((entries) => {
@@ -514,8 +612,11 @@ export function initFooter(): void {
   }, { threshold: [0, 0.3, 0.6] });
   io.observe(field);
 
-  // re-fit when the fonts arrive and when the width changes
-  document.fonts?.ready.then(() => layout());
+  // the boxes do not depend on the font; once it has arrived, check the metrics and re-read the letter centres
+  // (fonts.load waits for exactly this face, so the check never runs against the fallback by accident)
+  const fonts = document.fonts;
+  if (fonts?.load) fonts.load(`400 40px "Frank Ruhl Libre"`, text).then(() => calibrate(), () => calibrate());
+  else calibrate();
   window.addEventListener('load', () => layout(), { once: true });
   let lw = field.clientWidth;
   if ('ResizeObserver' in window) {
@@ -530,7 +631,9 @@ export function initFooter(): void {
   bus.on('motion:change', ({ allowed }: { allowed: boolean }) => {
     syncTicker();
     if (!allowed) {
-      if (introPending) { introPending = false; gsap.set(chars.map((c) => c.inner), { clearProps: 'transform' }); gsap.set(rootPaths, { clearProps: 'all' }); }
+      // also when the footer is off screen (the ticker is not running): no letter stays frozen mid-sway
+      still();
+      if (introPending) { introPending = false; gsap.set(chars.map((c) => c.inner), { clearProps: 'transform,opacity' }); gsap.set(rootPaths, { clearProps: 'all' }); }
       dog?.destroy();
       dog = null;
     }

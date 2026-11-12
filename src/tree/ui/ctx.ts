@@ -35,7 +35,11 @@ export interface Ctx {
   run(flow: PageState): void;
   /** water from anywhere (keyboard Enter on the stage, birth button) */
   focusWater(): void;
+  /** the demo tree was just planted (before → birth): a fresh sapling with today's date; false restores the demo tree */
+  replant(today: boolean): void;
   openShare(): void;
+  /** the owner's "מזמינים חברים להשקות": a ready WhatsApp text + link for the friends' greeting mini-page */
+  openInvite(): void;
   openGreet(): void;
   openInstall(): void;
 }

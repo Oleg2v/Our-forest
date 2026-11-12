@@ -89,7 +89,7 @@ html:not(.js) .wall__band { display: none; }
 }
 .wall__band-note { display: inline-flex; align-items: center; gap: 10px; font-size: var(--fs-small); color: var(--ink-soft); }
 .wall__band-note .icon { width: 20px; height: 20px; color: var(--wall-accent); }
-.wall__band-note a { color: var(--ink); }
+.wall__band-note a { color: var(--ink); display: inline-block; padding-block: 12px; margin-block: -12px; } /* a 44px tall target */
 .wall__pause {
   display: inline-flex; align-items: center; gap: 8px;
   min-height: 44px; padding: 0 18px 0 16px;

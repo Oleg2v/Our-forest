@@ -28,6 +28,8 @@ export function initSteps() {
     icon: item.querySelector<SVGSVGElement>('.biz-steps__icon'),
     at: 0, lit: false, tl: null,
   }));
+  const SAMPLES = 160;
+  let samples: DOMPoint[] = [];
   let length = 1;
   let rootlets: { el: SVGPathElement; at: number; len: number }[] = [];
   let tip: SVGCircleElement | null = null;
@@ -77,7 +79,10 @@ export function initSteps() {
     ghost!.setAttribute('d', d);
     length = line!.getTotalLength() || 1;
 
-    // where along the root each node sits
+    // where along the root each node sits (one shared sampling of the path, not one per node —
+    // getPointAtLength walks the whole path on every call)
+    samples = [];
+    for (let k = 0; k <= SAMPLES; k++) samples.push(line!.getPointAtLength((k / SAMPLES) * length));
     nodes.forEach((n, i) => { n.at = nearestAt(centers[i]); });
 
     // rootlets: short, thin side roots that fork off between the nodes
@@ -126,14 +131,13 @@ export function initSteps() {
 
   function nearestAt(c: { x: number; y: number }) {
     let best = 0, bestD = Infinity;
-    const steps = 160;
-    for (let s = 0; s <= steps; s++) {
-      const p = line!.getPointAtLength((s / steps) * length);
+    const steps = SAMPLES;
+    samples.forEach((p, k) => {
       const dd = (p.x - c.x) ** 2 + (p.y - c.y) ** 2;
-      if (dd < bestD) { bestD = dd; best = s / steps; }
-    }
+      if (dd < bestD) { bestD = dd; best = k / steps; }
+    });
     // refine
-    for (let s = -10; s <= 10; s++) {
+    for (let s = -10; s <= 10; s += 2) {
       const a = Math.min(1, Math.max(0, best + s / (steps * 10)));
       const p = line!.getPointAtLength(a * length);
       const dd = (p.x - c.x) ** 2 + (p.y - c.y) ** 2;
@@ -205,8 +209,10 @@ export function initSteps() {
     const vertical = env.isMobile();
     st = ScrollTrigger.create({
       trigger: stage!,
-      start: vertical ? 'top 72%' : 'top 82%',
-      end: vertical ? 'bottom 72%' : 'bottom 38%',
+      // desktop: the root crosses the row while the whole row is on screen — node 01 lights as the row
+      // passes ~80% of the viewport, node 04 by the middle (it used to wait for the section to leave)
+      start: vertical ? 'top 72%' : 'top 62%',
+      end: vertical ? 'bottom 72%' : 'bottom 62%',
       scrub: vertical ? 0.4 : 0.9,
       onUpdate: (self) => draw(self.progress),
       onRefresh: (self) => draw(self.progress),
@@ -215,16 +221,32 @@ export function initSteps() {
     requestAnimationFrame(() => { live = true; });
   }
 
-  layout();
-  start();
+  // the section sits below the first screen: measure and build it when it comes near (or at idle),
+  // not on the critical path of the first paint
+  let ready = false;
   let lastMobile = env.isMobile();
+  const init = () => {
+    if (ready) return;
+    ready = true;
+    near.disconnect();
+    lastMobile = env.isMobile();
+    layout();
+    start();
+  };
+  const near = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) init(); }, { rootMargin: '120% 0px' });
+  near.observe(section);
+  const idle = (window as any).requestIdleCallback as ((cb: () => void, o?: { timeout: number }) => number) | undefined;
+  window.addEventListener('load', () => (idle ? idle(init, { timeout: 2500 }) : setTimeout(init, 800)), { once: true });
   onResize(() => {
+    if (!ready) return;
     layout();
     if (env.isMobile() !== lastMobile) { lastMobile = env.isMobile(); start(); }
     else if (st) draw(st.progress);
     ScrollTrigger.refresh();
   });
   // web fonts change line breaks → node positions
-  document.fonts?.ready.then(() => { layout(); if (st) draw(st.progress); });
-  bus.on('motion:change', () => { layout(); start(); });
+  document.fonts?.ready.then(() => { if (!ready) return; layout(); if (st) draw(st.progress); });
+  bus.on('motion:change', () => { if (!ready) return; layout(); start(); });
+  // the a11y panel's text size moves the words and the nodes (its own ScrollTrigger.refresh follows)
+  bus.on('a11y:change', () => { if (!ready) return; layout(); if (st) draw(st.progress); });
 }

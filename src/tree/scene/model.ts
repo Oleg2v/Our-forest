@@ -190,6 +190,10 @@ export interface RootSys {
   parent: Int32Array;
   d: Float32Array;        // path distance from the base
   m: Float32Array;        // reveal metric: path distance from the seed
+  /** birth close-up metric: downward from the seed only (-1 = not part of the radicle) */
+  mr: Float32Array;
+  /** tap nodes above the seed (the seedling's underground stem during the birth) */
+  up: Uint8Array;
   w: Float32Array;        // adult radius
   order: Uint8Array;
   chains: number[][];
@@ -520,6 +524,7 @@ function makeRoots(sp: SpeciesDef, island: IslandModel, rng: Rng): RootSys {
     X.push(x); Y.push(y); PAR.push(p); Dd.push(d); W.push(w); ORD.push(o); return X.length - 1;
   };
   const STEP = 0.03;
+  const seedD = -ISLAND.SEED_Y;
   const grow = (from: number, ang: number, length: number, w0: number, ord: number, bend: number) => {
     let cur = from, a = ang, l = 0;
     const out: number[] = [];
@@ -528,6 +533,8 @@ function makeRoots(sp: SpeciesDef, island: IslandModel, rng: Rng): RootSys {
       a += noise1(l * 6 + seedN, ord) * 0.18 + bend * 0.04;
       // gravitropism: lean toward straight down
       a = lerp(a, -Math.PI / 2, 0.035 * (ord === 0 ? 0.2 : 1));
+      // the tap root runs straight through the seed (x = 0): the seedling's stem rises from it, the radicle leaves it downward
+      if (ord === 0 && l < seedD + STEP) a = -Math.PI / 2;
       const nx = X[cur] + Math.cos(a) * STEP, ny = Y[cur] + Math.sin(a) * STEP;
       if (!inFace(nx, ny, 0.05)) break;
       l += STEP;
@@ -569,15 +576,23 @@ function makeRoots(sp: SpeciesDef, island: IslandModel, rng: Rng): RootSys {
   const n = X.length;
   const x = Float32Array.from(X), y = Float32Array.from(Y), parent = Int32Array.from(PAR), d = Float32Array.from(Dd), w = Float32Array.from(W);
   // reveal metric from the seed (the seed lies on the tap root at SEED depth)
-  const seedD = -ISLAND.SEED_Y;
   const m = new Float32Array(n);
+  // birth close-up: the radicle leaves the seed downward only (laterals lag behind the tip); the tap above
+  // the seed is the seedling's pale underground stem (hypocotyl); laterals above the seed come later
+  const mr = new Float32Array(n);
+  const up = new Uint8Array(n);
   const onTap = new Uint8Array(n); onTap[base] = 1; for (const i of tap) onTap[i] = 1;
   const attachD = new Float32Array(n);
   for (let i = 0; i < n; i++) {
-    if (onTap[i]) { m[i] = Math.abs(d[i] - seedD); attachD[i] = d[i]; continue; }
+    if (onTap[i]) {
+      m[i] = Math.abs(d[i] - seedD); attachD[i] = d[i];
+      if (d[i] < seedD) { up[i] = 1; mr[i] = seedD - d[i]; } else mr[i] = d[i] - seedD;
+      continue;
+    }
     const p = parent[i];
     attachD[i] = onTap[p] ? d[p] : attachD[p];
     m[i] = Math.abs(attachD[i] - seedD) + (d[i] - attachD[i]);
+    mr[i] = attachD[i] < seedD + 0.02 ? -1 : (attachD[i] - seedD) + (d[i] - attachD[i]) * 1.6;
   }
   const children: number[][] = Array.from({ length: n }, () => []);
   for (let i = 0; i < n; i++) if (parent[i] >= 0) children[parent[i]].push(i);
@@ -600,7 +615,7 @@ function makeRoots(sp: SpeciesDef, island: IslandModel, rng: Rng): RootSys {
   for (const ch of chains) { const p = parent[ch[0]]; if (p >= 0) ch.unshift(p); }
   let dMax = 0, mMax = 0;
   for (let i = 0; i < n; i++) { dMax = Math.max(dMax, d[i]); mMax = Math.max(mMax, m[i]); }
-  return { n, x, y, parent, d, m, w, order: Uint8Array.from(ORD), chains, dMax, mMax };
+  return { n, x, y, parent, d, m, mr, up, w, order: Uint8Array.from(ORD), chains, dMax, mMax };
 }
 
 /* ==================================================================== growth by age */
@@ -615,6 +630,43 @@ export const revealOf = (g: number) => (g < 0.06 ? (g / 0.06) * 0.3 : 0.3 + ((g 
 /** overall size at growth g */
 export const sizeOf = (g: number) => (g < 0.06 ? lerp(0.22, 0.34, g / 0.06) : lerp(0.34, 1, Math.pow(clamp((g - 0.06) / 0.94, 0, 1.2), 0.7)));
 export const rootRevealOf = (g: number) => (g < 0.06 ? lerp(0.0, 0.32, g / 0.06) : lerp(0.32, 1.02, Math.pow(clamp((g - 0.06) / 0.94), 0.8)));
+
+export interface RootPt { x: number; y: number; r: number; d: number }
+/** The visible roots as polylines in the cut face (x, y, radius, path distance for the glow). The reveal metric
+    is not monotonic along a chain (the tap root grows both ways from the seed), so every chain yields its
+    contiguous revealed runs, each cut exactly at the reveal front. */
+export function rootRuns(M: TreeModel, G: GrowResult): RootPt[][] {
+  const R = M.rootsys, out: RootPt[][] = [];
+  const rev = G.rootReveal * R.mMax;
+  if (!(rev > 0)) return out;
+  const m = G.rootM, rr = G.rootR, tip = G.rootTipR;
+  const at = (a: number, b: number, t: number): RootPt => ({
+    x: lerp(R.x[a], R.x[b], t), y: lerp(R.y[a], R.y[b], t), r: Math.min(tip, lerp(rr[a], rr[b], t)), d: lerp(R.d[a], R.d[b], t),
+  });
+  for (const ch of R.chains) {
+    let run: RootPt[] | null = null;
+    for (let k = 0; k < ch.length; k++) {
+      const i = ch[k];
+      if (m[i] <= rev) {
+        if (!run) {
+          run = [];
+          if (k > 0) {
+            const p = ch[k - 1], t = (rev - m[i]) / Math.max(1e-6, m[p] - m[i]);
+            if (t > 0.02) run.push(at(i, p, clamp(t)));
+          }
+        }
+        run.push({ x: R.x[i], y: R.y[i], r: rr[i], d: R.d[i] });
+      } else if (run) {
+        const p = ch[k - 1], t = (rev - m[p]) / Math.max(1e-6, m[i] - m[p]);
+        if (t > 0.02) run.push(at(p, i, clamp(t)));
+        if (run.length >= 2) out.push(run);
+        run = null;
+      }
+    }
+    if (run && run.length >= 2) out.push(run);
+  }
+  return out;
+}
 
 export interface SeasonLook {
   density: number;   // share of leaves on the tree
@@ -649,6 +701,10 @@ export interface GrowParams {
   rootReveal: number;
   /** extra root thinness (birth close-up) */
   rootScale?: number;
+  /** birth close-up 0..1: the roots are the seed's radicle (thin, tapering, downward only) */
+  radicle?: number;
+  /** birth: share of the seedling's underground stem grown from the seed to the surface */
+  hypocotyl?: number;
 }
 
 export interface GrowResult {
@@ -673,6 +729,10 @@ export interface GrowResult {
   cotyledon: { open: number; x: number; y: number; z: number; size: number } | null;
   rootReveal: number;
   rootW: number;
+  /** per root node: effective reveal metric (compare with rootReveal · mMax) and display radius (world units) */
+  rootM: Float32Array; rootR: Float32Array;
+  /** radius of a growing root tip (world units) and the birth radicle blend (renderers relax their minimum width) */
+  rootTipR: number; radicle: number;
   bbox: { min: V3; max: V3 };
   crownC: V3; crownR: number; top: number;
   trunk: { x: number; y: number; z: number; r: number }[];
@@ -694,7 +754,8 @@ export function grow(M: TreeModel, P: GrowParams, prev?: GrowResult): GrowResult
     leaves: new Int32Array(M.leaves.count), leafScale: new Float32Array(M.leaves.count), leafAutumn: new Float32Array(M.leaves.count), leafCount: 0,
     fruits: new Int32Array(M.fruits.count), fruitScale: new Float32Array(M.fruits.count), fruitCount: 0, fruitXYZ: new Float32Array(M.fruits.count * 3),
     blossoms: new Int32Array(M.blossoms.count), blossomScale: new Float32Array(M.blossoms.count), blossomCount: 0, blossomXYZ: new Float32Array(M.blossoms.count * 3),
-    cotyledon: null, rootReveal: 0, rootW: 1, bbox: { min: [0, 0, 0], max: [0, 0, 0] }, crownC: [0, 1, 0], crownR: 0.5, top: 0,
+    cotyledon: null, rootReveal: 0, rootW: 1, rootM: new Float32Array(M.rootsys.n), rootR: new Float32Array(M.rootsys.n), rootTipR: 0.004, radicle: 0,
+    bbox: { min: [0, 0, 0], max: [0, 0, 0] }, crownC: [0, 1, 0], crownR: 0.5, top: 0,
     trunk: [], perches: [], greeting: [],
   };
   res.version = growVersion++;
@@ -871,6 +932,31 @@ export function grow(M: TreeModel, P: GrowParams, prev?: GrowResult): GrowResult
   }
   res.rootReveal = P.planted ? P.rootReveal : 0;
   res.rootW = Math.max(0.1, Math.sqrt(clamp(g))) * (P.rootScale ?? 1);
+  {
+    // roots: the adult system revealed from the seed, or (birth close-up) the radicle + the underground stem
+    const R = M.rootsys, rk = clamp(P.radicle ?? 0), hyp = clamp(P.hypocotyl ?? 0);
+    const rev = res.rootReveal * R.mMax, seedD = -ISLAND.SEED_Y, far = R.mMax * 3 + 1;
+    res.radicle = rk;
+    res.rootTipR = lerp(0.004, 0.00045, rk);
+    for (let i = 0; i < R.n; i++) {
+      const adultR = R.w[i] * res.rootW;
+      if (rk <= 0) { res.rootM[i] = R.m[i]; res.rootR[i] = adultR; continue; }
+      let mR: number, rR: number;
+      if (R.up[i]) {
+        // revealed exactly up to hyp · seedD above the seed (independent of the radicle's own front)
+        const k = (seedD - Math.min(seedD, R.d[i])) / seedD;
+        mR = hyp > 0.001 && rev > 0 ? (k / hyp) * rev : far;
+        rR = lerp(0.0021, 0.0017, k);
+      } else if (R.mr[i] < 0) { mR = far; rR = 0.0006; }
+      else {
+        mR = R.mr[i];
+        // thick at the seed, tapering to a hair-thin growing tip
+        rR = lerp(0.0019, 0.0005, clamp(mR / Math.max(0.02, rev))) * (R.order[i] ? 0.7 : 1);
+      }
+      res.rootM[i] = lerp(R.m[i], mR, rk);
+      res.rootR[i] = lerp(adultR, rR, rk);
+    }
+  }
 
   /* bird perches: upper, front, near-horizontal visible branch nodes */
   res.perches.length = 0;

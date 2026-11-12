@@ -60,7 +60,8 @@ export function initHeader(page: PageName) {
   bus.on('menu:open', () => { menuOpen = true; setAttr('data-hidden', false); });
   bus.on('menu:close', () => { menuOpen = false; });
   bus.on<{ visible: boolean }>('header:force', ({ visible }) => { forcedVisible = Math.max(0, forcedVisible + (visible ? 1 : -1)); onScroll(); });
-  update();
+  // first probe in the first frame, not inside the module's start-up task (it forces the first layout)
+  onScroll();
   // re-probe while intro animations, media and webfonts settle (no polling loop)
   window.addEventListener('load', () => setTimeout(tone, 60), { once: true });
   [400, 1200, 2400, 4000].forEach((ms) => setTimeout(tone, ms));

@@ -2,6 +2,7 @@
    Arrivals (7.3 / 7.4): the birth with its caption, the gift envelope, the planting notice.
    ========================================================================== */
 import { he } from '../../content/he';
+import { bus } from '../../core/bus';
 import { ilDate } from '../../core/format';
 import { gsap } from '../../core/gsap';
 import { sound } from '../../core/sound';
@@ -20,6 +21,20 @@ export class Intro {
 
   constructor(private ctx: Ctx) {}
 
+  /** the chrome header samples the stage's data-header hint only when told: re-probe after every change */
+  private retone() {
+    const { ctx } = this;
+    if (window.scrollY > ctx.stage.offsetHeight * 0.6) return;
+    const dark = ctx.stage.dataset.header === 'light';
+    bus.emit('theme:section', { bg: dark ? (ctx.main.dataset.tone === 'dark' ? 'moss' : 'soil') : 'cream', dark });
+  }
+  private setHeader(darkCloseUp: boolean) {
+    const { ctx } = this;
+    const v = darkCloseUp || ctx.main.dataset.tone === 'dark' ? 'light' : 'dark';
+    if (ctx.stage.dataset.header !== v) ctx.stage.dataset.header = v;
+    this.retone();
+  }
+
   /** stop whatever arrival is running (presenter switches) */
   stop() {
     this.abort?.abort();
@@ -32,6 +47,7 @@ export class Intro {
     this.ctx.stage.querySelector('.tnotice')?.remove();
     delete this.ctx.stage.dataset.birth;
     this.veil(false, true);
+    this.setHeader(false);
   }
 
   private veil(on: boolean, instant = false) {
@@ -68,10 +84,11 @@ export class Intro {
       signal: ac.signal,
       onPhase: (p) => {
         ctx.stage.dataset.birthPhase = p;
-        // close-up on dark soil → light header; back to the scene's tone from the reveal on
-        const dark = p === 'soil' || p === 'crack' || p === 'sprout';
-        ctx.stage.dataset.header = dark || ctx.main.dataset.tone === 'dark' ? 'light' : 'dark';
-        if (p === 'reveal' && ctx.motion()) gsap.to(eyebrow, { opacity: 0, duration: 0.6 });
+        // the close-up keeps a band of paper and the cap's top under the header (the seed sits mid-screen), so the
+        // header keeps the scene's own tone through every phase; re-probe it on each change (it does not watch the hint)
+        this.setHeader(false);
+        // the number steps aside before the seedling's first leaves open under it
+        if (p === 'sprout' && ctx.motion()) gsap.to(eyebrow, { opacity: 0, y: -8, duration: 0.6 });
         if (p === 'done') showCaption();
       },
     });
@@ -79,6 +96,7 @@ export class Intro {
     ctx.stage.removeEventListener('pointerup', this.onStageTap, true);
     eyebrow.remove();
     if (ac.signal.aborted) return;
+    this.setHeader(false);
     showCaption();
     skip.remove(); this.skipBtn = null;
     ctx.store.data.birthSeen = true; ctx.store.save();
@@ -90,12 +108,15 @@ export class Intro {
     ctx.stage.dataset.birth = 'caption';
     sound.play('chime', { volume: 0.45 });
     const words = he.tree.states.born.split(' ').map((w) => `<span class="tbirth__w"><span>${w}</span></span>`).join(' ');
+    // a tree in memory has no watering game (7.12): the first gesture is the candle by the plaque
+    const memorial = ctx.demo.mode === 'memorial';
+    const first = memorial ? `${icon('candle')}<span>${he.tree.memorial.candle}</span>` : `${icon('drop')}<span>${he.tree.birth.waterFirst}</span>`;
     const c = el(`
       <div class="tbirth" role="group" aria-labelledby="tbirth-t">
         <h2 class="tbirth__title" id="tbirth-t">${words}</h2>
         <p class="tbirth__date"><bdi>${ilDate(dateKey)}</bdi></p>
         <div class="tbirth__actions">
-          <button class="btn btn--lg tbirth__water" type="button" data-first>${icon('drop')}<span>${he.tree.birth.waterFirst}</span></button>
+          <button class="btn btn--lg tbirth__water" type="button" data-first>${first}</button>
           <button class="btn btn--outline btn--lg" type="button" data-share>${icon('share')}<span>${he.tree.birth.share}</span></button>
         </div>
       </div>`);
@@ -108,7 +129,10 @@ export class Intro {
       if (ctx.motion()) gsap.to(c, { opacity: 0, y: 12, duration: 0.45, ease: 'power2.in', onComplete: fin });
       else fin();
     };
-    c.querySelector('[data-first]')!.addEventListener('click', () => done(() => ctx.focusWater()));
+    c.querySelector('[data-first]')!.addEventListener('click', () => done(() => {
+      ctx.focusWater();
+      if (memorial) ctx.stage.querySelector<HTMLElement>('[data-candle]:not([aria-pressed="true"])')?.click();
+    }));
     c.querySelector('[data-share]')!.addEventListener('click', () => done(() => ctx.openShare()));
     if (ctx.motion()) {
       gsap.fromTo(c.querySelectorAll('.tbirth__w > span'), { yPercent: 110 }, { yPercent: 0, duration: 1.2, ease: 'expo.out', stagger: 0.08 });
@@ -138,7 +162,13 @@ export class Intro {
     const go = () => {
       if (ac.signal.aborted) return;
       ac.abort();
-      const fin = () => { n.remove(); ctx.flow = 'birth'; ctx.demo.state = 'birth'; ctx.refresh(); void this.birth(israelDateKey()); };
+      const fin = () => {
+        n.remove(); ctx.flow = 'birth'; ctx.demo.state = 'birth';
+        // the team planted it just now: a sapling born today (not the demo tree's nine months)
+        ctx.replant(true);
+        ctx.refresh();
+        void this.birth(israelDateKey());
+      };
       if (ctx.motion()) gsap.to(n, { y: -30, opacity: 0, duration: 0.45, ease: 'power2.in', onComplete: fin }); else fin();
     };
     n.addEventListener('click', go);

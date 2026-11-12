@@ -4,6 +4,7 @@
 import type { Hotspot } from '../scene-api';
 import { sound } from '../../core/sound';
 import { he } from '../../content/he';
+import { allGreetings } from '../model';
 import type { Ctx } from './ctx';
 import type { Dock } from './dock';
 
@@ -40,7 +41,10 @@ export class Proxies {
         b.className = `tree-hs__b tree-hs__b--${h.kind}`;
         b.dataset.hs = h.id;
         // eight identical "פרי" stops read as one: number them for the screen reader
-        const label = h.kind === 'fruit' && fruits.length > 1 ? `פרי ${fruits.indexOf(h) + 1} מתוך ${fruits.length}. ${he.tree.gestures.whenHarvest}` : h.label;
+        // a greeting leaf says who sent it ("עלה ברכה מאת סבתא רותי"), not just the initials drawn on it
+        const greet = h.kind === 'greeting' ? allGreetings(this.ctx.tree, this.ctx.store.facts()).find((g) => `greeting-${g.id}` === h.id) : undefined;
+        const label = h.kind === 'fruit' && fruits.length > 1 ? `פרי ${fruits.indexOf(h) + 1} מתוך ${fruits.length}. ${he.tree.gestures.whenHarvest}`
+          : greet ? `עלה ברכה מאת ${greet.from}` : h.label;
         b.setAttribute('aria-label', label);
         b.addEventListener('click', (e) => this.activate(h.id, (e as MouseEvent).detail === 0));
         this.host.appendChild(b);

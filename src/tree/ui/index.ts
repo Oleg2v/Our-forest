@@ -18,7 +18,7 @@ import { sound, type Ambient } from '../../core/sound';
 import { dayPeriod, israelNow, seasonOf, ilDate } from '../../core/format';
 import { he } from '../../content/he';
 import {
-  TREE, MEMORIAL_DEMO, readDemo, deriveScene, describeTree, seasonNote, familyTrees, israelDateKey, allGreetings,
+  TREE, MEMORIAL_DEMO, readDemo, deriveScene, describeTree, seasonNote, familyTrees, israelDateKey, allGreetings, plantedTodayFields,
   SPECIES, WEATHER_HE, SEASON_HE, initialsOf, greetingFor, ageHe,
   type Demo, type PageState, type TreeRecord, type Greeting,
 } from '../model';
@@ -32,7 +32,7 @@ import { Feed } from './feed';
 import { Herbarium } from './herbarium';
 import { About } from './about';
 import { Presenter } from './presenter';
-import { openShareSheet, renderShare } from './share';
+import { openInviteSheet, openShareSheet, renderShare } from './share';
 import { initPwa, addToHomeScreen } from './pwa';
 import { icon } from './icons';
 import { el, esc, type Ctx } from './ctx';
@@ -49,13 +49,8 @@ export function initTreePage(main: HTMLElement) {
   if (flags.text) base.dedication = flags.text;
   // the hand-off from /plant (?birth=1&species=…&text=…): the visitor's own tree, planted today (in the demo the
   // birth comes right away, 7.3) — a sapling with a fresh history, not the demo tree's nine months
-  if (flags.birth && (flags.species || flags.text)) {
-    const today = israelDateKey();
-    Object.assign(base, {
-      plantedAt: today, lastTeamWatering: today, lastPrune: null, harvest: null, heightCm: 60, rootDepthCm: 25, stage: 'sapling',
-      events: [{ date: today, type: 'planted' }], greetings: [],
-    });
-  }
+  if (flags.birth && (flags.species || flags.text)) Object.assign(base, plantedTodayFields(israelDateKey()));
+  let replanted: Partial<TreeRecord> | null = null;
   const demo: Demo = { state: 'visit', mode: 'celebration', hours: null, weather: 'clear', wind: 0.22, season: null, harvest: false, ...fromUrl };
   if (demo.weather === 'wind') demo.wind = 0.75; else if (demo.weather === 'rain') demo.wind = 0.45; else if (demo.weather === 'hamsin') demo.wind = 0.15;
   if (demo.mode === 'memorial' && !flags.text) base.dedication = MEMORIAL_DEMO.dedication;
@@ -69,6 +64,8 @@ export function initTreePage(main: HTMLElement) {
     : store.daysAway() >= 14 ? 'absent' : 'visit';
   demo.state = flow;
   store.visit();
+  // online now: this is the version an offline visit will show later
+  if (navigator.onLine && flow !== 'offline') { store.data.syncedAt = Date.now(); store.save(); }
   // a dried leaf of this season goes into the herbarium on every seasonal visit
   store.collect(seasonOf(israelNow().month));
   if (flags.qr) store.collectSpecial('firstVisit');
@@ -116,7 +113,20 @@ export function initTreePage(main: HTMLElement) {
       const wp = stage.querySelector<HTMLElement>('[data-wp]');
       if (wp) { wp.classList.remove('is-hint'); void wp.offsetWidth; wp.classList.add('is-hint'); setTimeout(() => wp.classList.remove('is-hint'), 2600); }
     },
+    replant(today) {
+      if (today) {
+        const fresh = plantedTodayFields(israelDateKey());
+        if (!replanted) replanted = Object.fromEntries(Object.keys(fresh).map((k) => [k, (ctx.tree as any)[k]])) as Partial<TreeRecord>;
+        Object.assign(ctx.tree, fresh);
+      } else if (replanted) {
+        Object.assign(ctx.tree, replanted);
+        replanted = null;
+      } else return;
+      timeline.rebuild(); feed.render(); herb.render(); about.render();
+      push();
+    },
     openShare: () => openShareSheet(ctx),
+    openInvite: () => openInviteSheet(ctx),
     openGreet: () => feed.open(),
     openInstall: () => void addToHomeScreen(),
   };
@@ -187,6 +197,15 @@ export function initTreePage(main: HTMLElement) {
     }
   };
   new MutationObserver(tone).observe(sceneEl, { attributes: true, attributeFilter: ['data-scene-tone'] });
+  // pinch-zoom on the crown (7.6): the enlarged scene runs under the panel → the panel steps aside meanwhile
+  const zoomBtn = el(`<button class="tree-unzoom" type="button">${icon('back', 'icon')}<span>חוזרים לעץ</span></button>`);
+  zoomBtn.addEventListener('click', () => void scene.focus('reset'));
+  stage.appendChild(zoomBtn);
+  new MutationObserver(() => {
+    const z = 'zoomed' in sceneEl.dataset;
+    if (('zoomed' in stage.dataset) === z) return;
+    if (z) stage.dataset.zoomed = ''; else delete stage.dataset.zoomed;
+  }).observe(sceneEl, { attributes: true, attributeFilter: ['data-zoomed'] });
 
   /* ---------------- the light parts that follow the state */
   const headEls = {
@@ -205,6 +224,7 @@ export function initTreePage(main: HTMLElement) {
   function push() {
     const s = ctx.derive();
     scene.setState(s);
+    stage.dataset.flow = ctx.flow;
     const sp = SPECIES[s.species] ?? SPECIES.fig;
     headEls.number.innerHTML = `${he.tree.number(ctx.tree.id).replace(ctx.tree.id, `<bdi>${ctx.tree.id}</bdi>`)}`;
     headEls.species.textContent = sp.he;
@@ -305,8 +325,13 @@ export function initTreePage(main: HTMLElement) {
   function setOffline(off: boolean, simulated = false) {
     ctx.online = !off;
     if (off && !offlineBanner) {
-      const saved = new Date();
-      offlineBanner = el(`<p class="tree-offline" role="status">${icon('wifiOff')}<span>אין חיבור כרגע. מוצגת הגרסה האחרונה ששמרנו<span class="tree-offline__more"> (<bdi>${ilDate(saved)}, ${String(saved.getHours()).padStart(2, '0')}:${String(saved.getMinutes()).padStart(2, '0')}</bdi>)</span>. השקיה תישמר ותישלח כשהחיבור יחזור.</span></p>`);
+      // the version on screen is the one this browser last saw online
+      const saved = new Date(store.data.syncedAt ?? Date.now());
+      const il = israelNow(saved);
+      const hm = `${String(il.hour).padStart(2, '0')}:${String(il.minute).padStart(2, '0')}`;
+      const savedKey = israelDateKey(saved);
+      const when = savedKey === israelDateKey() ? hm : `${ilDate(savedKey)}, ${hm}`;
+      offlineBanner = el(`<p class="tree-offline" role="status">${icon('wifiOff')}<span class="tree-offline__long">אין חיבור כרגע. מוצגת הגרסה האחרונה ששמרנו (<bdi>${ilDate(savedKey)}, ${hm}</bdi>). השקיה תישמר ותישלח כשהחיבור יחזור.</span><span class="tree-offline__short">אין חיבור כרגע · מוצגת הגרסה מ־<bdi>${when}</bdi></span></p>`);
       stage.appendChild(offlineBanner);
       if (env.motionAllowed()) gsap.fromTo(offlineBanner, { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.8, ease: 'expo.out' });
     }
@@ -346,6 +371,8 @@ export function initTreePage(main: HTMLElement) {
       if (ctx.tree.id !== base.id) { ctx.tree = base; ctx.store = store = new TreeStore(base.id); timeline.rebuild(); feed.render(); herb.render(); about.render(); }
     }
     ctx.override = {};
+    // a sapling "planted today" by the before → birth demo goes back to being the demo tree
+    if (f !== 'birth') ctx.replant(false);
     timeline.reset(false);
     panel.render();
     push();

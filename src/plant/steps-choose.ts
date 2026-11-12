@@ -4,7 +4,8 @@ import { priceHtml, ilDate } from '../core/format';
 import { track } from '../core/analytics';
 import { sound } from '../core/sound';
 import { gsap, EASE } from '../core/gsap';
-import { createForestMap, type ForestMapHandle, type SpeciesId } from '../components/forest-map';
+import { scrollTo } from '../core/scroll';
+import type { ForestMapHandle, SpeciesId } from '../components/forest-map';
 import { pictureHtml } from '../content/images';
 import { radioGroup, escapeHtml } from './a11y';
 import { icon, treeSvg, type IconName } from './art';
@@ -13,6 +14,7 @@ import {
   speciesName, type ExtraId, type BenchItemId, type WorkshopId, type OccasionId,
 } from './catalog';
 import { clampSeats } from './store';
+import { spotFits, spotKinds } from './spots';
 import type { Ctx, StepView } from './types';
 
 const tick = () => { sound.play('click'); sound.haptic(8); };
@@ -68,7 +70,9 @@ export function itemStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): StepView
     </div>`;
   const rg = radioGroup(body.querySelector<HTMLElement>('.pcs-grid')!, (v) => {
     tick();
-    ctx.store.set({ item: v as BenchItemId });
+    const s = ctx.store.get();
+    // a place picked for another item (a table spot for a bench…) has to be picked again
+    ctx.store.set({ item: v as BenchItemId, ...(s.spot && !spotFits(s.spot, s.product, v as BenchItemId) ? { spot: '' } : {}) });
     track('select_item', { item_list_id: 'carpentry', item_id: v });
   });
   rg.set(ctx.store.get().item);
@@ -156,7 +160,8 @@ export function seatsStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): StepVie
     const w = WORKSHOPS.find((x) => x.id === s.ws)!;
     out.textContent = String(s.seats);
     out.setAttribute('aria-label', `${s.seats} משתתפים`);
-    calc.innerHTML = `<bdi>${s.seats} × </bdi>${priceHtml(w.price)} · ${he.workshops.seatsLeft(seatsLeftFor(s.ws, s.date))}`;
+    // one isolate in a fixed order ("2 × 280 ₪"), as in the summary row
+    calc.innerHTML = `<bdi>${s.seats} × ${priceHtml(w.price)}</bdi> · ${he.workshops.seatsLeft(seatsLeftFor(s.ws, s.date))}`;
     minus.disabled = s.seats <= 1;
     plus.disabled = s.seats >= max();
   };
@@ -209,6 +214,7 @@ export function locationStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): Step
         <span class="pcs-card__mark">${icon('check')}</span>
       </div>
     </div>
+    <p class="pcs-lost" hidden>${icon('pin')}<span></span></p>
     <div class="pcs-mapwrap" data-open="false">
       <div class="pcs-mapwrap__inner">
         <div class="pcs-map" data-lenis-prevent hidden></div>
@@ -220,28 +226,52 @@ export function locationStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): Step
   const mapEl = body.querySelector<HTMLElement>('.pcs-map:not(.pcs-map--mini)')!;
   const miniEl = body.querySelector<HTMLElement>('.pcs-map--mini')!;
   const spotOut = body.querySelector<HTMLElement>('.pcs-spot')!;
+  const lostEl = body.querySelector<HTMLElement>('.pcs-lost')!;
   let map: ForestMapHandle | null = null;
   let fallback: ReturnType<typeof radioGroup> | null = null;
+  /** a ?spot= from the link that is taken / unknown: said once, until something is chosen */
+  let lost = ctx.lostSpot;
+  // micro-copy
+  if (lost) lostEl.querySelector('span')!.innerHTML = `המקום <bdi>${escapeHtml(lost)}</bdi> כבר לא פנוי. נבחר לכם מקום טוב, או שתבחרו אחר במפה.`;
 
+  const kinds = () => { const s = ctx.store.get(); return spotKinds(s.product, s.item); };
+  let kindsKey = '';
   const onSpot = (id: string) => {
     tick();
+    lost = '';
     ctx.store.set({ spot: id, spotMode: 'map' });
   };
-  let mo: MutationObserver | null = null;
-  const useRealMap = () => {
-    mapEl.hidden = false; miniEl.hidden = true;
-    mo?.disconnect(); mo = null;
-  };
+  // the map component (and its CSS) loads the first time someone opens it — not on the page's critical path;
+  // if it cannot load or render, our own mini plan of free spots does the job
+  let loading = false;
   const ensureMap = () => {
-    if (map || fallback) return;
-    const initial = ctx.store.get().spot || undefined;
-    try {
-      map = createForestMap(mapEl, { mode: 'picker', initialSpotId: initial, onSelect: (spot) => onSpot(spot.id) });
-    } catch (e) { console.warn('[plant] forest map failed, using the mini plan', e); map = null; }
-    // the real map is built by another agent (maybe async); until it renders something, our own mini plan works
-    if (map && mapEl.childElementCount > 0) { useRealMap(); return; }
-    buildFallback();
-    if (map) { mo = new MutationObserver(() => { if (mapEl.childElementCount > 0) useRealMap(); }); mo.observe(mapEl, { childList: true }); }
+    if (map || fallback || loading) return;
+    loading = true;
+    mapEl.hidden = false;
+    mapEl.setAttribute('aria-busy', 'true');
+    import('../components/forest-map').then(({ createForestMap }) => {
+      loading = false;
+      mapEl.removeAttribute('aria-busy');
+      if (!el.isConnected) return; // the steps were rebuilt meanwhile (another product)
+      const s = ctx.store.get();
+      kindsKey = kinds().join();
+      map = createForestMap(mapEl, { mode: 'picker', kinds: kinds(), initialSpotId: s.spot || undefined, onSelect: (spot) => onSpot(spot.id) });
+      if (s.spot) map.select(s.spot);
+      if (mapEl.childElementCount === 0) { map.destroy(); map = null; mapEl.hidden = true; buildFallback(); }
+    }).catch((e) => {
+      loading = false;
+      console.warn('[plant] forest map failed, using the mini plan', e);
+      mapEl.removeAttribute('aria-busy');
+      mapEl.hidden = true;
+      if (el.isConnected) buildFallback();
+    });
+  };
+  /** carpentry: another item can be placed on other kinds of free places → a fresh picker */
+  const refreshKinds = () => {
+    if (!map || kindsKey === kinds().join()) return;
+    map.destroy(); map = null;
+    mapEl.innerHTML = '';
+    if (ctx.store.get().spotMode === 'map') ensureMap();
   };
   const buildFallback = () => {
     miniEl.hidden = false;
@@ -276,27 +306,69 @@ export function locationStep(ctx: Ctx, el: HTMLElement, body: HTMLElement): Step
     fallback.set(ctx.store.get().spot || '');
   };
 
+  /* phones: while the map is open on this step the stage folds away, so the map gets a thumb-sized frame */
+  const roomy = () => {
+    const on = ctx.mobile() && ctx.root.dataset.step === 'location' && ctx.store.get().spotMode === 'map';
+    ctx.root.classList.toggle('is-map', on);
+  };
+  let revealT = 0;
+  const revealMap = () => {
+    clearTimeout(revealT);
+    if (!ctx.mobile()) {
+      // desktop: once the frame has opened, bring the options and the whole map into the window
+      revealT = window.setTimeout(() => {
+        if (ctx.root.dataset.step !== 'location' || ctx.store.get().spotMode !== 'map') return;
+        if (mapEl.getBoundingClientRect().bottom > window.innerHeight - 16) {
+          const headerH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 76;
+          scrollTo(optGroup, { offset: -(headerH + 20) });
+        }
+      }, ctx.motion() ? 700 : 30);
+      return;
+    }
+    const sc = ctx.root.querySelector<HTMLElement>('.pc__scroll');
+    if (!sc) return;
+    // after the stage has folded and the map has opened (both ~.6 s)
+    revealT = window.setTimeout(() => {
+      if (ctx.root.dataset.step !== 'location' || ctx.store.get().spotMode !== 'map') return;
+      const top = sc.scrollTop + optGroup.getBoundingClientRect().top - sc.getBoundingClientRect().top - 8;
+      sc.scrollTo({ top, behavior: ctx.motion() ? 'smooth' : 'auto' });
+    }, ctx.motion() ? 650 : 30);
+  };
+
   const optGroup = body.querySelector<HTMLElement>('.pcs-loc')!;
   const rg = radioGroup(optGroup, (v) => {
     tick();
-    if (v === 'map') { ctx.store.set({ spotMode: 'map' }); ensureMap(); }
+    lost = '';
+    if (v === 'map') { ctx.store.set({ spotMode: 'map' }); ensureMap(); revealMap(); }
     else ctx.store.set({ spotMode: 'auto', spot: '' });
   });
   const paint = () => {
     const s = ctx.store.get();
     rg.set(s.spotMode);
     wrap.dataset.open = String(s.spotMode === 'map');
-    if (s.spotMode === 'map') ensureMap();
+    lostEl.hidden = !lost || !!s.spot;
+    if (s.spotMode === 'map' && ctx.root.dataset.step === 'location') ensureMap();
     if (s.spot) {
       map?.select(s.spot);
       fallback?.set(s.spot);
       spotOut.innerHTML = `${icon('pin')}<span>${he.map.free} · <bdi>${escapeHtml(s.spot)}</bdi></span>`;
     } else spotOut.textContent = s.spotMode === 'map' ? he.map.subtitle : '';
+    roomy();
   };
   paint();
   return {
     id: 'location', el,
-    update(s, p) { if (s.spot !== p.spot || s.spotMode !== p.spotMode) paint(); },
+    enter() {
+      roomy();
+      if (ctx.store.get().spotMode === 'map') ensureMap();
+      // warm the map up for a likely "on the map" tap (one module, cached; nothing is rendered)
+      else window.setTimeout(() => { import('../components/forest-map').catch(() => {}); }, 900);
+    },
+    leave() { clearTimeout(revealT); ctx.root.classList.remove('is-map'); },
+    update(s, p) {
+      if (s.item !== p.item || s.product !== p.product) refreshKinds();
+      if (s.spot !== p.spot || s.spotMode !== p.spotMode) paint();
+    },
     validate() {
       const s = ctx.store.get();
       return s.spotMode === 'map' && !s.spot ? `${he.map.choose} — או ${he.plant.location.forUs}` : null;

@@ -6,13 +6,14 @@
    ========================================================================== */
 import qrcode from 'qrcode-generator';
 import { he } from '../../content/he';
-import { ilDate } from '../../core/format';
+import { ilDate, priceHtml } from '../../core/format';
+import { prices } from '../../content/prices';
 import { track } from '../../core/analytics';
 import { sound } from '../../core/sound';
 import { SPECIES } from '../model';
 import { icon } from './icons';
 import { openSheet } from './sheet';
-import type { Ctx } from './ctx';
+import { esc, type Ctx } from './ctx';
 
 export type ShareFormat = 'story' | 'square' | 'og';
 const SIZES: Record<ShareFormat, [number, number]> = { story: [1080, 1920], square: [1080, 1080], og: [1200, 630] };
@@ -286,3 +287,51 @@ export function openShareSheet(ctx: Ctx) {
   sh.onClose(() => { if (current) URL.revokeObjectURL(current.url); });
   void build();
 }
+
+/* ==========================================================================
+   "מזמינים חברים להשקות" (7.7): the owner gets a link with a ready text for WhatsApp; the friends open the
+   mini-page (?greet=1) — name, greeting, amount, Bit or card — and see their leaf appear.
+   ========================================================================== */
+export function inviteText(ctx: Ctx) {
+  const t = ctx.tree;
+  return `בואו להשקות איתנו את העץ של ${t.owner}: כל ברכה הופכת לעלה על הענפים. ${treeUrl(t.id)}?greet=1`;
+}
+
+export function openInviteSheet(ctx: Ctx) {
+  const t = ctx.tree;
+  const text = inviteText(ctx);
+  const link = `${treeUrl(t.id)}?greet=1`;
+  const sh = openSheet({
+    title: he.tree.greetings.inviteFriends, eyebrow: he.tree.number(t.id), cls: 'tsheet--invite',
+    html: `
+      <div class="tinvite">
+        <p class="tinvite__lead">שולחים לחברים את ההזמנה. הם משקים את העץ במתנה, ${priceHtml(prices.greetingMin, { from: true })}, וכל ברכה שלהם הופכת לעלה זוהר על הענפים.</p>
+        <figure class="tinvite__msg">
+          <blockquote class="tinvite__text" dir="rtl">${esc(text.slice(0, text.length - link.length))}<bdi dir="ltr">${esc(link)}</bdi></blockquote>
+          <figcaption class="tinvite__cap">ההודעה שתישלח</figcaption>
+        </figure>
+        <div class="tinvite__actions">
+          <a class="btn btn--lg" href="https://wa.me/?text=${encodeURIComponent(text)}" target="_blank" rel="noopener" data-invite-wa>${icon('chat')}<span>שולחים בוואטסאפ</span></a>
+          <button class="btn btn--outline btn--lg" type="button" data-invite-native hidden>${icon('share')}<span>${he.tree.buttons.share}</span></button>
+          <button class="btn btn--outline btn--lg" type="button" data-invite-copy>${icon('link')}<span>מעתיקים קישור</span></button>
+        </div>
+      </div>`,
+  });
+  sh.body.querySelector('[data-invite-wa]')!.addEventListener('click', () => {
+    track('gift_started', { tree_id: t.id, via: 'invite' });
+    track('share_tree', { tree_id: t.id, method: 'whatsapp_invite' });
+  });
+  const native = sh.body.querySelector<HTMLButtonElement>('[data-invite-native]')!;
+  native.hidden = typeof navigator.share !== 'function';
+  native.addEventListener('click', async () => {
+    try { await navigator.share({ title: he.tree.greetings.inviteFriends, text }); track('share_tree', { tree_id: t.id, method: 'native_invite' }); } catch { /* cancelled */ }
+  });
+  sh.body.querySelector('[data-invite-copy]')!.addEventListener('click', async (e) => {
+    const b = e.currentTarget as HTMLElement;
+    try { await navigator.clipboard.writeText(link); } catch { /* ignore */ }
+    b.querySelector('span')!.textContent = 'הקישור הועתק';
+    track('share_tree', { tree_id: t.id, method: 'link_invite' });
+    ctx.announce('הקישור הועתק');
+  });
+}
+

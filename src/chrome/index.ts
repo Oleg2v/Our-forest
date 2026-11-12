@@ -13,10 +13,10 @@
      data-sound-hover                        soft wooden click on hover (links/buttons get it by default; ="off" to mute)
      data-wa="text"                          on a[href*=wa.me]: prefilled WhatsApp text (all wa.me clicks are tracked)
      html[data-hide-sticky]                  hides the phone sticky bottom bar (a page with its own bar)
-   Bus events emitted: 'theme:section', 'menu:open|close', 'modal:open|close' (a11y panel),
-   'page:leave', 'page:restore', 'consent:change', 'a11y:change', 'cursor:drag'.
-   Bus events listened: 'preloader:done' (holds first-screen reveals), 'modal:open|close' (hides the
-   sticky bar), 'header:force' {visible}, 'cursor:set' {label, fill, icon} | null.
+   Bus events (full list with payloads in src/core/bus.ts) — emitted: 'theme:section', 'menu:open|close',
+   'modal:open|close' (a11y panel), 'page:leave', 'page:restore', 'consent:change', 'a11y:change', 'cursor:drag',
+   'sound:change'. Listened: 'preloader:done' (holds first-screen reveals + cookie card), 'modal:open|close'
+   (hides the sticky bar), 'header:force' {visible}, 'cursor:set' {label, fill, icon} | null, 'motion:change'.
    ========================================================================== */
 import './chrome.css';
 import { bus } from '../core/bus';
@@ -44,9 +44,10 @@ let detailsMod: DetailsMod | null = null;
 let a11yLoading: Promise<A11yMod> | null = null;
 let focusLoading: Promise<unknown> | null = null;
 let cursorLoading: Promise<unknown> | null = null;
-const loadA11y = () => (a11yLoading ??= import('./a11y').then((m) => { m.initA11y(); a11yMod = m; return m; }));
-const loadFocus = () => (focusLoading ??= import('./focus').then((m) => m.initFocus()));
-const loadCursor = () => (cursorLoading ??= import('./cursor').then((m) => { m.initCursor(); m.scanMagnetic(document); cursorMod = m; }));
+// a failed chunk request (flaky network) is retried on the next attempt
+const loadA11y = () => (a11yLoading ??= import('./a11y').then((m) => { m.initA11y(); a11yMod = m; return m; }, (e) => { a11yLoading = null; throw e; }));
+const loadFocus = () => (focusLoading ??= import('./focus').then((m) => m.initFocus(), (e) => { focusLoading = null; throw e; }));
+const loadCursor = () => (cursorLoading ??= import('./cursor').then((m) => { m.initCursor(); m.scanMagnetic(document); cursorMod = m; }, (e) => { cursorLoading = null; throw e; }));
 function afterFirstPaint(fn: () => void) {
   const idle = (window as any).requestIdleCallback as ((cb: () => void, o?: { timeout: number }) => number) | undefined;
   const run = () => (idle ? idle(fn, { timeout: 1500 }) : setTimeout(fn, 400));
@@ -80,6 +81,7 @@ export function initChrome(opts: { page: PageName }): void {
   if (started) return;
   started = true;
   (window as any).__ofChrome = true; // cancels the head failsafe that would drop the reveal hidden-states
+  // (if the failsafe already fired, reveal.ts reads .chrome-off and keeps everything visible)
   const page = opts.page;
   const hold = introHold(page);
   const safe = (name: string, fn: () => void) => { try { fn(); } catch (e) { console.error(`[chrome:${name}]`, e); } };

@@ -45,7 +45,6 @@ export const MC = {
   mapLabel: 'מפת היער: תוכנית החלקה מלמעלה',
   freeGroup: 'מקומות פנויים במפה',
   close: he.nav.close,
-  built: 'נבנה',
   plantedGroup: he.map.legend.planted,
   reservedGroup: he.map.legend.reserved,
   freeGroupLabel: he.map.legend.free,

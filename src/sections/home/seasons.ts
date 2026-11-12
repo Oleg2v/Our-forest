@@ -12,9 +12,9 @@
    · 'pinned'   desktop + motion — the strip is pinned and travels right → left (RTL) while you
                 scroll; --sp follows the strip. A ruler of the year marks where you are (click = go there)
                 and the season it really is now in Israel.
-   · 'carousel' phone (≤ 768px) — swipe carousel with scroll-snap and progress dots; the season
-                follows the swipe (continuous while dragging, one season per slide). With reduced
-                motion the palette is the real season and stays put.
+   · 'carousel' phone (≤ 768px), a phone sideways, a touch tablet held upright — swipe carousel with
+                scroll-snap and progress dots; the season follows the swipe (continuous while dragging,
+                one season per slide). With reduced motion the palette is the real season and stays put.
    · 'grid'     desktop with reduced motion — no pin; static cards in a grid; the real season.
    The global bg system treats the section as data-bg="season" (we paint our own colours);
    the workshops block carries data-bg="sand" so the page is already sand when the map arrives.
@@ -28,9 +28,10 @@ import { prices } from '../../content/prices';
 import { ils, ilDate, seasonOf, daysBetween, type Season } from '../../core/format';
 import { sound } from '../../core/sound';
 import { track } from '../../core/analytics';
-import { scrollTo } from '../../core/scroll';
+import { scrollTo, getLenis } from '../../core/scroll';
 import { buildBranch, almondArt, WIDE, COMPACT } from './seasons-branch';
 import { initWorkshops } from './seasons-workshops';
+import { refreshChrome } from '../../chrome';
 
 type Mode = 'pinned' | 'carousel' | 'grid';
 
@@ -38,6 +39,12 @@ const SEASONS: Season[] = ['spring', 'summer', 'autumn', 'winter'];
 /** season names (functional micro-copy for the ruler / dots) */
 const NAME: Record<Season, string> = { spring: 'אביב', summer: 'קיץ', autumn: 'סתיו', winter: 'חורף' };
 const NOW_LABEL = 'עכשיו';
+/** carousel micro-copy for assistive technology: "קרוסלה", "שקופית", "2 מתוך 4" */
+const CAROUSEL = 'קרוסלה';
+const SLIDE = 'שקופית';
+const OF = 'מתוך';
+/** below this viewport height the pinned stage does not fit (seasons.css uses the same 600px) */
+const SHORT = 600;
 /** Tu BiShvat 2027 (brief: 23 January 2027) */
 const TU_BISHVAT = '2027-01-23';
 
@@ -63,6 +70,11 @@ function syncCopy(root: HTMLElement) {
     const v = (prices as Record<string, unknown>)[el.dataset.price!];
     if (typeof v === 'number') el.textContent = ils(v);
   });
+}
+
+/** aria-current must be "true" (an empty value means false to assistive technology) */
+function setCurrent(el: Element, on: boolean) {
+  if (on) el.setAttribute('aria-current', 'true'); else el.removeAttribute('aria-current');
 }
 
 /** the season it really is in Israel (dev: ?season=winter) */
@@ -135,6 +147,10 @@ class SeasonsSection {
     if (ws) initWorkshops(root);
 
     this.build();
+    // the home page starts its sections after the chrome's first reveal scan: the workshop rows were
+    // made just now (and got data-reveal) — hand them to the reveal system, after the pin exists
+    const rows = root.querySelector('.seasons__rows');
+    if (rows) refreshChrome(rows);
     bus.on('motion:change', () => this.build(true));
     const onResize = () => {
       clearTimeout(this.resizeTimer);
@@ -145,8 +161,11 @@ class SeasonsSection {
 
   /* ------------------------------------------------------------ helpers */
   private wantMode(): Mode {
-    if (env.isMobile()) return 'carousel';
-    return env.motionAllowed() ? 'pinned' : 'grid';
+    // phones, also turned sideways (a 390px-high landscape screen cannot hold the pinned stage), and
+    // touch tablets held upright (the stage is made for a landscape screen; seasons.css: same rules)
+    if (env.isMobile() || (env.isTouch && (window.innerHeight < SHORT || window.innerHeight >= window.innerWidth))) return 'carousel';
+    // a very short desktop window gets the calm grid instead of a cramped pin
+    return env.motionAllowed() && window.innerHeight >= SHORT ? 'pinned' : 'grid';
   }
 
   /** the only per-frame write: one custom property */
@@ -160,7 +179,7 @@ class SeasonsSection {
       const first = this.seasonIdx < 0;
       this.seasonIdx = idx;
       this.root.dataset.season = SEASONS[idx];
-      qsa('.seasons__tick', this.ruler).forEach((b, i) => b.toggleAttribute('aria-current', i === idx));
+      qsa('.seasons__tick', this.ruler).forEach((b, i) => setCurrent(b, i === idx));
       if (!first && this.mode !== 'grid') {
         const now = performance.now();
         if (now - this.lastSound > 700) { this.lastSound = now; sound.play('rustle', { volume: 0.22 }); }
@@ -254,7 +273,14 @@ class SeasonsSection {
 
   private build(rebuild = false) {
     const mode = this.wantMode();
-    if (rebuild) this.teardown();
+    // a reader inside this section stays here across the rebuild (the pin's spacer comes and goes, which
+    // would otherwise drop them a screen or two away, e.g. after "stop animations" in the a11y panel)
+    let keep = false;
+    if (rebuild) {
+      const r = this.root.getBoundingClientRect();
+      keep = r.top < innerHeight * 0.5 && r.bottom > innerHeight * 0.5;
+      this.teardown();
+    }
     this.mode = mode;
     const live = env.motionAllowed();
     this.root.classList.add(`seasons--${mode}`);
@@ -267,7 +293,19 @@ class SeasonsSection {
       else this.setSp(this.real);
     }, this.root);
     this.syncUnits();
-    if (rebuild) requestAnimationFrame(() => { ScrollTrigger.sort(); ScrollTrigger.refresh(); });
+    if (!rebuild) return;
+    // other pinned sections above rebuild on the same event and refresh in their own frames: re-anchor
+    // after every refresh in the next moment, not just after ours
+    const anchor = () => {
+      const y = Math.round(this.root.getBoundingClientRect().top + window.scrollY);
+      const lenis = getLenis();
+      if (lenis) lenis.scrollTo(y, { immediate: true, force: true }); else window.scrollTo(0, y);
+    };
+    if (keep) {
+      ScrollTrigger.addEventListener('refresh', anchor);
+      window.setTimeout(() => ScrollTrigger.removeEventListener('refresh', anchor), 1200);
+    }
+    requestAnimationFrame(() => { ScrollTrigger.sort(); ScrollTrigger.refresh(); });
   }
 
   /* ------------------------------------------------------------ entrance (branch + cards) */
@@ -329,6 +367,27 @@ class SeasonsSection {
     this.offs.push(() => { intro.remove(); });
     this.ruler.hidden = false;
     this.setSp(0);
+
+    // the photos take the height the tallest card text leaves above the ruler (on a narrow screen a title
+    // can take two lines): measured before every refresh, so the pin's distances include it
+    const fitBody = () => {
+      const tall = Math.max(...this.cards.map((c) => {
+        const body = c.querySelector<HTMLElement>('.seasons__body');
+        const shift = parseFloat(getComputedStyle(c).translate.split(' ')[1] ?? '0') || 0; // the stagger
+        return (body?.offsetHeight ?? 0) + shift;
+      }));
+      if (tall > 0) {
+        this.pin.style.setProperty('--body-h', `${Math.ceil(tall) + 8}px`);
+        this.pin.style.setProperty('--stagger-h', '0px');
+      }
+    };
+    fitBody();
+    ScrollTrigger.addEventListener('refreshInit', fitBody);
+    this.offs.push(() => {
+      ScrollTrigger.removeEventListener('refreshInit', fitBody);
+      this.pin.style.removeProperty('--body-h');
+      this.pin.style.removeProperty('--stagger-h');
+    });
 
     let entered = false;
     const travel = () => Math.max(0, this.track.scrollWidth - this.viewport.clientWidth);
@@ -438,8 +497,17 @@ class SeasonsSection {
     // progress dots (one per slide) + the season's name
     this.dots.hidden = false;
     const label = (el: HTMLElement) => (el.querySelector('h3')?.textContent ?? he.seasonalBanner.split(':')[0]).trim().replace(/"/g, '&quot;');
-    this.dots.innerHTML = `<span class="seasons__dots-row">${slides.map((sl, i) => `<button type="button" class="seasons__dot" data-i="${i}" aria-label="${label(sl)}"><span></span></button>`).join('')}</span>`
+    this.dots.innerHTML = `<span class="seasons__dots-row">${slides.map((sl, i) => `<button type="button" class="seasons__dot" data-i="${i}" aria-label="${label(sl)}, ${i + 1} ${OF} ${n}"><span></span></button>`).join('')}</span>`
       + `<span class="seasons__dots-season" aria-hidden="true"></span>`;
+    // a carousel for assistive technology too: a named region of slides; the dots say "2 מתוך 4"
+    const vpAttrs: [string, string][] = [['role', 'region'], ['aria-roledescription', CAROUSEL], ['aria-label', he.experiences.title]];
+    vpAttrs.forEach(([k, v]) => this.viewport.setAttribute(k, v));
+    // (the plaque slide is a link and stays announced as one)
+    this.cards.forEach((c) => c.setAttribute('aria-roledescription', SLIDE));
+    this.offs.push(() => {
+      vpAttrs.forEach(([k]) => this.viewport.removeAttribute(k));
+      this.cards.forEach((c) => c.removeAttribute('aria-roledescription'));
+    });
     const dotEls = qsa<HTMLButtonElement>('.seasons__dot', this.dots);
     const seasonEl = qs('.seasons__dots-season', this.dots);
     let active = -1;
@@ -472,7 +540,7 @@ class SeasonsSection {
       if (i !== active) {
         if (active >= 0 && live) sound.haptic(8);
         active = i;
-        dotEls.forEach((d, k) => d.toggleAttribute('aria-current', k === i));
+        dotEls.forEach((d, k) => setCurrent(d, k === i));
       }
       const s = SEASONS[Math.round(live ? this.sp : this.real)];
       if (seasonEl.textContent !== NAME[s]) seasonEl.textContent = NAME[s];

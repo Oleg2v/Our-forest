@@ -45,7 +45,9 @@ void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }`;
    · sway   — coherent waves across the crown (a few sines, travelling right → left like the reading direction)
    · flutter — simplex noise sampled on a circle in noise space, so the whole thing loops with uPeriod
    · gust   — the cursor: displacement along its smoothed velocity, strongest around it, decays smoothly
-   · dapple — leaves moving let a little more / less sun through (tiny brightness modulation) */
+   · dapple — leaves moving let a little more / less sun through (tiny brightness modulation)
+   Amplitude (measured by phase correlation on 64 px patches at 1440×900): foliage drifts ≈ 2 px per 0.5 s and up to
+   ≈ 8–10 px across half a sway period (p90) — a calm, visible sway; trunks, the rope limb and the ground stay put. */
 export const WIND_FRAG = /* glsl */ `
 precision highp float;
 uniform sampler2D uTex;
@@ -79,7 +81,7 @@ void main(){
   float fall = exp(-dot(d, d) * 6.5);
   float g = uGust * (.28 + .72 * fall);
   float tip = .55 + .45 * smoothstep(.15, 1., uv.y);
-  vec2 off = vec2(sway * .0042 + n1 * .0016 + n2 * .0007, n1 * .0009 - abs(sway) * .0005) * uAmp;
+  vec2 off = vec2(sway * .0052 + n1 * .0018 + n2 * .0007, n1 * .001 - abs(sway) * .0006) * uAmp;
   off += uGustDir * g * (.0105 + .006 * n1) + vec2(n2, n1) * g * .0024;
   off *= m * tip;
   vec4 col = texture2D(uTex, uv - off);

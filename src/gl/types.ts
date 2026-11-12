@@ -17,6 +17,8 @@ export interface HeroWindOptions {
   particles?: boolean;
   /** called once after the first frame is on the canvas */
   onFirstFrame?: () => void;
+  /** awaited before each GPU warm-up step (compile, texture upload, first draw) — hold them while a hitch would show */
+  gate?: () => Promise<unknown>;
 }
 
 export interface HeroWindHandle {

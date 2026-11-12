@@ -84,8 +84,8 @@
 .pc__steps { position: relative; padding-block: 36px 8px; }
 .pc__nav { display: flex; align-items: center; gap: 16px; padding-block: 28px 0; border-block-start: 1px solid var(--line); margin-block-start: 28px; }
 .pc__next { margin-inline-start: auto; }
-.pc__next-to { font-weight: 400; opacity: 0.78; }
-.pc__next-to:not(:empty)::before { content: '·'; margin-inline-end: 0.5em; }
+.pc__next-to { font-weight: 400; opacity: 0.92; }
+.pc__next-to:not(:empty)::before { content: '·' / ''; margin-inline-end: 0.5em; }
 .pc__err { color: var(--fruit); font-size: 15px; min-height: 1.4em; }
 .pc__back .icon, .pc__next .icon { width: 20px; height: 20px; }
 
@@ -93,7 +93,7 @@
 .pcs__head { display: grid; gap: 10px; }
 .pcs__count { font-family: var(--font-display); font-size: 17px; color: var(--ink-soft); line-height: 1; }
 .pcs__count .num { color: var(--olive-deep); font-weight: 500; }
-.pcs__of { opacity: 0.7; }
+.pcs__of { opacity: 1; }
 .pcs__title {
   font-size: clamp(44px, 4.6vw, 76px); font-weight: 300; line-height: 1; color: var(--bark);
   overflow: hidden; padding-block-end: 0.1em; margin-block-end: -0.1em;
@@ -170,8 +170,9 @@
 .pcs-row__main { display: grid; gap: 2px; }
 .pcs-row__title { font-family: var(--font-display); font-size: 22px; font-weight: 500; color: var(--bark); line-height: 1.2; }
 .pcs-row__meta { font-size: 15px; color: var(--ink-soft); }
-.pcs-row__seats { font-size: 14px; color: var(--olive-deep); font-weight: 500; white-space: nowrap; }
-.pcs-row__seats.is-low { color: var(--fruit); }
+/* seats left: as in the home workshop list (--fruit stays for prices and the buy button) */
+.pcs-row__seats { font-size: 14px; color: var(--ink-soft); white-space: nowrap; }
+.pcs-row__seats.is-low { color: var(--bark); font-weight: 500; }
 .pcs-row--date { grid-template-columns: auto minmax(0, 1fr); row-gap: 2px; }
 .pcs-row--date .pcs-row__ico { grid-row: span 2; }
 .pcs-row--date .pcs-row__seats { grid-column: 2; }
@@ -217,6 +218,12 @@
 .pcs-map--mini { height: auto; padding: 18px 18px 14px; display: grid; gap: 10px; }
 .pcs-spot { display: flex; align-items: center; gap: 8px; font-size: 15.5px; color: var(--ink-soft); min-height: 1.5em; }
 .pcs-spot .icon { color: var(--fruit); }
+.pcs-wa { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 15.5px; color: var(--ink-soft); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 4px; justify-self: start; }
+.pcs-wa:hover { color: var(--ink); text-decoration-color: currentColor; }
+.pcs-wa .icon { width: 20px; height: 20px; color: var(--olive-deep); }
+.pcs-lost { display: flex; align-items: flex-start; gap: 8px; font-size: 15.5px; color: var(--ink-soft); line-height: 1.45; }
+.pcs-lost[hidden] { display: none; }
+.pcs-lost .icon { flex: none; color: var(--ink-soft); margin-block-start: 1px; }
 
 .pmini { width: 100%; height: auto; overflow: visible; }
 .pmini__path { fill: none; stroke: var(--sage); stroke-width: 10; stroke-linecap: round; opacity: 0.55; }
@@ -335,7 +342,7 @@ html.motion .pmini__pulse { animation: pmini-pulse 2.4s var(--ease-out) infinite
 .pcs-sum { display: grid; gap: 28px; }
 .pcs-sum__season { display: none; align-items: flex-start; gap: 8px; font-size: 14.5px; line-height: 1.45; color: var(--olive-deep); font-weight: 500; }
 .pcs-sum__season .icon { width: 18px; height: 18px; flex: none; margin-block-start: 2px; }
-@media (max-width: 768px) { .pcs-sum__season { display: flex; } }
+@media (max-width: 768px) { .pcs-sum__season:not([hidden]) { display: flex; } }
 .pcs-sum__h { font-size: 15px; font-family: var(--font-body); font-weight: 500; color: var(--olive-deep); letter-spacing: 0.04em; margin-block-end: 14px; }
 .pcs-sum__list { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 28px; }
 .pcs-sum__list li { display: flex; align-items: flex-start; gap: 12px; font-family: var(--font-display); font-size: 21px; line-height: 1.3; color: var(--soil); }
@@ -387,19 +394,23 @@ html.motion .pmini__pulse { animation: pmini-pulse 2.4s var(--ease-out) infinite
 .pc:has(.pcs--checkout:not([hidden])) .pc__nav { border-block-start: 0; padding-block-start: 0; }
 
 /* ---------------- stage ---------------- */
-.pc__stage { grid-column: 2; grid-row: 1; position: sticky; inset-block-start: calc(var(--header-h) + 16px); height: calc(100svh - var(--header-h) - 32px); min-height: 620px; max-height: 900px; }
+.pc__stage { grid-column: 2; grid-row: 1; position: sticky; inset-block-start: calc(var(--header-h) + 16px); height: calc(100svh - var(--header-h) - 32px); min-height: 500px; max-height: 900px; }
+
 .pst {
   position: relative; height: 100%; display: grid; grid-template-rows: minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); gap: 8px;
   padding: 26px clamp(24px, 2.4vw, 40px) 26px; border-radius: var(--leaf); background: var(--pc-stage); overflow: hidden;
   transition: background-color calc(var(--t-appear) * var(--pc-speed)) var(--ease-inout);
 }
-.pst__season {
+.pst__season[hidden] { display: none; }
+.pst__season { text-wrap: balance;
   position: absolute; inset-block-start: 0; inset-inline-start: 0; z-index: 2; display: flex; align-items: center; gap: 8px; max-width: 78%;
   font-size: 13.5px; line-height: 1.4; color: var(--olive-deep); font-weight: 500;
 }
 .pst__season .icon { width: 18px; height: 18px; flex: none; }
-.pst__scene { position: relative; min-height: 0; display: grid; place-items: center; }
-.pst__art { position: relative; height: 100%; max-height: 480px; aspect-ratio: 240 / 260; max-width: 100%; }
+/* the drawing keeps its 240×260 proportions and fits the scene both ways (a tall narrow stage at tablet widths
+   used to size it by height only and crop the crown) */
+.pst__scene { position: relative; min-height: 0; display: grid; place-items: center; grid-template-columns: minmax(0, 1fr); container-type: size; }
+.pst__art { position: relative; width: min(100cqw, 100cqh * 240 / 260, 443px); height: auto; aspect-ratio: 240 / 260; }
 .pst__svg {
   position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible;
   fill: none; stroke-linecap: round; stroke-linejoin: round; transition: opacity calc(var(--t-ui) * var(--pc-speed)) var(--ease-out);
@@ -416,22 +427,40 @@ html.motion .pmini__pulse { animation: pmini-pulse 2.4s var(--ease-out) infinite
 .pst__tag path { stroke: var(--bark); stroke-width: 1.2; }
 .pst__tagcard { fill: var(--cream); }
 .pst__bird path { stroke: var(--soil); stroke-width: 1.3; fill: var(--pc-stage); }
-.pst__svg[data-mode='bench'] .pst__tree { opacity: 0.2; }
-.pst__svg[data-mode='workshop'] .pst__tree, .pst__svg[data-mode='workshop'] .pst__roots, .pst__svg[data-mode='workshop'] .pst__bird { opacity: 0 !important; }
-.pst__item { position: absolute; inset: 0; pointer-events: none; }
-/* the item stands on the ground line (y=214 of 260 → 17.7% from the bottom of the drawing) */
-.pst__item-svg {
-  position: absolute; inset-inline: 0; margin-inline: auto; inset-block-end: 11%; width: 50%; height: auto; overflow: visible;
-  fill: none; stroke: var(--bark); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
-}
-[data-product='bench'] .pst__item-svg { inset-block-end: 13.2%; width: 46%; }
+/* carpentry: the olive steps back and to the side (around its foot at 120,214) and the piece stands in front of it */
+.pst__grove { transform-box: view-box; transform-origin: 120px 214px; transition: transform calc(1s * var(--pc-speed)) var(--ease-out); }
+.pst__svg[data-mode='bench'] .pst__grove { transform: translate(34px, 0) scale(0.82); }
+.pst__wood { fill: color-mix(in srgb, var(--bark) 20%, var(--cream)); stroke: var(--bark); stroke-width: 1.5; }
+.pst__stone { fill: color-mix(in srgb, var(--soil) 12%, var(--cream)); }
+.pst__grain { stroke: var(--bark); stroke-width: 1.2; opacity: 0.55; }
+.pst__sticks { stroke: var(--bark); stroke-width: 2.6; }
+.pst__flame { fill: rgb(255 196 120 / 0.55); stroke: var(--bark); stroke-width: 1.4; } /* the warm glow of the memorial lamp */
+/* a workshop: its photo in a leaf, the date and the places on top */
+.pst__ws { position: absolute; inset: 0; z-index: 1; }
+.pst__ws[hidden] { display: none; }
+.pst__ws-ph { position: absolute; inset: 0; overflow: hidden; border-radius: var(--leaf); background: var(--sand); }
+.pst__ws-img { position: absolute; inset: 0; }
+.pst__ws-img picture, .pst__ws-img img { width: 100%; height: 100%; object-fit: cover; }
+.pst__ws-meta { position: absolute; inset-inline-start: 14px; inset-block-end: 14px; display: flex; flex-wrap: wrap; gap: 8px; max-width: calc(100% - 28px); }
+.pst__ws-meta > span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--pill); background: var(--cream); color: var(--soil); font-size: 14px; font-weight: 500; }
+.pst__ws-meta .icon { width: 18px; height: 18px; color: var(--olive-deep); flex: none; }
+[data-product='workshop'] .pst__art { visibility: hidden; }
 /* the plaque stands at the foot of the tree (positions in % of the 240×260 drawing; ground at y=214) */
 .pst__plaque {
   position: absolute; inset-inline: 0; margin-inline: auto; inset-block-end: 11.5%; width: 41%; z-index: 2;
   transform-origin: 50% 100%; transition: transform calc(var(--t-appear) * var(--pc-speed)) var(--ease-out);
 }
 [data-product='workshop'] .pst__plaque { display: none; }
-[data-product='bench'] .pst__plaque { inset-block-end: 0.5%; width: 33%; }
+/* carpentry: the plaque is screwed onto the piece — physical "left" because it follows the drawing's own
+   (unmirrored) coordinates: x of the plaque's left edge / 240, bottom = (260 − its lower edge y) / 260 */
+[data-product='bench'] .pst__plaque { inset-inline: auto; margin-inline: 0; left: 23.33%; width: 30%; }
+[data-product='bench'] .pst__stake { display: none; }
+[data-item='bench'] .pst__plaque { inset-block-end: 34%; }
+[data-item='table'] .pst__plaque { inset-block-end: 19.6%; }
+[data-item='kitchen'] .pst__plaque { left: 22.5%; inset-block-end: 20.8%; }
+[data-item='class'] .pst__plaque { inset-block-end: 40%; }
+[data-item='fire'] .pst__plaque { left: 5.8%; width: 25%; inset-block-end: 21.9%; }
+[data-item='fire'] .pst__stake { display: block; }
 .pst__plaque-home { position: relative; z-index: 1; }
 .pst__stake { position: absolute; inset-block-start: 70%; inset-inline: 0; margin-inline: auto; width: 4.5%; height: 46%; background: #9A7148; border-radius: 0 0 2px 2px; }
 .pst__glow { position: absolute; inset: -40% -20%; border-radius: 50%; background: radial-gradient(closest-side, rgb(255 196 120 / 0.38), transparent); opacity: 0; transition: opacity var(--t-appear); pointer-events: none; }
@@ -452,9 +481,12 @@ html.motion .pmini__pulse { animation: pmini-pulse 2.4s var(--ease-out) infinite
 .pst__line { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 10px; align-items: baseline; padding-block: 5px; border-block-start: 1px solid var(--line); font-size: 15px; }
 .pst__line dt { color: var(--ink-soft); font-size: 13.5px; }
 .pst__line dd { display: flex; gap: 10px; justify-content: space-between; min-width: 0; }
-.pst__go { text-align: start; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 0.25em; transition: text-decoration-color var(--t-micro); }
+.pst__go { display: inline-flex; align-items: center; gap: 6px; text-align: start; min-width: 0; max-width: 100%; color: var(--ink); text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 0.25em; transition: text-decoration-color var(--t-micro); }
 .pst__go:hover { text-decoration-color: currentColor; }
-.pst__v { overflow: hidden; text-overflow: ellipsis; }
+.pst__v { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pst__edit { width: 15px; height: 15px; flex: none; color: var(--ink-soft); opacity: 0; transition: opacity var(--t-micro); }
+.pst__go:hover .pst__edit, .pst__go:focus-visible .pst__edit { opacity: 1; }
+@media (hover: none) { .pst__edit { opacity: 0.7; } }
 .pst__p { white-space: nowrap; }
 .pst__total { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; padding-block-start: 10px; border-block-start: 1px solid var(--line-strong); }
 .pst__tl { font-size: 16px; color: var(--ink-soft); }
@@ -479,6 +511,9 @@ html.motion .pmini__pulse { animation: pmini-pulse 2.4s var(--ease-out) infinite
 
 /* ---------------- phones: stage on top, one step per screen in a bottom sheet ---------------- */
 @media (max-width: 768px) {
+  /* the sheet is the screen: the page under it does not scroll (only the step inside .pc__scroll does), so a swipe
+     on the stage or the price bar never drags the bar up over the footer; no pull-to-refresh / bounce either */
+  html.pc-sheet { overflow: hidden; overscroll-behavior: none; }
   .pc {
     display: flex; flex-direction: column; align-items: stretch; width: 100%; margin: 0; gap: 0;
     height: 100svh; height: 100dvh; min-height: 0; padding: var(--header-h) 0 0; overflow: hidden;
@@ -489,11 +524,14 @@ html.motion .pmini__pulse { animation: pmini-pulse 2.4s var(--ease-out) infinite
     height: var(--stage-drag, 31svh); transition: height calc(var(--t-ui) * 1.2 * var(--pc-speed)) var(--ease-out);
   }
   .pc.is-dragging .pc__stage { transition: none; }
-  .pc.is-full .pc__stage, .pc.is-typing .pc__stage, .pc.is-plaque-typing .pc__stage { height: var(--stage-drag, 0px); }
+  .pc.is-full .pc__stage, .pc.is-typing .pc__stage, .pc.is-plaque-typing .pc__stage, .pc.is-map .pc__stage { height: var(--stage-drag, 0px); }
+  /* the map picker gets the room the stage gave up: a frame a thumb can pan, zoom and hit */
+  .pc.is-map .pcs-map:not(.pcs-map--mini) { height: clamp(320px, 56svh, 520px); }
+  .pc.is-map .pc__panel, .pc.is-full .pc__panel, .pc.is-typing .pc__panel, .pc.is-plaque-typing .pc__panel { margin-block-start: 0; }
   .pst { border-radius: 0; padding: 10px 16px 30px; grid-template-rows: minmax(0, 1fr); }
   .pst__info { display: none; }
   .pst__season { display: none; }
-  .pst__art { max-height: 100%; }
+  .pst__art { width: min(100cqw, 100cqh * 240 / 260); }
   .pst__pin { inset-block-start: 4px; inset-inline-end: -12px; font-size: 13px; padding: 4px 10px; }
   .pst__scene[data-focus='plaque'] .pst__plaque { transform: none; }
   .pst__scene[data-focus='plaque'] .pst__svg { opacity: 1; }
@@ -510,9 +548,10 @@ html.motion .pmini__pulse { animation: pmini-pulse 2.4s var(--ease-out) infinite
   .pc:not([data-step='species']):not([data-step='item']):not([data-step='workshop']) .pc__toprow { display: none; }
   .pc__title { font-size: 22px; }
   .pc__products { padding: 3px; }
-  .pc__product { min-height: 36px; padding: 0 12px; font-size: 14px; }
-  .pc__rail-line { inset-block-start: 15px; }
-  .pc__node { padding: 8px 0 0; gap: 0; min-height: 30px; }
+  .pc__product { min-height: 44px; padding: 0 14px; font-size: 14.5px; }
+  .pc__rail-line { inset-block-start: 21px; }
+  /* the dot stays small, the hit area is a full 44px */
+  .pc__node { padding: 14px 0 0; gap: 0; min-height: 44px; align-content: start; }
   .pc__node-dot { width: 13px; height: 13px; }
   .pc__node-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .pc__steps { padding-block: 14px 0; }
@@ -542,8 +581,8 @@ html.motion .pmini__pulse { animation: pmini-pulse 2.4s var(--ease-out) infinite
   .pcs-extra__title { font-size: 19px; }
   .pcs-plaque__slot { display: block; }
   .pcs-plaque__input { min-height: 60px; font-size: 24px; }
-  .pcs-gift__grid { grid-template-columns: 1fr; grid-template-areas: 'preview' 'fields'; gap: 18px; }
-  .pcard { height: 300px; }
+  .pcs-gift__grid { grid-template-columns: 1fr; grid-template-areas: 'fields' 'preview'; gap: 22px; }
+  .pcard { height: 290px; }
   .pcard__back, .pcard__front { height: 140px; }
   .pcard__flap { inset-block-end: 140px; height: 78px; }
   .pcard__paper { height: 150px; padding: 12px 14px; }
@@ -603,8 +642,10 @@ html.motion .pmini__pulse { animation: pmini-pulse 2.4s var(--ease-out) infinite
 .pdone__eyebrow .icon { width: 18px; height: 18px; }
 .pdone__title { font-size: clamp(48px, 6vw, 96px); font-weight: 300; line-height: 0.98; }
 .pdone__lead { font-size: 19px; color: var(--ink-soft); max-width: 40ch; }
+.pdone__sum { font-family: var(--font-display); font-size: 21px; line-height: 1.4; color: var(--bark); margin-block-start: -6px; }
+.pdone__dot { color: var(--ink-soft); }
 .pdone__actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-.pdone__print { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding-inline: 8px; color: var(--olive-deep); font-weight: 500; }
+.pdone__print { justify-self: start; display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding-inline: 8px; margin-block-start: -10px; color: var(--olive-deep); font-weight: 500; }
 .pdone__printer { position: relative; width: min(100%, 560px, calc((100svh - var(--header-h) - 96px) / 1.414)); justify-self: center; }
 .pdone__slot { position: relative; z-index: 2; height: 16px; margin-inline: -18px; border-radius: var(--pill); background: var(--moss); }
 .pdone__slot::after { content: ''; position: absolute; inset-inline: 22px; inset-block-start: 7px; height: 2px; border-radius: 2px; background: #0E130B; }
@@ -630,6 +671,8 @@ html.motion .pmini__pulse { animation: pmini-pulse 2.4s var(--ease-out) infinite
 .cert__tree { position: absolute; inset: 0; width: 100%; height: 100%; }
 .cert__ws-ico { display: grid; place-items: center; height: 100%; color: var(--olive); }
 .cert__ws-ico .icon { width: 30cqw; height: 30cqw; stroke-width: 0.9; }
+.cert__ws-ico--item { height: 68%; }
+.cert__ws-ico--item .icon { width: 25cqw; height: 25cqw; }
 .cert__plaque { position: absolute; inset-inline: 0; margin-inline: auto; inset-block-end: 7%; width: 46%; height: auto; }
 .cert__facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.8cqw 5cqw; width: 100%; margin-block-start: 1.6cqw; text-align: start; }
 .cert__facts div { border-block-end: 0.2cqw solid rgb(var(--soil-rgb) / 0.14); padding-block-end: 0.8cqw; min-width: 0; }
@@ -643,15 +686,49 @@ html.motion .pmini__pulse { animation: pmini-pulse 2.4s var(--ease-out) infinite
 .cert__qr-svg { width: 12cqw; height: 12cqw; fill: var(--soil); }
 .cert__sign { display: grid; gap: 1cqw; justify-items: center; font-size: 1.9cqw; color: var(--ink-soft); min-width: 28cqw; }
 .cert__sign-line { width: 100%; height: 0.2cqw; background: rgb(var(--soil-rgb) / 0.4); }
-.cert__stamp { position: absolute; inset-inline-end: 12cqw; inset-block-end: 8.5cqw; width: 21cqw; color: var(--olive-deep); opacity: 0.92; transform: rotate(-9deg); pointer-events: none; mix-blend-mode: multiply; }
+/* the stamp sits in the footer row (always at the bottom of the frame), between the QR note and the signature,
+   touching the end of the signature line — clear of the facts however many there are (4–6) */
+.cert__stamp { position: absolute; inset-inline-start: 45.5cqw; inset-block-end: 6.2cqw; width: 18.5cqw; color: var(--olive-deep); opacity: 0.92; transform: rotate(-9deg); pointer-events: none; mix-blend-mode: multiply; }
 .cert--memorial .cert__stamp { color: var(--bark); }
 .cert__stamp-svg { width: 100%; height: auto; display: block; }
 
+/* phones: the title, then the printer — sized so the whole certificate (and its stamp) lands above the action bar —
+   then the details; the actions stay in a bar under the thumb, where "pay" was a moment ago */
 @media (max-width: 768px) {
-  .pdone { grid-template-columns: 1fr; min-height: 0; padding-block: calc(var(--header-h) + 24px) 56px; gap: 28px; align-items: start; }
-  .pdone__title { font-size: clamp(40px, 11vw, 52px); }
-  .pdone__lead { font-size: 17px; }
-  .pdone__actions .btn { flex: 1 1 100%; }
-  .pdone__printer { order: 2; padding-inline: 8px; }
+  .pdone { grid-template-columns: minmax(0, 1fr); min-height: 0; padding-block: calc(var(--header-h) + 24px) 0; gap: 0; align-items: start; }
+  .pdone__copy { display: contents; }
+  .pdone__eyebrow, .pdone__title { order: 0; }
+  .pdone__title { font-size: clamp(38px, 10.5vw, 50px); margin-block-start: 10px; }
+  .pdone__printer { order: 1; margin-block-start: 22px; padding-inline: 8px; width: min(100%, calc((100svh - var(--header-h) - 260px) / 1.414 + 28px)); }
   .pdone__slot { margin-inline: -8px; }
+  .pdone__sum { order: 2; margin-block-start: 6px; font-size: 19px; }
+  .pdone__lead { order: 2; margin-block-start: 8px; font-size: 17px; }
+  .pdone__print { order: 2; margin-block: 8px 20px; }
+  .pdone__actions {
+    order: 3; position: sticky; inset-block-end: 0; z-index: 3; flex-wrap: nowrap; gap: 10px;
+    margin-inline: calc(-1 * var(--gutter)); padding: 10px var(--gutter) calc(10px + var(--safe-bottom));
+    background: var(--cream); border-block-start: 1px solid var(--line);
+  }
+  .pdone__actions .btn { flex: 1 1 auto; min-height: 52px; padding-inline: 18px; font-size: 16px; gap: 8px; }
+  .pdone__actions .pdone__view { flex: 1.6 1 auto; }
+  .pdone__actions .btn .icon { width: 20px; height: 20px; }
+  .pdone__actions:has(.pdone__view) .pdone__share-x { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
+
+/* headings that receive focus from script (step changes, the done view) are not controls: no ring */
+.pcs__title:focus-visible, .pdone__title:focus-visible { outline: none; }
+
+/* a laptop-height window: the tree keeps its room; the line-by-line recap lives in the summary step anyway */
+@media (min-width: 769px) and (max-height: 760px) {
+  .pst__season, .pst__lines { display: none; }
+}
+/* very short screens (a phone on its side): the stage scrolls with the page instead of sticking taller
+   than the viewport, so its price and buy button are never cut off */
+@media (min-width: 769px) and (max-height: 580px) {
+  .pc__stage { position: relative; inset-block-start: auto; height: auto; min-height: 0; max-height: none; }
+  .pst__scene { container-type: normal; }
+  .pst__art { width: min(100%, 320px); }
+}
+
+/* small prices on the sand surfaces (the stage, a chosen card) keep 4.5:1 — the same fruit, a shade deeper */
+.pst .price:not(.odo), .pc [aria-checked='true'] .price, .pcs-extra:has(input:checked) .price { color: color-mix(in srgb, var(--fruit) 86%, var(--soil)); }

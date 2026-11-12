@@ -17,7 +17,6 @@ import { pictureHtml, type ImageKey } from '../../content/images';
 import { allGreetings, initialsOf, israelDateKey, memorialName, type Greeting } from '../model';
 import { icon } from './icons';
 import { openSheet } from './sheet';
-import { treeUrl } from './share';
 import { esc, sleep, type Ctx } from './ctx';
 import type { Dock } from './dock';
 
@@ -55,11 +54,11 @@ export class Feed {
     if (memorial) {
       ctas.innerHTML = `<button class="btn" type="button" data-greet>${icon('leaf')}<span>כותבים מילים לזכר ${esc(name)}</span></button>`;
     } else {
-      const invite = `בואו להשקות איתנו את העץ של ${t.owner}: כל ברכה הופכת לעלה על הענפים. ${treeUrl(t.id)}?greet=1`;
+      // the same invite as the stage's button: one sheet with the ready text, WhatsApp and copy-link
       ctas.innerHTML = `
-        <a class="btn" href="https://wa.me/?text=${encodeURIComponent(invite)}" target="_blank" rel="noopener" data-invite-wa data-track="tree_invite">${icon('invite')}<span>${he.tree.greetings.inviteFriends}</span></a>
+        <button class="btn" type="button" data-invite>${icon('invite')}<span>${he.tree.greetings.inviteFriends}</span></button>
         <button class="btn btn--outline" type="button" data-greet>${icon('leaf')}<span>משקים במתנה ומשאירים ברכה</span></button>`;
-      ctas.querySelector('[data-invite-wa]')!.addEventListener('click', () => track('gift_started', { tree_id: t.id, via: 'invite' }));
+      ctas.querySelector('[data-invite]')!.addEventListener('click', () => ctx.openInvite());
     }
     ctas.querySelector('[data-greet]')!.addEventListener('click', () => this.open());
 

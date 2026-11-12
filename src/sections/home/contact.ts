@@ -5,14 +5,19 @@
    · phone: Israeli mobile / landline (+972 allowed), formatted 050-1234567 on blur
    · send → track('generate_lead', {form:'contact', interest})
    ONE motion idea (after sending): a seed falls into the ground, settles, and sprouts —
-   the form fades, the panel eases to the new height, the seed drops with gravity, the soil
-   answers, the stem and leaves draw themselves. Reduced motion → the sprout is simply there.
+   the form fades, the seed drops with gravity, the soil answers, the stem and leaves draw
+   themselves. Reduced motion → the sprout is simply there.
+   · desktop (the form beside the title): the panel keeps the form's height and the thank-you sits
+     centred in it, so nothing below moves seconds after the click (no layout shift)
+   · one column (tablet / phone): the panel eases to the shorter thank-you and, if its top went off
+     screen, the page brings it back (the footer is below the fold there, nothing visible jumps)
    ========================================================================== */
 import './contact.css';
 import { gsap } from '../../core/gsap';
 import { env } from '../../core/env';
 import { sound } from '../../core/sound';
 import { track } from '../../core/analytics';
+import { scrollTo } from '../../core/scroll';
 import { he } from '../../content/he';
 
 const MSG = {
@@ -139,6 +144,29 @@ export function initContact(): void {
   }
 
   const art = (sel: string) => Array.from(done.querySelectorAll<SVGGraphicsElement>(`[data-art="${sel}"]`));
+  const grid = root.querySelector<HTMLElement>('.contact__grid');
+
+  /** the form sits beside the title (two columns): its height is the row's height */
+  const sideBySide = () => !!grid && getComputedStyle(grid).gridTemplateColumns.trim().split(/\s+/).length > 1;
+  /** keep the panel at the form's height while the thank-you shows (centred by .contact__panel--held) */
+  function hold(h: number) {
+    panel!.style.minHeight = `${h}px`;
+    panel!.classList.add('contact__panel--held');
+  }
+  function release() {
+    panel!.style.minHeight = '';
+    panel!.classList.remove('contact__panel--held');
+  }
+  // the layout became one column while the thank-you shows: the held height is no longer needed
+  window.addEventListener('resize', () => { if (panel!.classList.contains('contact__panel--held') && !sideBySide()) release(); }, { passive: true });
+
+  /** the thank-you (and its sprout) is shorter than the form: if the panel's top is now off screen
+      (a phone, after scrolling down to the button), bring it back below the header */
+  function revealDone() {
+    const hh = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 72;
+    const top = panel!.getBoundingClientRect().top;
+    if (top < hh + 8 || top > window.innerHeight * 0.55) scrollTo(panel!, { offset: -(hh + 20) });
+  }
   let tl: gsap.core.Timeline | null = null;
 
   function showDone() {
@@ -154,33 +182,44 @@ export function initContact(): void {
     const bud = art('bud');
     const texts = Array.from(done!.querySelectorAll<HTMLElement>('.contact__done-title, .contact__done-text, .contact__done-demo, .contact__done-actions'));
 
+    const h0 = panel!.offsetHeight;
+    const keep = sideBySide();
     if (!motion) {
+      if (keep) hold(h0);
       form!.hidden = true;
       done!.hidden = false;
       gsap.set(seed, { opacity: 0 });
       done!.focus({ preventScroll: true });
+      revealDone();
       sound.play('chime');
       return;
     }
 
-    const h0 = panel!.offsetHeight;
     tl = gsap.timeline();
     tl.to(parts, { opacity: 0, y: -10, duration: 0.42, ease: 'power2.in', stagger: 0.03 })
       .add(() => {
         form!.hidden = true;
         done!.hidden = false;
         gsap.set(parts, { clearProps: 'opacity,transform' });
-        const h1 = panel!.offsetHeight;
-        gsap.fromTo(panel, { height: h0 }, { height: h1, duration: 0.9, ease: 'expo.out', clearProps: 'height' });
+        if (keep) hold(h0);
+        else {
+          const h1 = panel!.offsetHeight;
+          gsap.fromTo(panel, { height: h0 }, { height: h1, duration: 0.9, ease: 'expo.out', clearProps: 'height' });
+        }
         done!.focus({ preventScroll: true });
+        revealDone();
       })
       .set(texts, { opacity: 0, y: 18 })
       .set([...stem, ...leaves, ...bud, ...mound], { drawSVG: '0%' })
-      .set(leaves, { transformOrigin: '0% 100%', scale: 0.6 })
+      // leaves are filled shapes: hidden until their outline draws (no pale blobs before the stem)
+      .set(leaves, { transformOrigin: '0% 100%', scale: 0.6, opacity: 0 })
       .set(specks, { opacity: 0, transformOrigin: '50% 50%' })
+      // the seed waits invisible inside the panel (not above it)
+      .set(seed, { x: 160, y: -6, rotation: -30, opacity: 0 })
       .fromTo(ground, { drawSVG: '50% 50%' }, { drawSVG: '0% 100%', duration: 0.9, ease: 'power3.inOut' }, '<')
-      // the seed falls (gravity), turns a little in the air
-      .fromTo(seed, { x: 160, y: -40, rotation: -30, opacity: 1 }, { y: 141, rotation: 110, duration: 0.72, ease: 'power2.in' }, '-=0.35')
+      // the seed appears and falls (gravity), turning a little in the air
+      .to(seed, { opacity: 1, duration: 0.18, ease: 'none' }, '-=0.35')
+      .to(seed, { y: 141, rotation: 110, duration: 0.66, ease: 'power2.in' }, '<')
       .add(() => { sound.play('crack', { volume: 0.7 }); sound.haptic(10); })
       // lands: a small hop, the soil answers
       .to(seed, { y: 134, rotation: 140, duration: 0.18, ease: 'power2.out' })
@@ -194,6 +233,7 @@ export function initContact(): void {
       .add(() => sound.play('pop'), '+=0.05')
       .to(stem, { drawSVG: '0% 100%', duration: 0.95, ease: 'power2.out' }, '<')
       .to(leaves, { drawSVG: '0% 100%', duration: 0.8, ease: 'power2.out', stagger: 0.16 }, '-=0.55')
+      .to(leaves, { opacity: 1, duration: 0.25, ease: 'none', stagger: 0.16 }, '<')
       .to(leaves, { scale: 1, duration: 1.1, ease: 'elastic.out(1, 0.6)', stagger: 0.16 }, '<')
       .to(bud, { drawSVG: '0% 100%', duration: 0.5, ease: 'power2.out' }, '-=0.6')
       .to(texts, { opacity: 1, y: 0, duration: 1, ease: 'expo.out', stagger: 0.08 }, '-=0.9')
@@ -212,6 +252,7 @@ export function initContact(): void {
     const svgParts = Array.from(done.querySelectorAll<SVGGraphicsElement>('[data-art], [data-art] *'))
       .filter((n) => !n.closest('[data-art="seed"]'));
     gsap.set(svgParts, { clearProps: 'all' });
+    release();
     done.hidden = true;
     form.hidden = false;
     if (status) status.textContent = '';

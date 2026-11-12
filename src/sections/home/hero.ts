@@ -2,8 +2,9 @@
    Home 2 — hero "Crown".
    One motion idea: the forest breathes. The photo sits on a WebGL plane where only the foliage moves in
    the wind (painted mask), the cursor is a gust, seasonal pollen / leaves drift with depth of field.
-   "היער שלנו" grows letter by letter like sprouts; the rest arrives line by line. On scroll the photo
-   zooms in and darkens and its bottom edge rises as the earth surface — we go underground (roots).
+   "היער שלנו" grows letter by letter like sprouts; the subtitle arrives line by line, the paragraph as one
+   block (it is the LCP). On scroll the photo zooms in and darkens and its bottom edge rises as a wave of
+   cream that runs into the roots' cream band, down to the soil line — we go underground (roots).
 
    Modes (decided after the first frame, never blocking the LCP photo):
      gl     desktop tier ≥ 1, phones tier ≥ 2 (light shader, fewer particles) — one shared renderer (src/gl)
@@ -13,13 +14,14 @@
    ========================================================================== */
 import './hero.css';
 import { gsap, ScrollTrigger, SplitText, T, EASE } from '../../core/gsap';
-import { env, gpuTier, hasWebGL } from '../../core/env';
+import { env, gpuTier } from '../../core/env';
 import { bus } from '../../core/bus';
 import { he } from '../../content/he';
 import { dayPeriod, seasonOf, type DayPeriod } from '../../core/format';
 import { sound } from '../../core/sound';
-import { onPreloaderBeat, preloaderPlaying } from './preloader';
-import { preloadGL, mountHeroWind, enableRipples, disableRipples, type HeroWindHandle } from '../../gl';
+import { scrollTo } from '../../core/scroll';
+import { onPreloaderBeat, preloaderPlaying, preloaderQuiet } from './preloader';
+import { preloadGL, mountHeroWind, enableRipples, disableRipples, webglAvailable, type HeroWindHandle } from '../../gl';
 
 type Mode = 'gl' | 'video' | 'still';
 
@@ -36,6 +38,8 @@ const ICONS: Record<DayPeriod, string> = {
 };
 
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+/** entrance time (s) by which the title's letters have landed (8 letters × T.letterStep + 1.25 s) */
+const LETTERS_LANDED = 1.6;
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 function seeded(seed: number) { let s = seed; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; }
 const getCopy = (path: string): unknown => path.split('.').reduce<any>((o, k) => (o == null ? o : o[k]), he);
@@ -48,6 +52,9 @@ export function initHero(ready: Promise<void>): void {
     el.dataset.entrance = 'static';
   }
 }
+
+/** portrait phones: the hero ends in a soil-coloured wave that runs straight into the roots' soil */
+const PHONE_MQ = '(max-width: 768px), (max-height: 560px) and (orientation: landscape)'; // = roots' COMPACT_MQ
 
 class Hero {
   private el: HTMLElement;
@@ -69,17 +76,22 @@ class Hero {
   private dprCap = 1;
   private glLoaded = false;
   private wind: HeroWindHandle | null = null;
-  private windPending = false;
+  private windPending: Promise<void> | null = null;
   private video: HTMLVideoElement | null = null;
+  /** this device plays the wind loop (portrait crop only) — remembered across rotations */
+  private videoWanted = false;
   private motes: HTMLElement | null = null;
   private entered = false;
   private entrance: gsap.core.Timeline | null = null;
+  /** the subtitle's line split stays after the entrance (see enter()) and is undone on a width change */
+  private splits: SplitText[] = [];
   private scrollTl: gsap.core.Timeline | null = null;
+  private contentTw: gsap.core.Tween | null = null;
   private visible = true;
   private tiltOn = false;
   private tiltBase: [number, number] | null = null;
   private tiltSet: Array<(v: number) => void> = [];
-  private groundParts: { edge: SVGPathElement; fill: SVGPathElement; grass: SVGGElement } | null = null;
+  private groundFill: SVGPathElement | null = null;
   private ripplesOn = false;
 
   constructor(el: HTMLElement, ready: Promise<void>) {
@@ -101,14 +113,22 @@ class Hero {
     this.buildGround();
     ScrollTrigger.addEventListener('refreshInit', () => this.buildGround());
 
+    let lastW = window.innerWidth;
+    window.addEventListener('resize', () => {
+      if (Math.abs(window.innerWidth - lastW) < 2) return;
+      lastW = window.innerWidth;
+      this.revertSplits();
+    }, { passive: true });
+
     const io = new IntersectionObserver(([e]) => this.setVisible(e.isIntersecting), { rootMargin: '60px 0px' });
     io.observe(el);
     document.addEventListener('visibilitychange', () => this.syncVideo());
 
+    // pointer handlers check this.motion themselves — bound once, so motion turned on later still gets gusts
+    this.bindPointer();
     if (this.motion) {
       this.decideMode();
       this.setupScroll();
-      this.bindPointer();
       this.setupTilt();
       ready.then(() => this.enter()).catch(() => this.enter());
     } else {
@@ -116,8 +136,9 @@ class Hero {
     }
     bus.on('preloader:done', () => this.afterIntro());
     bus.on<{ allowed: boolean }>('motion:change', ({ allowed }) => this.onMotion(allowed));
-    // the <picture> may switch crop on rotation: the GL texture + mask must follow the displayed photo
-    this.img.addEventListener('load', () => { if (this.wind) { this.wind.destroy(); this.wind = null; this.mountWind(); } });
+    // the <picture> may switch crop on rotation: the GL texture + mask must follow the displayed photo,
+    // and the portrait wind loop must not keep covering a landscape crop
+    this.img.addEventListener('load', () => this.onCropChange());
   }
 
   /* ------------------------------------------------------------------ copy */
@@ -146,7 +167,7 @@ class Hero {
   /* ------------------------------------------------------------------ mode */
   private async decideMode() {
     if (env.saveData) return this.setMode('still');
-    if (!hasWebGL()) return this.setMode(this.phone ? 'video' : 'still');
+    if (!webglAvailable()) return this.setMode(this.phone ? 'video' : 'still');
     if (!this.phone) this.loadGL(); // desktop is almost always GL: fetch the chunk in parallel with the tier test
     // warm the mask in the HTTP cache (TextureLoader will hit it)
     const warm = new Image(); warm.decoding = 'async'; warm.src = this.maskUrl();
@@ -163,10 +184,12 @@ class Hero {
     if (this.mode !== 'gl') return;
     this.loadGL();
     if (preloaderPlaying()) {
-      // compile + upload behind the still frame at 100 — only if the chunk is already here
-      onPreloaderBeat(() => (this.glLoaded ? this.mountWind() : undefined));
-      // otherwise right after the intro
-      bus.on('preloader:done', () => { if (!this.wind) requestAnimationFrame(() => this.mountWind()); });
+      // Prepare now (chunk, decoded photo + mask — off the main thread); the GPU steps (compile, upload, first
+      // draw) wait for the preloader's beat on the counter's last ticks, and anything still left when the window
+      // starts to open waits until the layer is gone (preloaderQuiet) — a hitch never lands in the opening.
+      // The beat holds the opening for the first frame at most ~0.12 s past "100".
+      const p = this.mountWind();
+      onPreloaderBeat(() => p);
     } else {
       requestAnimationFrame(() => requestAnimationFrame(() => this.mountWind()));
     }
@@ -180,30 +203,57 @@ class Hero {
 
   private setMode(m: Mode) {
     if (this.mode === m) return;
+    if (m === 'video') this.videoWanted = true;
     this.mode = m;
     this.el.dataset.mode = m;
     this.el.classList.toggle('hero--still', m === 'still' && this.motion);
     if (m !== 'gl') { this.wind?.destroy(); this.wind = null; }
+    if (m !== 'video') { this.video?.remove(); this.video = null; }
     if (m === 'video') this.startVideo();
     if (m === 'still' || m === 'video') this.buildMotes(m === 'video' ? (this.season === 'autumn' ? 6 : 10) : (this.season === 'autumn' ? 9 : 16));
     else this.removeMotes();
   }
 
-  private async mountWind() {
-    if (this.wind || this.windPending || !this.motion || this.mode !== 'gl') return;
-    this.windPending = true;
-    const handle = await mountHeroWind({
-      host: this.zoom, img: this.img, maskUrl: this.maskUrl(), season: this.season,
-      quality: this.quality, dprCap: this.dprCap,
-      onFirstFrame: () => requestAnimationFrame(() => this.zoom.querySelector('.gl-stage')?.classList.add('is-on')),
-    });
-    this.windPending = false;
-    if (!handle) { if (this.mode === 'gl') this.setMode(this.phone ? 'video' : 'still'); return; }
-    if (!this.motion || this.mode !== 'gl') { handle.destroy(); return; }
-    this.wind = handle;
-    handle.setVisible(this.visible);
-    if (this.entered) handle.arrive(0.1);
-    if (import.meta.env.DEV) (window as any).__ofHeroWind = handle;
+  /** Resolves once the first wind frame is on screen (or mounting gave up). */
+  private mountWind(): Promise<void> {
+    if (this.windPending) return this.windPending;
+    if (this.wind || !this.motion || this.mode !== 'gl') return Promise.resolve();
+    const run = async () => {
+      const handle = await mountHeroWind({
+        host: this.zoom, img: this.img, maskUrl: this.maskUrl(), season: this.season,
+        quality: this.quality, dprCap: this.dprCap, gate: () => this.glGate(),
+      });
+      if (!handle) { if (this.mode === 'gl') this.setMode(this.phone ? 'video' : 'still'); return; }
+      if (!this.motion || this.mode !== 'gl') { handle.destroy(); return; }
+      this.wind = handle;
+      // the first frame has been presented: cross-fade from the photo (identical pixels at rest)
+      handle.canvas.classList.add('is-on');
+      handle.setVisible(this.visible);
+      if (this.entered) handle.arrive(0.1);
+      if (import.meta.env.DEV) (window as any).__ofHeroWind = handle;
+    };
+    this.windPending = run().catch(() => undefined).finally(() => { this.windPending = null; });
+    return this.windPending;
+  }
+
+  /** GPU warm-up steps may run: at the preloader's beat, or once the title's letters have landed —
+      never in the ring window's opening, never under the letters rising (a texture upload is a 10–200 ms hitch). */
+  private async glGate() {
+    await preloaderQuiet();
+    for (let i = 0; i < 6; i++) {
+      const tl = this.entrance;
+      if (!tl || !tl.isActive() || tl.time() >= LETTERS_LANDED) return;
+      await wait(Math.max(40, ((LETTERS_LANDED - tl.time()) / (tl.timeScale() || 1)) * 1000));
+    }
+  }
+
+  /** the displayed crop changed (rotation): GL follows it; the portrait-only video yields to the still photo and returns */
+  private onCropChange() {
+    if (this.wind) { this.wind.destroy(); this.wind = null; this.mountWind(); return; }
+    if (!this.motion || !this.videoWanted) return;
+    const portrait = /heroPortrait/.test(this.img.currentSrc || '');
+    if (!portrait && this.mode === 'video') this.setMode('still');
+    else if (portrait && this.mode === 'still') this.setMode('video');
   }
 
   /* ------------------------------------------------------------------ phone video loop */
@@ -212,7 +262,7 @@ class Hero {
     const begin = () => {
       if (this.video || this.mode !== 'video' || !this.motion) return;
       // the loop is rendered from the portrait crop only
-      if (!/heroPortrait/.test(this.img.currentSrc || '')) { this.mode = null; this.setMode('still'); return; }
+      if (!/heroPortrait/.test(this.img.currentSrc || '')) { this.setMode('still'); return; }
       const v = document.createElement('video');
       v.className = 'hero__video';
       v.muted = true; v.defaultMuted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
@@ -301,15 +351,15 @@ class Hero {
     const chars = this.splitTitle();
     const sub = el.querySelector<HTMLElement>('.hero__subtitle');
     const txt = el.querySelector<HTMLElement>('.hero__text');
-    const splits: SplitText[] = [];
-    const lines = (n: HTMLElement | null) => {
-      if (!n || !n.offsetParent) return [] as Element[];
-      const s = SplitText.create(n, { type: 'lines', mask: 'lines', linesClass: 'hero__line' });
-      splits.push(s);
-      return s.lines;
-    };
-    const subLines = lines(sub);
-    const txtLines = lines(txt);
+    // LCP: the paragraph is the largest text on the first screen. It is revealed as ONE block (opacity / y), so
+    // it paints once, early and whole. A line split reverted at the end of the entrance would repaint it as a
+    // new, larger LCP entry ≈ 3 s in (repeat visits, page transitions back to /). The subtitle keeps its
+    // line-by-line rise, and its split is NOT reverted when the entrance ends (no late repaint either) —
+    // only on a width change, when the lines would no longer match.
+    const subLines = sub && sub.offsetParent
+      ? (this.splits.push(SplitText.create(sub, { type: 'lines', mask: 'lines', linesClass: 'hero__line', tag: 'span', aria: 'none' })), this.splits[this.splits.length - 1].lines)
+      : [] as Element[];
+    const txtShown = !!(txt && txt.offsetParent);
     const greet = el.querySelector('.hero__greet');
     const buttons = el.querySelectorAll('.hero__buttons .btn');
     const gift = el.querySelector('.hero__gift');
@@ -320,8 +370,8 @@ class Hero {
       yPercent: 118, opacity: 0, filter: `blur(${small ? 6 : 10}px)`,
       rotate: (i: number) => (i % 2 ? 1 : -1) * (5 + rnd() * 5), willChange: 'transform, filter, opacity',
     });
-    gsap.set([...subLines, ...txtLines], { yPercent: 105 });
-    gsap.set([greet, ...buttons, gift].filter(Boolean), { opacity: 0, y: 18 });
+    gsap.set(subLines, { yPercent: 105 });
+    gsap.set([greet, txtShown ? txt : null, ...buttons, gift].filter(Boolean), { opacity: 0, y: 18 });
     if (this.corner) gsap.set(this.corner, { opacity: 0, y: -8 });
     if (this.cue) gsap.set(this.cue, { opacity: 0 });
     if (this.countNum) this.countNum.textContent = '0';
@@ -331,15 +381,15 @@ class Hero {
       defaults: { ease: EASE.appear, duration: T.appear },
       onComplete: () => {
         gsap.set(chars, { clearProps: 'transform,filter,opacity,willChange' });
-        splits.forEach((s) => s.revert());
+        if (txtShown) gsap.set(txt, { clearProps: 'transform,opacity' });
         el.dataset.entrance = 'done';
       },
     });
     tl.to(chars, { yPercent: 0, opacity: 1, rotate: 0, filter: 'blur(0px)', stagger: T.letterStep, duration: 1.25 }, 0);
     if (greet) tl.to(greet, { opacity: 1, y: 0, duration: 1 }, 0.1);
-    if (subLines.length) tl.to(subLines, { yPercent: 0, stagger: T.lineStep }, 0.42);
-    if (txtLines.length) tl.to(txtLines, { yPercent: 0, stagger: T.lineStep }, 0.56);
-    tl.to(buttons, { opacity: 1, y: 0, stagger: 0.08, duration: 1 }, 0.72);
+    if (subLines.length) tl.to(subLines, { yPercent: 0, stagger: T.lineStep }, 0.36);
+    if (txtShown) tl.to(txt, { opacity: 1, y: 0, duration: 1.1 }, 0.46);
+    tl.to(buttons, { opacity: 1, y: 0, stagger: 0.08, duration: 1 }, 0.66);
     if (gift) tl.to(gift, { opacity: 1, y: 0, duration: 1 }, 0.9);
     if (this.corner) tl.to(this.corner, { opacity: 1, y: 0, duration: 1 }, 0.95);
     if (this.countNum) {
@@ -354,6 +404,11 @@ class Hero {
     this.afterIntro();
   }
 
+  private revertSplits() {
+    if (this.entrance && this.entrance.progress() < 1) this.entrance.progress(1);
+    this.splits.splice(0).forEach((s) => s.revert());
+  }
+
   private afterIntro() {
     if (this.motion && !env.isTouch && !this.ripplesOn) { this.ripplesOn = true; enableRipples({ minTier: 1 }); }
   }
@@ -361,36 +416,66 @@ class Hero {
   /* ------------------------------------------------------------------ scroll: zoom, dim, ground */
   private setupScroll() {
     this.scrollTl?.scrollTrigger?.kill(); this.scrollTl?.kill();
-    const g = this.groundParts;
     const tl = gsap.timeline({
       defaults: { ease: 'none' },
       scrollTrigger: { trigger: this.el, start: 'top top', end: 'bottom top', scrub: true, invalidateOnRefresh: true },
     });
     tl.fromTo(this.zoom, { scale: 1 }, { scale: 1.14, duration: 1 }, 0);
     if (this.dim) tl.fromTo(this.dim, { opacity: 0 }, { opacity: 0.62, duration: 1 }, 0);
-    tl.fromTo(this.content, { y: 0, opacity: 1 }, { y: () => -window.innerHeight * 0.12, opacity: 0, duration: 0.62 }, 0);
     if (this.corner) tl.fromTo(this.corner, { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.3, immediateRender: false }, 0);
     if (this.cue) tl.fromTo(this.cue, { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.1, immediateRender: false }, 0);
     // explicit y: 0 — GSAP would otherwise read the CSS translate(100%) as px and add it to yPercent
-    if (this.ground) tl.fromTo(this.ground, { y: 0, yPercent: 100 }, { y: 0, yPercent: 0, duration: 0.72 }, 0);
-    if (g) {
-      tl.fromTo(g.edge, { drawSVG: '50% 50%' }, { drawSVG: '0% 100%', duration: 0.6 }, 0.02);
-      tl.fromTo(g.grass, { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.32);
-    }
+    // phones start with the wavy soil edge already showing (half raised), so the hero never meets the soil on a
+    // straight line; desktop keeps the full rise of the cream ground
+    if (this.ground) tl.fromTo(this.ground, { y: 0, yPercent: () => (window.matchMedia(PHONE_MQ).matches ? 50 : 100) }, { y: 0, yPercent: 0, duration: 0.72 }, 0);
     this.scrollTl = tl;
+    // The copy lifts and fades once the hero's bottom (the buttons) has been seen: with a 100svh hero that is the
+    // same as 'top top'; when the hero is taller than the screen (min-height on short / landscape screens) the
+    // buttons stay readable until they are actually reached instead of fading out below the fold.
+    // autoAlpha: at 0 the copy is visibility:hidden — no invisible button under the header that still takes
+    // clicks or keyboard focus; below ~.35 it already stops taking pointer hits (a faint ghost is not a target)
+    this.contentTw?.scrollTrigger?.kill(); this.contentTw?.kill();
+    let ghost = false;
+    // Portrait phones: the copy simply scrolls away with the page — a half-faded CTA mid-scroll reads as broken
+    // on a small screen (function values, re-read on every refresh, so a rotation picks the right behaviour).
+    const still = () => window.matchMedia(PHONE_MQ).matches;
+    this.contentTw = gsap.fromTo(this.content, { y: 0, autoAlpha: 1 }, {
+      y: () => (still() ? 0 : -window.innerHeight * 0.12), autoAlpha: () => (still() ? 1 : 0), ease: 'none',
+      onUpdate: () => {
+        const g = Number(gsap.getProperty(this.content, 'opacity')) < 0.35;
+        if (g !== ghost) { ghost = g; this.content.style.pointerEvents = g ? 'none' : ''; }
+      },
+      scrollTrigger: {
+        trigger: this.el, start: 'bottom bottom', scrub: true, invalidateOnRefresh: true,
+        end: () => `+=${Math.round(Math.min(this.el.offsetHeight, window.innerHeight) * 0.62)}`,
+      },
+    });
+    // keyboard: Shift+Tab back into a faded hero brings the copy back into view
+    if (!this.focusBound) {
+      this.focusBound = true;
+      this.content.addEventListener('focusin', () => {
+        if (this.motion && window.scrollY > 4 && this.el.getBoundingClientRect().top < 0) scrollTo(0, { immediate: true, offset: 0 });
+      });
+    }
   }
+  private focusBound = false;
 
-  /* ------------------------------------------------------------------ the earth surface */
+  /* ------------------------------------------------------------------ the bottom edge */
+  /* On scroll the photo's bottom edge rises as a wave of cream — the page's ground colour, which runs on
+     unbroken into the roots section's cream band and down to its soil line. That soil line (grass, the
+     sapling photo across it) is the ONE horizon of the descent; this edge carries no line or grass of its
+     own, so the page never reads ground → sky → ground. */
   private buildGround() {
     const host = this.ground; if (!host) return;
     const w = Math.round(host.clientWidth || window.innerWidth);
     const h = Math.round(host.clientHeight || 160);
     if (w < 10 || h < 10) return;
-    const key = `${w}x${h}`;
+    const mobile = window.matchMedia(PHONE_MQ).matches;
+    // the header's tone probe: cream earth on desktop → dark header text; soil earth on phones → light text
+    host.dataset.header = mobile ? 'light' : 'dark';
+    const key = `${w}x${h}${mobile ? 'm' : ''}`;
     if (host.dataset.key === key) return;
     host.dataset.key = key;
-    const mobile = w < 769;
-    const rnd = seeded(41);
     const base = h * 0.44;
     const A = h * (mobile ? 0.13 : 0.17);
     const y = (x: number) => {
@@ -398,43 +483,32 @@ class Hero {
       return base + A * (0.62 * Math.sin(u * Math.PI * (mobile ? 1.4 : 2.1) + 0.9) + 0.28 * Math.sin(u * Math.PI * (mobile ? 3.1 : 4.6) + 2.4) + 0.1 * Math.sin(u * Math.PI * 11 + 0.3));
     };
     const step = 12;
-    let edge = `M${-8} ${y(-8).toFixed(1)}`;
-    for (let x = step - 8; x <= w + 8; x += step) edge += `L${x} ${y(x).toFixed(1)}`;
-    const fill = `${edge}L${w + 8} ${h + 4}L-8 ${h + 4}Z`;
-    // grass tufts + a few sprouts in the shared line style
+    let d = `M${-8} ${y(-8).toFixed(1)}`;
+    for (let x = step - 8; x <= w + 8; x += step) d += `L${x} ${y(x).toFixed(1)}`;
+    d += `L${w + 8} ${h + 4}L-8 ${h + 4}Z`;
+    // phones: a few line-drawn grass tufts on the soil's edge (the same line language as the roots)
     let grass = '';
-    // sparse: the roots section below draws its own grass line — this edge only hints at the surface
-    const tufts = Math.round(w / (mobile ? 130 : 150));
-    for (let i = 0; i < tufts; i++) {
-      const x = rnd() * w; const y0 = y(x) + 0.5;
-      const blades = 2 + Math.floor(rnd() * 2);
-      for (let b = 0; b < blades; b++) {
-        const hb = 5 + rnd() * (mobile ? 7 : 10);
-        const lean = -2.5 - rnd() * 4 + b * 2.2;
-        const x0 = x + (b - 1) * 2.4;
-        grass += `M${x0.toFixed(1)} ${y0.toFixed(1)}q${(lean * 0.3).toFixed(1)} ${(-hb * 0.55).toFixed(1)} ${lean.toFixed(1)} ${(-hb).toFixed(1)}`;
+    if (mobile) {
+      let seed = 7;
+      const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+      for (let x = 14 + rnd() * 20; x < w - 10; x += 38 + rnd() * 46) {
+        const gy = y(x) + 1.5;
+        const n = 2 + Math.floor(rnd() * 3);
+        for (let b = 0; b < n; b++) {
+          const bx = x + (b - n / 2) * 3;
+          const bh = (7 + rnd() * 11) * (b === 1 ? 1.2 : 1);
+          const lean = (rnd() - 0.5) * 12;
+          grass += `M${bx.toFixed(1)} ${gy.toFixed(1)}Q${(bx + lean * 0.2).toFixed(1)} ${(gy - bh * 0.55).toFixed(1)} ${(bx + lean).toFixed(1)} ${(gy - bh).toFixed(1)}`;
+        }
       }
     }
-    for (const u of mobile ? [0.22, 0.71] : [0.14, 0.47, 0.81]) {
-      const x = u * w; const y0 = y(x) + 0.5; const s = mobile ? 0.8 : 1;
-      grass += `M${x} ${y0}c0-${8 * s} ${1.5 * s}-${15 * s} ${0.5 * s}-${22 * s}`;
-      grass += `M${x + 0.6 * s} ${y0 - 14 * s}c-${2 * s}-${5 * s}-${7 * s}-${7 * s}-${11 * s}-${6 * s}c${1 * s} ${4 * s} ${6 * s} ${7 * s} ${11 * s} ${6 * s}Z`;
-      grass += `M${x + 0.6 * s} ${y0 - 19 * s}c${2 * s}-${4 * s} ${6 * s}-${6 * s} ${9 * s}-${5 * s}c-${1 * s} ${3.5 * s}-${5 * s} ${5.5 * s}-${9 * s} ${5 * s}Z`;
+    if (!this.groundFill) {
+      host.innerHTML = `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" focusable="false"><path class="hero__ground-fill"/><path class="hero__ground-grass"/></svg>`;
+      this.groundFill = host.querySelector('.hero__ground-fill');
     }
-    if (!this.groundParts) {
-      host.innerHTML = `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" focusable="false"><path class="hero__ground-fill"/><g class="hero__ground-grass"><path/></g><path class="hero__ground-edge"/></svg>`;
-      const svg = host.firstElementChild as SVGSVGElement;
-      this.groundParts = {
-        fill: svg.querySelector('.hero__ground-fill')!,
-        edge: svg.querySelector('.hero__ground-edge')!,
-        grass: svg.querySelector('.hero__ground-grass')!,
-      };
-    }
-    const svg = host.firstElementChild as SVGSVGElement;
-    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-    this.groundParts.fill.setAttribute('d', fill);
-    this.groundParts.edge.setAttribute('d', edge);
-    this.groundParts.grass.firstElementChild!.setAttribute('d', grass);
+    host.firstElementChild!.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    this.groundFill!.setAttribute('d', d);
+    host.querySelector('.hero__ground-grass')?.setAttribute('d', grass || 'M0 0');
   }
 
   /* ------------------------------------------------------------------ pointer = gust */
@@ -460,10 +534,14 @@ class Hero {
   }
 
   /* ------------------------------------------------------------------ device tilt (phones, opt-in) */
+  private tiltBound = false;
+  /** idempotent: shows the pill (motion on) and binds it once */
   private setupTilt() {
     const btn = this.tiltBtn;
     if (!btn || !env.isTouch || typeof window.DeviceOrientationEvent === 'undefined') return;
-    btn.hidden = false;
+    btn.hidden = !this.motion;
+    if (this.tiltBound) return;
+    this.tiltBound = true;
     btn.addEventListener('click', async () => {
       if (this.tiltOn) { this.stopTilt(); return; }
       const DOE = window.DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<'granted' | 'denied'> };
@@ -507,10 +585,11 @@ class Hero {
   /* ------------------------------------------------------------------ reduced motion */
   private staticState() {
     this.entrance?.progress(1).kill(); this.entrance = null;
+    this.revertSplits();
     this.el.dataset.entrance = 'static';
+    this.content.style.pointerEvents = '';
     if (this.countNum) this.countNum.textContent = String(he.hero.counterValue);
     gsap.set([this.content, this.corner, this.cue, this.ground, this.zoom, this.dim, this.media].filter(Boolean), { clearProps: 'all' });
-    if (this.groundParts) gsap.set([this.groundParts.edge, this.groundParts.grass], { clearProps: 'all' });
   }
 
   private onMotion(allowed: boolean) {
@@ -518,7 +597,9 @@ class Hero {
     this.motion = allowed;
     if (!allowed) {
       if (this.tiltOn) this.stopTilt();
+      if (this.tiltBtn) this.tiltBtn.hidden = true; // tilt is motion — no control that does nothing
       this.scrollTl?.scrollTrigger?.kill(); this.scrollTl?.kill(); this.scrollTl = null;
+      this.contentTw?.scrollTrigger?.kill(); this.contentTw?.kill(); this.contentTw = null;
       this.wind?.destroy(); this.wind = null;
       this.video?.remove(); this.video = null;
       this.removeMotes();
@@ -530,6 +611,7 @@ class Hero {
       this.el.dataset.entrance = 'done';
       this.decideMode();
       this.setupScroll();
+      this.setupTilt();
       ScrollTrigger.refresh();
       this.afterIntro();
     }

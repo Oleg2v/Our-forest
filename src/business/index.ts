@@ -38,7 +38,20 @@ function initSeason() {
   el.hidden = false;
 }
 
+/** Open questions for the client (FAQ [data-todo]) show with ?notes=1 for the rest of the session
+ *  (?notes=0 hides them again); the public page shows only the answers. */
+function initNotes() {
+  let on = false;
+  try {
+    const q = new URLSearchParams(location.search).get('notes');
+    if (q !== null) sessionStorage.setItem('of:notes', q === '0' ? '0' : '1');
+    on = sessionStorage.getItem('of:notes') === '1';
+  } catch { /* storage blocked: notes stay hidden */ }
+  document.documentElement.toggleAttribute('data-notes', on);
+}
+
 export function initBusiness() {
+  initNotes();
   buildArt();
   drawArtOnView();
   initSeason();

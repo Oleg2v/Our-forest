@@ -17,10 +17,12 @@ interface Local {
   queue: string[];              // offline waterings waiting to be sent
   guardiansSeen: boolean;       // the calm "שומרי העץ" card was shown once
   birthSeen: boolean;
+  /** when this browser last had the tree online (the offline banner says which version it shows) */
+  syncedAt: number | null;
 }
 
 const blank = (): Local => ({
-  firstVisit: null, lastVisit: null, visits: 0, waterings: [], greetings: [], herb: [], candles: [], queue: [], guardiansSeen: false, birthSeen: false,
+  firstVisit: null, lastVisit: null, visits: 0, waterings: [], greetings: [], herb: [], candles: [], queue: [], guardiansSeen: false, birthSeen: false, syncedAt: null,
 });
 
 export class TreeStore {

@@ -5,6 +5,7 @@ import { gsap } from '../core/gsap';
 import { env } from '../core/env';
 import { sound } from '../core/sound';
 import { track } from '../core/analytics';
+import { scrollTo } from '../core/scroll';
 import { qs, qsa } from '../static/util';
 
 const MSG = {
@@ -98,7 +99,7 @@ export function initForm() {
     done!.hidden = false;
     if (status) status.textContent = '';
     done!.focus({ preventScroll: true });
-    if (!env.motionAllowed()) return;
+    if (!env.motionAllowed()) { reveal(); return; }
     const h1 = panel!.offsetHeight;
     const paths = qsa<SVGPathElement>('.biz-done__art path', done!);
     gsap.timeline()
@@ -106,6 +107,16 @@ export function initForm() {
       .fromTo(paths, { drawSVG: '0%' }, { drawSVG: '100%', duration: 1.2, ease: 'power2.out', stagger: 0.14 }, 0.1)
       .fromTo(qsa('.biz-done__title, .biz-done__text, .biz-done__demo, .biz-done__actions', done!), { opacity: 0, y: 18 },
         { opacity: 1, y: 0, duration: 1, ease: 'expo.out', stagger: 0.08, clearProps: 'opacity,transform' }, 0.35);
+    reveal(); // after the timeline: the panel still has the form's height, so the page does not jump first
+  }
+
+  /* the form (≈1300px on a phone) gives way to a ≈420px panel: bring the panel's top under the header,
+     or the visitor is left looking at the footer. Its top does not move while its height animates. */
+  function reveal() {
+    const top = panel!.getBoundingClientRect().top;
+    const head = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 72;
+    if (top >= head + 8 && top <= window.innerHeight * 0.4) return;
+    scrollTo(panel!, { offset: -(head + 16) });
   }
 
   qs('[data-form-again]', done)?.addEventListener('click', () => {

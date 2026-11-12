@@ -38,6 +38,8 @@ export interface TreeSceneState {
   quality: 0 | 1 | 2 | 3;     // device tier (leaves 3–5k desktop / 1–2k phone via instancing; hatching+shadows only on strong)
   /** (added by tree-scene, optional) 7.11 "עץ אח": the sibling tree's spot on the island, dashed --fruit */
   siblingSpot?: boolean;
+  /** (added, optional) 7.8 the age the dashed future silhouette shows (the timeline's future tail); default: adult */
+  ghostAgeDays?: number;
 }
 
 export interface Hotspot {

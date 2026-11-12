@@ -6,7 +6,8 @@
      grows from the sapling in the photo (DrawSVG, scrubbed), branches to the
      five directions, each node lighting up (ring + icon draw themselves, title
      and caption rise). At the end the light gathers from the five nodes into
-     the tap root and rises up and out — the roots converge into one line that
+     the tap root, the branches dim, and one bright line rises up and out while
+     the camera follows it a little — the roots converge into one line that
      leads upward. Rare fireflies in the soil. The dog lives in the dogs node.
    • Phone ('mobile'): no pin; one vertical root line through the section,
      drawn to the scroll position; nodes light up in turn as the tip reaches them.
@@ -22,6 +23,7 @@ import { bus } from '../../core/bus';
 import { sound } from '../../core/sound';
 import { he } from '../../content/he';
 import { mountDog, type DogHandle } from '../../components/dog';
+import { scrollTo } from '../../core/scroll';
 import {
   seeded, smoothPath, pebble, samplePath, lengthAtY, pointAt, rootlet, surfaceMarkup,
   type P, type Rand, type Sample,
@@ -30,6 +32,11 @@ import {
 const NS = 'http://www.w3.org/2000/svg';
 type Mode = 'pinned' | 'static' | 'mobile' | 'mobile-static';
 interface Box { x: number; y: number; w: number; h: number; cx: number; cy: number; bottom: number }
+/** where the reader is, recorded before a rebuild (motion toggle) and restored after it */
+type Place =
+  | { part: 'below'; el: HTMLElement; top: number }
+  | { part: 'story'; top: number; t: number }
+  | { part: 'net'; el: HTMLElement; top: number };
 
 /** Keep the static markup in sync with the single source of copy (src/content/he.ts). */
 function syncCopy(root: HTMLElement) {
@@ -45,11 +52,16 @@ const TL = {
   netAt: 4.2,
   branchEvery: 0.9, branchDur: 1.0,
   tapNetDur: 3.8,          // tap root: from the descent tip down to the deepest node
-  glowAt: 9.0, glowDur: 1.3, branchGlowDur: 0.6,
-  end: 10.9,
+  glowAt: 9.0, glowDur: 1.2, branchGlowDur: 0.6,
+  riseAt: 10.0, riseDur: 1.2, // the branches dim, one bright line carries on up while the camera follows it a little
+  end: 11.5,
   allLit: 8.95,            // where #directions lands (just before the finale)
 };
 const PIN_VH = 2.5;        // pinned scroll distance in viewport heights (section ≈ 350vh)
+/** Phone layout (one vertical root): phones, and landscape phones / very short windows, where a pinned
+    100vh cross-section with five nodes cannot fit. Keep in sync with the @media block in roots.css. */
+const COMPACT_MQ = '(max-width: 768px), (max-height: 560px) and (orientation: landscape)';
+const isCompact = () => window.matchMedia(COMPACT_MQ).matches;
 
 class Roots {
   s: HTMLElement;
@@ -62,6 +74,9 @@ class Roots {
   ctx: gsap.Context | null = null;
   dog: DogHandle | null = null;
   disposers: (() => void)[] = [];
+  /** pinned mode: the pin and its timeline length (for mapping a reading position into it) */
+  pin: ScrollTrigger | null = null;
+  tlDur = TL.end;
 
   constructor(s: HTMLElement) {
     this.s = s;
@@ -77,7 +92,7 @@ class Roots {
   }
 
   pickMode(): Mode {
-    const mobile = env.isMobile();
+    const mobile = isCompact();
     const motion = env.motionAllowed();
     if (mobile) return motion ? 'mobile' : 'mobile-static';
     return motion ? 'pinned' : 'static';
@@ -106,6 +121,55 @@ class Roots {
     this.anchor.removeAttribute('id');
     this.anchor.removeAttribute('tabindex');
     this.anchor.style.top = '';
+    this.pin = null;
+  }
+
+  /* ------------- keep the reader's place across a rebuild (the a11y "stop animations" switch) -------------
+     Turning the pin off removes ~2.5 screens of pin spacing; turning it on adds them back. Without this the
+     reader, at the same scrollY, lands in the next section — exactly the people who press that switch. */
+  capturePlace(): Place | null {
+    const vh = window.innerHeight;
+    const line = vh * 0.42; // the reading line
+    const r = this.s.getBoundingClientRect();
+    if (r.top > line) return null; // reading above the section: nothing above the reader moves
+    if (r.bottom < line) {
+      // reading further down: keep the section under the reading line where it is
+      // (elementsFromPoint: the a11y panel that holds the switch may be open over the page)
+      // The outermost <section> across the reading line (not a pin-spacer wrapper — a section that unpins on the
+      // same switch removes it). Geometry, not hit-testing: the a11y dialog that holds the switch makes the page inert.
+      const el = Array.from(document.querySelectorAll<HTMLElement>('main section, footer'))
+        .filter((n) => !n.parentElement?.closest('main section'))
+        .find((n) => { const b = n.getBoundingClientRect(); return b.top <= line && b.bottom > line; }) ?? null;
+      return el && !this.s.contains(el) ? { part: 'below', el, top: el.getBoundingClientRect().top } : null;
+    }
+    if (this.pin) {
+      const t = this.pin.progress * this.tlDur;
+      if (t < TL.descentAt + TL.descentDur * 0.5) return { part: 'story', top: this.copy.getBoundingClientRect().top, t };
+      return { part: 'net', el: this.netTitle, top: this.netTitle.getBoundingClientRect().top };
+    }
+    // unpinned layouts: the story copy, the net title or the node nearest the reading line
+    const cands = [this.netTitle, ...this.nodes];
+    const netTop = this.netTitle.getBoundingClientRect().top;
+    if (netTop > line) return { part: 'story', top: this.copy.getBoundingClientRect().top, t: TL.descentAt * 0.85 };
+    let best = this.netTitle, d = Infinity;
+    for (const el of cands) { const dd = Math.abs(el.getBoundingClientRect().top - line); if (dd < d) { d = dd; best = el; } }
+    return { part: 'net', el: best, top: best.getBoundingClientRect().top };
+  }
+
+  restorePlace(p: Place) {
+    const vh = window.innerHeight;
+    const go = (y: number) => { if (Math.abs(y - window.scrollY) > 1) scrollTo(Math.max(0, Math.round(y)), { immediate: true, offset: 0 }); };
+    const keep = (el: HTMLElement, top: number) => go(window.scrollY + el.getBoundingClientRect().top - top);
+    if (p.part === 'below') { keep(p.el, p.top); return; }
+    if (this.pin) {
+      // into the pinned timeline: the story with its words read, or the net with all five nodes lit
+      const t = p.part === 'story' ? Math.min(p.t, TL.descentAt) : TL.allLit;
+      go(this.pin.start + (t / this.tlDur) * (this.pin.end - this.pin.start));
+      return;
+    }
+    const clampTop = (v: number) => Math.min(Math.max(v, 72), vh * 0.6);
+    if (p.part === 'story') keep(this.copy, clampTop(p.top));
+    else if (p.el === this.netTitle || this.nodes.includes(p.el)) keep(p.el, clampTop(p.top));
   }
 
   /** layout fingerprint (transform-independent) — rebuild only when it really changed */
@@ -113,11 +177,16 @@ class Roots {
     return [this.copy, this.title, this.netTitle, this.frame, ...this.nodes].map((el) => `${el.offsetTop}:${el.offsetHeight}:${el.offsetWidth}`).join('|');
   }
 
-  rebuild() {
+  rebuild(place: Place | null = null) {
     this.teardown();
     this.mount();
     ScrollTrigger.sort();
     ScrollTrigger.refresh();
+    if (place) {
+      this.restorePlace(place);
+      // once more after the other sections' own rebuilds and refreshes have settled
+      requestAnimationFrame(() => requestAnimationFrame(() => { this.restorePlace(place); ScrollTrigger.update(); }));
+    }
   }
 
   /* ============================== geometry ============================== */
@@ -154,7 +223,7 @@ class Roots {
   drawSurface(rand: Rand) {
     const w = this.surface.clientWidth || this.s.clientWidth;
     const h = this.surface.clientHeight || 56;
-    this.surface.innerHTML = surfaceMarkup(w, h, rand, env.isMobile() ? { amp: 5, tufts: 70 } : { amp: 7, tufts: 120 });
+    this.surface.innerHTML = surfaceMarkup(w, h, rand, isCompact() ? { amp: 5, tufts: 70 } : { amp: 7, tufts: 120 });
   }
 
   /** Faint soil details: pebbles + dotted strata, kept away from text boxes. */
@@ -303,7 +372,7 @@ class Roots {
 
   /* ============================== story reveal (shared) ============================== */
   storyReveal(scrubWords: boolean) {
-    const split = SplitText.create(this.title, { type: 'lines', mask: 'lines', linesClass: 'roots__line' });
+    const split = SplitText.create(this.title, { type: 'lines', mask: 'lines', linesClass: 'roots__line', aria: 'none' });
     gsap.set(split.lines, { yPercent: 105 });
     gsap.set(this.eyebrow, { opacity: 0, y: 14 });
     gsap.set(this.frame, { clipPath: 'inset(100% 0% 0% 0%)' });
@@ -319,7 +388,7 @@ class Roots {
     if (artPaths) tl.to(artPaths, { drawSVG: '100%', duration: 1.6, ease: 'power2.inOut', stagger: 0.08 }, 0.5);
     ScrollTrigger.create({ trigger: this.s, start: 'top 72%', once: true, onEnter: () => tl.play() });
 
-    const words = SplitText.create(this.text, { type: 'words', wordsClass: 'roots__word' }).words;
+    const words = SplitText.create(this.text, { type: 'words', wordsClass: 'roots__word', aria: 'none' }).words;
     gsap.set(words, { opacity: 0.22 });
     if (!scrubWords) {
       gsap.to(words, {
@@ -359,7 +428,7 @@ class Roots {
       gsap.set([title, text], { opacity: 0, y: 18 });
       gsap.set(n, { '--lit': 0, '--glow': 0 });
     });
-    const netSplit = SplitText.create(this.netTitle, { type: 'lines', mask: 'lines' });
+    const netSplit = SplitText.create(this.netTitle, { type: 'lines', mask: 'lines', aria: 'none' });
     gsap.set(netSplit.lines, { yPercent: 105 });
 
     const tl = gsap.timeline({ defaults: { ease: 'none' } });
@@ -404,7 +473,9 @@ class Roots {
       const at = r.parent < 0 ? tapTimeAt(r.at) : Math.max(TL.netAt + r.parent * TL.branchEvery, tapTimeAt(branches[r.parent].lenB) + 0.05) + (r.at / branches[r.parent].total) * TL.branchDur;
       tl.to(r.path, { drawSVG: '0 100%', duration: 0.45, ease: 'power1.out' }, at);
     });
-    // 4 · finale: light gathers from the five nodes into the tap root and rises out of the ground
+    // 4 · finale: light gathers from the five nodes into the tap root and rises out of the ground —
+    //     then the branches dim and ONE bright line carries on up, the camera following it a little:
+    //     "the roots converge into one line that leads upward" (brief, section 5 · 3)
     const glowAt = (l: number) => TL.glowAt + ((tapLen - l) / Math.max(1, tapLen - lenTop)) * TL.glowDur;
     tl.to([g.tapGlow, g.tapGlowSoft], { drawSVG: `${lenTop} ${tapLen}`, duration: TL.glowDur, ease: 'none' }, TL.glowAt);
     tl.to(nodeParts[4].n, { '--glow': 1, duration: 0.4, ease: 'power2.out' }, TL.glowAt - 0.2);
@@ -413,6 +484,12 @@ class Roots {
       tl.to(g.branchGlows[i], { drawSVG: '0% 100%', duration: TL.branchGlowDur, ease: 'power1.in' }, arrive - TL.branchGlowDur);
       tl.to(nodeParts[i].n, { '--glow': 1, duration: 0.4, ease: 'power2.out' }, arrive - TL.branchGlowDur - 0.15);
     });
+    const panUp = Math.round(H * 0.24);
+    const lenOut = lengthAtY(tapS, camNet - panUp - H * 0.1);
+    tl.to(g.branchGlows.flat(), { opacity: 0.16, duration: 0.7, ease: 'power1.inOut' }, TL.riseAt);
+    tl.to(nodeParts.map((p) => p.n), { '--glow': 0.3, duration: 0.7, ease: 'power1.inOut' }, TL.riseAt);
+    tl.to([g.tapGlow, g.tapGlowSoft], { drawSVG: `${lenOut} ${tapLen}`, duration: TL.riseDur, ease: 'power1.in' }, TL.riseAt);
+    tl.to(this.world, { y: -(camNet - panUp), duration: TL.riseDur + 0.2, ease: 'power2.inOut' }, TL.riseAt);
     tl.to({}, { duration: Math.max(0, TL.end - tl.duration()) });
 
     // pin: ~320vh in total; #directions lands where all five nodes are lit
@@ -432,7 +509,8 @@ class Roots {
       this.netTitle.removeAttribute('tabindex');
     });
     placeAnchor();
-    ScrollTrigger.create({
+    this.tlDur = tl.duration();
+    this.pin = ScrollTrigger.create({
       trigger: this.s,
       start: 'top top',
       end: () => `+=${dist()}`,
@@ -519,7 +597,7 @@ class Roots {
     const g = this.buildMobile();
     const { line, total, samples } = g;
     this.storyReveal(false);
-    const netSplit = SplitText.create(this.netTitle, { type: 'lines', mask: 'lines' });
+    const netSplit = SplitText.create(this.netTitle, { type: 'lines', mask: 'lines', aria: 'none' });
     gsap.set(netSplit.lines, { yPercent: 105 });
     gsap.to(netSplit.lines, { yPercent: 0, duration: 1.2, ease: 'expo.out', stagger: 0.08, scrollTrigger: { trigger: this.netTitle, start: 'top 82%', once: true } });
 
@@ -536,7 +614,7 @@ class Roots {
       gsap.set(ring, { drawSVG: '0%' });
       gsap.set(ring.ownerSVGElement, { autoAlpha: 0 });
       gsap.set(icon, { drawSVG: '0%' });
-      gsap.set([title, text], { opacity: 0.2 });
+      gsap.set([title, text], { opacity: 0.36 }); // dim, not gone: the 26px title stays ≥ 3:1 on soil
       gsap.set(n, { '--lit': 0 });
       const tl = gsap.timeline({ paused: true })
         .set(ring.ownerSVGElement, { autoAlpha: 0.9, immediateRender: false }, 0.001)
@@ -552,7 +630,7 @@ class Roots {
 
     const update = () => {
       const top = this.world.getBoundingClientRect().top;
-      const tipY = window.innerHeight * 0.66 - top;
+      const tipY = window.innerHeight * 0.76 - top; // the tip runs a little ahead of the reading line
       const len = lengthAtY(samples, tipY);
       line.style.strokeDashoffset = String(Math.max(0, total - len));
       parts.forEach((p) => {
@@ -583,9 +661,18 @@ export function initRoots(): void {
   roots.mount();
 
   let timer = 0;
-  const schedule = (delay = 220) => { window.clearTimeout(timer); timer = window.setTimeout(() => roots.rebuild(), delay); };
-  bus.on('motion:change', () => schedule(0));
-  window.matchMedia('(max-width: 768px)').addEventListener?.('change', () => schedule(0));
+  let place: Place | null = null;
+  const schedule = (delay = 220) => {
+    window.clearTimeout(timer);
+    timer = window.setTimeout(() => { const p = place; place = null; roots.rebuild(p); }, delay);
+  };
+  // record the reading position now, before this or any other section changes its layout
+  bus.on('motion:change', () => {
+    place ??= roots.capturePlace();
+    if (import.meta.env.DEV) (window as any).__ofRootsPlace = place && { ...place, el: 'el' in place ? `${place.el.tagName}.${place.el.className}` : null };
+    schedule(0);
+  });
+  window.matchMedia(COMPACT_MQ).addEventListener?.('change', () => schedule(0));
   let lastW = window.innerWidth, lastH = window.innerHeight;
   window.addEventListener('resize', () => {
     const w = window.innerWidth, h = window.innerHeight;

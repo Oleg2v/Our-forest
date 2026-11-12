@@ -5,6 +5,13 @@
    ========================================================================== */
 
 /* ---------------------------------------------------------------- helpers */
+/* a11y panel «גודל טקסט» (data-a11y-font on <html>, set pre-paint by head-common). tokens.css scales the
+   root (rem) and --fs-body; --a11y-k is the multiplier for px sizes: write body-scale text as
+   font-size: calc(17px * var(--a11y-k, 1)) (display headings stay as they are). The small/eyebrow tokens
+   follow here, so .eyebrow, field labels and every var(--fs-small) grow on all pages. */
+:root { --a11y-k: 1; }
+:root[data-a11y-font='1'] { --a11y-k: 1.125; --fs-small: calc(15px * 1.125); --fs-eyebrow: calc(14px * 1.125); }
+:root[data-a11y-font='2'] { --a11y-k: 1.25; --fs-small: calc(15px * 1.25); --fs-eyebrow: calc(14px * 1.25); }
 html.bg-instant body { transition: none !important; }
 [data-a11y-contrast='high'] body::after { display: none; } /* grain off in high contrast */
 
@@ -22,8 +29,9 @@ img.img-sharpen.is-loaded { filter: blur(0); }
 /* keyboard focus: the travelling leaf ring replaces outlines */
 html.focus-ring-on :focus-visible { outline-color: transparent; }
 
-/* header intro (only when JS + motion are on; the head failsafe removes .reveals-on) */
-:root.reveals-on:not(.chrome-ready) .site-header__inner > * { opacity: 0; transform: translateY(-10px); }
+/* header intro on the home page, after the preloader (only when JS + motion are on; the head failsafe
+   removes .reveals-on). Other pages show the header — and its buy button — from the first paint. */
+:root.reveals-on:not(.chrome-ready):has(> body[data-page='home']) .site-header__inner > * { opacity: 0; transform: translateY(-10px); }
 
 /* ---------------------------------------------------------------- header */
 .site-header {
@@ -56,7 +64,7 @@ html.focus-ring-on :focus-visible { outline-color: transparent; }
   position: absolute;
   inset: 0 0 auto 0;
   height: calc(100% + 64px);
-  background: linear-gradient(to bottom, rgb(var(--moss-rgb) / 0.46), rgb(var(--moss-rgb) / 0.2) 52%, rgb(var(--moss-rgb) / 0));
+  background: linear-gradient(to bottom, rgb(var(--moss-rgb) / 0.6), rgb(var(--moss-rgb) / 0.28) 52%, rgb(var(--moss-rgb) / 0));
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.6s var(--ease-out);
@@ -542,7 +550,8 @@ html.menu-open .site-header { transform: none; }
   position: fixed;
   z-index: calc(var(--z-sticky) + 5);
   inset-inline-start: var(--gutter); /* reading start: never over the buy buttons (header CTA, /plant summary) */
-  inset-block-end: calc(var(--mbar-space, 0px) + 20px + var(--safe-bottom));
+  /* above the phone bar, or above a page's own bottom bar / control (--ck-floor, set by cookies.ts) */
+  inset-block-end: max(calc(var(--mbar-space, 0px) + 20px + var(--safe-bottom)), calc(var(--ck-floor, 0px) + 12px));
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -556,12 +565,13 @@ html.menu-open .site-header { transform: none; }
   transition: opacity 0.6s var(--ease-out), transform 0.9s var(--ease-out), inset-block-end 0.6s var(--ease-out);
 }
 .cookie[hidden] { display: none !important; }
+.cookie[data-wait] { visibility: hidden; } /* rendered for measuring while it waits for a free slot */
 .cookie[data-shown] { opacity: 1; transform: none; }
 /* moved aside when a primary button / a page's own bottom bar would be under it (cookies.ts) */
 .cookie[data-pos='end'] { inset-inline-start: auto; inset-inline-end: var(--gutter); }
 .cookie[data-pos='top'] { inset-block-end: auto; inset-block-start: calc(var(--header-h) + var(--safe-top) + 8px); transform: translateY(-16px); }
 .cookie[data-pos='top'][data-shown] { transform: none; }
-.cookie.cookie--measure { transition: none !important; }
+.cookie.cookie--measure { transition: none !important; transform: none !important; } /* measured where it rests */
 .cookie__icon { color: var(--olive); width: 24px; height: 24px; }
 .cookie__title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .cookie__text { font-size: 0.8125rem; line-height: 1.45; color: var(--ink-soft); }
@@ -569,16 +579,24 @@ html.menu-open .site-header { transform: none; }
 .cookie__actions { display: flex; gap: 6px; }
 .cookie__actions .btn { flex: none; min-height: 44px; padding-inline: 16px; }
 .cookie .btn--outline { --btn-fg: var(--soil); }
-.cookie .btn--outline:hover { --btn-bg: var(--soil); --btn-fg: var(--cream); --btn-bd: var(--soil); }
+@media (hover: hover) {
+  .cookie .btn--outline:hover { --btn-bg: var(--soil); --btn-fg: var(--cream); --btn-bd: var(--soil); }
+}
+/* phones: one compact row (≈66px) that stays down by the thumb, above the phone bar */
 @media (max-width: 768px) {
   .cookie {
-    inset-inline: 10px; inset-block-end: calc(var(--mbar-space, 0px) + 10px + var(--safe-bottom));
-    width: auto; padding: 10px 12px; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px;
+    inset-inline: 10px;
+    inset-block-end: max(calc(var(--mbar-space, 0px) + 8px + var(--safe-bottom)), calc(var(--ck-floor, 0px) + 8px));
+    width: auto; padding-block: 8px; padding-inline: 12px 8px; grid-template-columns: minmax(0, 1fr) auto; gap: 10px;
+    border-radius: 18px 0 18px 0;
   }
   .cookie__icon { display: none; }
-  .cookie__text { font-size: 0.75rem; }
-  .cookie__actions { flex-direction: column; gap: 4px; }
-  .cookie__actions .btn { min-height: 44px; padding-inline: 14px; font-size: 0.8125rem; }
+  .cookie__text { font-size: 0.75rem; line-height: 1.4; }
+  .cookie__actions { gap: 4px; }
+  .cookie__actions .btn { min-height: 44px; padding-inline: 12px; font-size: 0.8125rem; }
+}
+@media (max-width: 360px) {
+  .cookie__actions { flex-direction: column; }
 }
 
 /* ---------------------------------------------------------------- custom cursor */

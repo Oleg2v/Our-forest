@@ -92,10 +92,24 @@ function holiday(svg: SVGSVGElement) {
 const ARTS: Record<string, (svg: SVGSVGElement) => void> = { grove, teamday, holiday };
 
 export function buildArt(root: ParentNode = document) {
-  root.querySelectorAll<SVGSVGElement>('svg[data-art]').forEach((svg) => {
+  const svgs = Array.from(root.querySelectorAll<SVGSVGElement>('svg[data-art]'));
+  svgs.forEach((svg) => {
     if (svg.childElementCount) return;
     ARTS[svg.dataset.art || '']?.(svg);
   });
+  keepHairline(svgs);
+}
+
+/* The strokes are in viewBox units (pathLength=1 only draws completely without vector-effect), so the
+   width follows the rendered size: --biz-sw keeps them at the icons' 1.5 screen px on every card. */
+function keepHairline(svgs: SVGSVGElement[]) {
+  const set = (svg: SVGSVGElement, w: number) => {
+    const vb = svg.viewBox.baseVal?.width || 260;
+    if (w > 0) svg.style.setProperty('--biz-sw', (1.5 * vb / w).toFixed(3));
+  };
+  if (!('ResizeObserver' in window)) { svgs.forEach((s) => set(s, s.getBoundingClientRect().width)); return; }
+  const ro = new ResizeObserver((entries) => entries.forEach((e) => set(e.target as SVGSVGElement, e.contentRect.width)));
+  svgs.forEach((s) => ro.observe(s));
 }
 
 /** Draw each picture when its card comes into view (CSS transitions; reduced motion shows it drawn). */

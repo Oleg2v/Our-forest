@@ -228,7 +228,9 @@ varying vec3 vColor;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 void main() {
   if (vObj.y < uClipY || vObj.y > uClipYTop) discard;
+#ifndef BLEND_ALPHA
   if (uAlpha < 0.999 && hash(floor(gl_FragCoord.xy * 0.5)) > uAlpha) discard;
+#endif
   vec3 N = normalize(vN);
   float lit = max(dot(N, uLight), 0.0);
   vec3 base = uColor;
@@ -253,7 +255,11 @@ void main() {
     }
     col = mix(col, uInk * 0.7, c);
   }
+#ifdef BLEND_ALPHA
+  gl_FragColor = vec4(col, uAlpha);
+#else
   gl_FragColor = vec4(col, 1.0);
+#endif
 }
 `;
 

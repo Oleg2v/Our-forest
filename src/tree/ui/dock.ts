@@ -25,6 +25,8 @@ interface CardOpts {
   body?: string;
   actions?: string;
   kind?: 'note' | 'joy' | 'small';
+  /** phone: a compact strip at the very bottom that leaves the action panel readable (no dimming) */
+  strip?: boolean;
   focus?: boolean;
   onOpen?: (card: HTMLElement) => void;
   onClose?: () => void;
@@ -65,7 +67,7 @@ export class Dock {
     this.opts = o;
     const id = `tdock-${o.id}`;
     const card = el(`
-      <section class="tdock-card tdock-card--${o.kind ?? 'note'}" role="region" aria-labelledby="${id}-t" tabindex="-1" data-card="${esc(o.id)}">
+      <section class="tdock-card tdock-card--${o.kind ?? 'note'}${o.strip ? ' tdock-card--strip' : ''}" role="region" aria-labelledby="${id}-t" tabindex="-1" data-card="${esc(o.id)}">
         <button class="tdock-card__x" type="button" aria-label="סגירה">${icon('close')}</button>
         ${o.eyebrow ? `<p class="tdock-card__eyebrow">${o.eyebrow}</p>` : ''}
         <h3 class="tdock-card__title" id="${id}-t">${o.title}</h3>
@@ -75,8 +77,9 @@ export class Dock {
     card.querySelector('.tdock-card__x')!.addEventListener('click', () => this.close());
     this.host.appendChild(card);
     this.card = card;
-    this.host.dataset.open = o.kind ?? 'note';
+    this.host.dataset.open = o.strip ? 'strip' : o.kind ?? 'note';
     ctx.stage.dataset.card = o.id;
+    if (o.strip) ctx.stage.dataset.cardStrip = ''; else delete ctx.stage.dataset.cardStrip;
     o.onOpen?.(card);
     this.position();
     const motion = ctx.motion();
@@ -100,6 +103,7 @@ export class Dock {
     this.card = null; this.opts = null;
     delete this.host.dataset.open;
     delete this.ctx.stage.dataset.card;
+    delete this.ctx.stage.dataset.cardStrip;
     this.lead.classList.remove('is-on');
     const hadFocus = card.contains(document.activeElement);
     if (instant || !this.ctx.motion()) card.remove();
@@ -256,7 +260,7 @@ export class Dock {
     if (this.ctx.demo.mode === 'memorial') return;
     const ex = he.plant.extras.find((x) => x.id === 'guardians');
     this.show({
-      id: 'guardians', kind: 'joy',
+      id: 'guardians', kind: 'joy', strip: this.ctx.mobile(),
       eyebrow: 'העץ שתה, תודה',
       title: he.tree.upsell.guardians,
       body: `<p>${ex?.text ?? ''}</p><p class="tdock-price">${priceHtml(prices.guardiansMonthly)} <span>${he.pricing.perMonth}</span></p>`,

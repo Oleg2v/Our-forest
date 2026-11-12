@@ -7,6 +7,8 @@
   --t-ink: var(--soil);
   --t-soft: rgb(var(--soil-rgb) / 0.72);
   --t-faint: rgb(var(--soil-rgb) / 0.5);
+  /* small print that must still read (≥ 4.5 : 1 on the paper and its warm glows) — --t-faint is for strokes only */
+  --t-quiet: rgb(var(--soil-rgb) / 0.74);
   --t-line: rgb(var(--soil-rgb) / 0.14);
   --t-accent: var(--olive-deep);
   --t-title: var(--bark);
@@ -19,6 +21,7 @@
   --t-ink: var(--cream);
   --t-soft: rgb(var(--cream-rgb) / 0.76);
   --t-faint: rgb(var(--cream-rgb) / 0.55);
+  --t-quiet: rgb(var(--cream-rgb) / 0.8);
   --t-line: rgb(var(--cream-rgb) / 0.2);
   --t-accent: var(--sage);
   --t-title: var(--cream);
@@ -152,7 +155,8 @@
 }
 .tree-caption::before, .tree-caption::after { content: ''; width: 28px; height: 1px; background: currentColor; opacity: 0.45; }
 .tree-stage[data-intro='1'] .tree-caption, .tree-stage[data-plaque] .tree-caption { opacity: 0; }
-.tree-stage[data-birth-phase='soil'], .tree-stage[data-birth-phase='crack'], .tree-stage[data-birth-phase='sprout'] { --t-soft: rgb(var(--cream-rgb) / 0.8); --t-ink: var(--cream); }
+/* birth close-up: the skip button sits over the dark soil at the bottom; the number at the top stays on paper */
+.tree-stage:is([data-birth-phase='soil'], [data-birth-phase='crack'], [data-birth-phase='sprout']) .tbirth-skip { --t-soft: rgb(var(--cream-rgb) / 0.9); --t-ink: var(--cream); background: rgb(var(--soil-rgb) / 0.45); }
 .tree-news {
   display: inline-flex;
   align-items: center;
@@ -187,7 +191,7 @@
   color: var(--t-soft);
   pointer-events: none;
 }
-.tree-cond__t { font-size: 12px; font-weight: 500; letter-spacing: 0.08em; color: var(--t-faint); margin-block-end: 8px; }
+.tree-cond__t { font-size: 12px; font-weight: 500; letter-spacing: 0.08em; color: var(--t-quiet); margin-block-end: 8px; }
 .tree-cond__list { list-style: none; padding: 0; display: grid; gap: 6px; }
 .tree-cond__list li { display: flex; align-items: center; gap: 8px; }
 .tree-cond__list .icon { width: 18px; height: 18px; color: var(--t-accent); }
@@ -254,7 +258,6 @@
   font-size: 13px;
   letter-spacing: 0.04em;
   color: var(--t-soft);
-  opacity: 0.8;
   transition: opacity var(--t-micro), border-color var(--t-micro), color var(--t-micro);
 }
 .tree-demo-btn .icon { width: 18px; height: 18px; }
@@ -298,6 +301,7 @@
   line-height: 1.5;
 }
 .tree-offline .icon { width: 20px; height: 20px; flex: none; margin-top: 1px; color: var(--sage); }
+.tree-offline__short { display: none; }
 
 /* ---------------- memorial candle by the plaque ---------------- */
 .tree-candle {
@@ -413,7 +417,7 @@
 .ttl__lab--start:hover, .ttl__lab--today:hover { color: var(--t-ink); text-decoration: underline; text-underline-offset: 4px; }
 .ttl__lab-ic { width: 14px; height: 14px; }
 .ttl__lab--today { inset-inline-start: var(--p); transform: translateX(50%); }
-.ttl__lab--end { inset-inline-end: 0; font-style: normal; opacity: 0.85; }
+.ttl__lab--end { inset-inline-end: 0; font-style: normal; }
 
 /* time-travel info replaces the panel while away from "today" */
 .ttl-info {
@@ -528,7 +532,7 @@
   .tpola { inset-inline-end: auto; inset-inline-start: 18px; top: auto; bottom: calc(250px + var(--safe-bottom)); width: 136px; padding: 7px 7px 0; }
   .tpola__cap { font-size: 13px; padding: 7px 0 9px; }
   .tpola__cap bdi { font-size: 11px; }
-  .tree-demo-btn { top: calc(var(--header-h) + var(--safe-top) + 44px); inset-inline-end: 16px; min-height: 30px; padding: 0 10px; font-size: 12px; opacity: 0.6; }
+  .tree-demo-btn { top: calc(var(--header-h) + var(--safe-top) + 44px); inset-inline-end: 16px; min-height: 30px; padding: 0 10px; font-size: 12px; }
   .tree-pager { margin-block-end: 4px; }
   .tree-pager__dot { min-width: 44px; min-height: 36px; font-size: 14px; }
   .tree-pager__arr { width: 36px; height: 36px; }
@@ -544,21 +548,70 @@
   /* several trees: the island steps back a little so the pager sits under it, not on its soil */
   .tree-stage:has(.tree-pager) { --tree-scene-fill: 0.37; }
   .tree-stage:has(.tree-pager) .tree-caption, .tree-stage:has(.tree-offline) .tree-caption, .tree-stage[data-time] .tree-caption { opacity: 0; }
-  .tree-offline__more { display: none; }
+  /* phones: one quiet line in the caption's place, between the island and the panel (not over the island) */
+  .tree-offline__long { display: none; }
+  .tree-offline__short { display: inline; }
   .tree-offline {
-    top: calc((var(--tree-scene-cy) + var(--tree-scene-fill) * 0.5) * 100% - 26px);
-    width: calc(100% - 40px);
-    padding: 8px 14px;
+    top: calc((var(--tree-scene-cy) + var(--tree-scene-fill) * 0.5) * 100% + 2px);
+    width: auto; max-width: calc(100% - 40px);
+    align-items: center;
+    padding: 5px 14px;
     font-size: 12.5px;
     line-height: 1.4;
-    border-radius: 16px 0 16px 0;
+    white-space: nowrap;
+    border-radius: 14px 0 14px 0;
   }
+  .tree-offline .icon { width: 16px; height: 16px; margin: 0; }
 }
 @media (max-width: 768px) and (max-height: 700px) {
   .tree-stage { --tree-scene-cy: 0.33; --tree-scene-fill: 0.34; }
   .tree-stage:has(.tree-pager) { --tree-scene-fill: 0.31; }
 }
 
+/* before planting there is no history to scrub yet: the countdown speaks instead of the timeline */
+.tree-stage[data-flow='before'] .tree-tl { visibility: hidden; opacity: 0; }
+/* before planting the panel already counts the days down: no second "הנטיעה בעוד 9 ימים" under the island */
+.tree-stage[data-flow='before'] .tree-caption { visibility: hidden; }
+
 /* reduced motion: no pulsing */
 html.no-motion .tree-news__dot::after { display: none; }
 html.no-motion .tree-candle__flame, html.no-motion .tree-candle__glow { animation: none; }
+
+/* touch: the quiet text buttons keep their look but get a ≥ 44 px hit area (an invisible ::after) */
+@media (pointer: coarse) {
+  .wp__alt, .tree-pager__arr, .tree-pager__dot { position: relative; }
+  .wp__alt::after, .tree-news::after, .tree-demo-btn::after, .ttl__lab--start::after, .ttl__lab--today::after,
+  .tree-pager__arr::after, .tree-pager__dot::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 48px);
+    height: max(100%, 44px);
+    translate: -50% -50%;
+  }
+  /* the timeline labels sit right under the slider: grow the hit area downward, not into the track */
+  .ttl__lab--start::after, .ttl__lab--today::after { top: -4px; translate: -50% 0; }
+}
+@media (pointer: coarse) and (min-width: 769px) {
+  .tree-news { position: relative; }
+}
+
+/* portrait tablets (iPad 820×1180 …): the desktop layout, but the island steps to the free side of the
+   reading column instead of spreading under the panel */
+@media (min-width: 769px) and (max-aspect-ratio: 4/5) {
+  .tree-stage { --tree-scene-cx: 0.29; --tree-scene-cy: 0.46; --tree-scene-fill: 0.4; }
+}
+
+/* a focused scene (plaque / crown close-up) can bring leaves and the trunk up under the header: lay a band of the
+   scene's own paper under it so the navigation stays readable */
+.tree-stage::before {
+  content: '';
+  position: absolute; z-index: 6; inset-inline: 0; top: 0;
+  height: calc(var(--header-h) + var(--safe-top) + 48px);
+  background: linear-gradient(var(--tree-scene-bg, var(--cream)) 0 55%, transparent);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.6s var(--ease-out);
+}
+.tree-stage[data-plaque]::before, .tree-stage[data-zoomed]::before { opacity: 1; }
+

@@ -97,6 +97,15 @@ export function familyTrees(): TreeRecord[] {
   return [TREE, pick('0122'), pick('0114')].filter((t): t is TreeRecord => !!t);
 }
 
+/** the fields of a tree the team planted today (a sapling with a fresh history): the /plant hand-off,
+ *  and the "before planting" demo once the planting notice arrives */
+export function plantedTodayFields(today: string): Partial<TreeRecord> {
+  return {
+    plantedAt: today, lastTeamWatering: today, lastPrune: null, harvest: null, heightCm: 60, rootDepthCm: 25, stage: 'sapling',
+    events: [{ date: today, type: 'planted' }], greetings: [],
+  };
+}
+
 /** a demo memorial dedication (a real memorial point on the forest map) */
 export const MEMORIAL_DEMO = { dedication: 'לזכר סבא אברהם', name: 'סבא אברהם' };
 

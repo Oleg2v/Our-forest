@@ -12,7 +12,7 @@ import {
   LinearFilter, type IUniform, type BufferGeometry,
 } from 'three';
 import type { Frame, Renderer } from '../types';
-import { ISLAND, PLAQUE, TOKEN, autumnTint, leafGreen, type TreeModel } from '../model';
+import { ISLAND, PLAQUE, TOKEN, autumnTint, leafGreen, rootRuns, type TreeModel } from '../model';
 import { P, TINT, mixC, clamp, lerp, type RGB } from '../util';
 import {
   LIT_VERT, HULL_VERT, HULL_FRAG, BARK_FRAG, ROOT_FRAG, FILL_FRAG, EARTH_FRAG, CAP_FRAG, FACE_FRAG,
@@ -262,9 +262,14 @@ class GLRenderer implements Renderer {
 
     /* seed */
     const sg = seedGeometry();
-    const seedMat = this.mat(LIT_VERT, FILL_FRAG, { uColor: { value: v3(mixC(TINT.barkLight, P.sand, 0.25)) }, uClipY: { value: -99 }, uClipYTop: { value: 99 }, uCrack: { value: 0 }, uAlpha: { value: 1 }, uCutCap: { value: 0 }, uUseInstColor: { value: 0 } });
+    // real alpha blending (not the screen-door dither): the seed fades while it fills half the close-up
+    const seedMat = this.mat(LIT_VERT, FILL_FRAG, { uColor: { value: v3(mixC(TINT.barkLight, P.sand, 0.25)) }, uClipY: { value: -99 }, uClipYTop: { value: 99 }, uCrack: { value: 0 }, uAlpha: { value: 1 }, uCutCap: { value: 0 }, uUseInstColor: { value: 0 } }, { defines: { BLEND_ALPHA: '1' } });
+    seedMat.transparent = true;
+    const seedHullMat = this.hull(1.3);
+    seedHullMat.transparent = true; seedHullMat.premultipliedAlpha = true;
     this.seed = new Mesh(sg, seedMat);
-    this.seedHull = new Mesh(sg, this.hull(1.3));
+    this.seedHull = new Mesh(sg, seedHullMat);
+    this.seed.renderOrder = 1; this.seedHull.renderOrder = 2;
     for (const m of [this.seed, this.seedHull]) { m.position.set(0, ISLAND.SEED_Y, ISLAND.ZC + 0.016); m.scale.set(0.034, 0.023, 0.02); this.island.add(m); }
 
     for (const o of [this.barkMesh, this.barkHull, this.rootMesh, this.rootHull, this.leafMesh, this.looseMesh, this.fruitMesh, this.fruitHull, this.stubMesh, this.stubHull]) o.frustumCulled = false;
@@ -443,40 +448,28 @@ class GLRenderer implements Renderer {
       this.stubMesh.geometry = this.stubs.geo; this.stubHull.geometry = this.stubs.geo;
     }
     /* roots (in the cut) */
-    const R = M.rootsys;
-    const rev = G.rootReveal * R.mMax;
-    const rchains: number[][] = [];
-    const extraPt = new Map<number, [number, number]>();
-    if (planted && rev > 0) {
-      let fake = -1;
-      for (const ch of R.chains) {
-        const part: number[] = [];
-        for (let k = 0; k < ch.length; k++) {
-          const i = ch[k];
-          if (R.m[i] > rev) {
-            if (k > 0) {
-              const p = ch[k - 1];
-              const fr = clamp((rev - R.m[p]) / Math.max(1e-4, R.m[i] - R.m[p]));
-              if (fr > 0.02) { extraPt.set(fake, [lerp(R.x[p], R.x[i], fr), lerp(R.y[p], R.y[i], fr)]); part.push(fake--); }
-            }
-            break;
-          }
-          part.push(i);
+    const runs = planted ? rootRuns(M, G) : [];
+    this.rootMesh.visible = this.rootHull.visible = runs.length > 0;
+    if (runs.length) {
+      const zc = ISLAND.ZC + 0.003, dMax = M.rootsys.dMax;
+      // birth close-up: thin, tapering radicle (no adult minimum width)
+      const rMin = lerp(0.0035, 0.0003, G.radicle);
+      const pts: [number, number, number][] = [], rad: number[] = [], glow: number[] = [], chains: number[][] = [];
+      for (const run of runs) {
+        const ch: number[] = [];
+        // the seedling's underground stem reaches the surface right under the sprout (the trunk stands a little
+        // behind the cut): bend its top to the stem base so the shoot and the seed read as one plant
+        if (G.radicle > 0.05 && run[0].d === 0) {
+          const r0 = Math.max(rMin, run[0].r);
+          ch.push(pts.length); pts.push([0, r0 * 0.6, lerp(zc, ISLAND.ZT, G.radicle)]); rad.push(r0); glow.push(0);
         }
-        if (part.length >= 2) rchains.push(part);
+        for (const q of run) {
+          const r = Math.max(rMin, q.r);
+          ch.push(pts.length); pts.push([q.x, q.y, zc - r * 0.2]); rad.push(r); glow.push(q.d / dMax);
+        }
+        chains.push(ch);
       }
-    }
-    this.rootMesh.visible = this.rootHull.visible = rchains.length > 0;
-    if (rchains.length) {
-      const rw = G.rootW;
-      const zc = ISLAND.ZC + 0.003;
-      const pt = (i: number): [number, number] => (i < 0 ? extraPt.get(i)! : [R.x[i], R.y[i]]);
-      const rad = (i: number, k: number) => {
-        if (i < 0) return 0.004;
-        return Math.max(0.0035, R.w[i] * rw);
-      };
-      this.roots.build(rchains, (i) => { const p = pt(i); const r = i < 0 ? 0.004 : Math.max(0.0035, R.w[i] * rw); return [p[0], p[1], zc - r * 0.2]; }, rad,
-        (i) => [0, 0, 0, i < 0 ? 1 : R.d[i] / R.dMax], 0.6);
+      this.roots.build(chains, (i) => pts[i], (i) => rad[i], (i) => [0, 0, 0, glow[i]], lerp(0.6, 1, G.radicle));
       this.rootMesh.geometry = this.roots.geo; this.rootHull.geometry = this.roots.geo;
     }
     /* leaves + blossoms + seedling leaves */

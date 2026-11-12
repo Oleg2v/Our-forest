@@ -1,7 +1,7 @@
 /* ==========================================================================
    Home section 7 — the wall of people. Markup: partials/home/wall.html
    ONE motion idea: two quiet rivers of names — the public dedications from the forest map
-   (src/data/trees.json) drift in opposite directions (RTL: the big row travels right → left).
+   (SPOTS of src/components/forest-map/data: status 'planted' && public) drift in opposite directions (RTL: the big row travels right → left).
    · speed follows the scroll a little (a gust when you scroll fast), then settles
    · hover (desktop) / touch (phones) eases both rows to a stop so a dedication can be read
    · a visible pause button (WCAG 2.2.2), state in aria-pressed
@@ -12,15 +12,11 @@ import './wall.css';
 import { gsap, ScrollTrigger } from '../../core/gsap';
 import { env } from '../../core/env';
 import { bus } from '../../core/bus';
-import { he } from '../../content/he';
-import treesData from '../../data/trees.json';
-
-interface Spot { id: string; kind?: string; status?: string; species?: string; dedication?: string; plantedBy?: string; date?: string; public?: boolean }
+import { he, NBSP } from '../../content/he';
+import { SPOTS, KIND_LABEL, speciesTitle } from '../../components/forest-map/data';
 interface Item { id: string; ded: string; by: string }
 
 const heGet = (path: string): unknown => path.split('.').reduce<any>((o, k) => (o == null ? o : o[k]), he);
-const SPECIES: Record<string, string> = Object.fromEntries(he.plant.species.map((s) => [s.id, s.name]));
-const KIND: Record<string, string> = { bench: 'ספסל', table: 'שולחן', fire: 'פינת מדורה', corner: 'פינה' };
 /** demo data uses this as a stand-in for a company's name — never show it as a signature */
 const PLACEHOLDER_BY = 'שם החברה';
 
@@ -30,13 +26,16 @@ const hash = (s: string) => { let h = 2166136261; for (let i = 0; i < s.length; 
 function dedications(): { a: Item[]; b: Item[] } {
   const seen = new Set<string>();
   const list: Item[] = [];
-  for (const s of treesData as Spot[]) {
+  for (const s of SPOTS) {
     if (s.status !== 'planted' || s.public !== true) continue;
     const ded = s.dedication?.trim();
     if (!ded || seen.has(ded)) continue;
     seen.add(ded);
-    const what = s.kind && s.kind !== 'tree' ? KIND[s.kind] : (s.species ? SPECIES[s.species] : '');
-    const who = s.plantedBy && s.plantedBy !== PLACEHOLDER_BY ? s.plantedBy : '';
+    // the same names the map's cards use. Always "עץ רימון", never a bare "רימון" / "שקד": right after a
+    // dedication a bare species reads as part of it ("…של בית הספר רימון", "…באהבה שקד" — שקד is also a name)
+    const what = s.kind && s.kind !== 'tree' ? KIND_LABEL[s.kind] : speciesTitle(s.species);
+    let who = s.plantedBy && s.plantedBy !== PLACEHOLDER_BY ? s.plantedBy.trim() : '';
+    if (who && ded.includes(who)) who = ''; // already signed inside the dedication ("…, מהחבר׳ה מהמושב")
     list.push({ id: s.id, ded, by: [who, what].filter(Boolean).join(' · ') });
   }
   list.sort((x, y) => hash(x.id) - hash(y.id));
@@ -65,10 +64,14 @@ function listEl(items: Item[], hidden: boolean): HTMLUListElement {
     d.textContent = it.ded;
     li.append(d);
     if (it.by) {
+      // screen readers: a pause between the dedication and its signature (the gap is visual only)
+      const sep = document.createElement('span');
+      sep.className = 'visually-hidden';
+      sep.textContent = ', ';
       const b = document.createElement('span');
       b.className = 'wall__by';
       b.textContent = it.by;
-      li.append(document.createTextNode(' '), b);
+      li.append(sep, b);
     }
     ul.append(li);
   }
@@ -101,6 +104,8 @@ class Row {
   step(dt: number, target: number) {
     // critically-damped-ish approach to the target speed → stops and starts feel eased, never abrupt
     this.v += (target * this.base - this.v) * (1 - Math.exp(-dt * 3.4));
+    // settled at a stop: really stop (no endless sub-pixel repaints while someone reads)
+    if (target === 0 && Math.abs(this.v) < 0.25) { if (this.v !== 0) { this.v = 0; } return; }
     this.x += this.dir * this.v * dt;
     if (this.x <= -this.span) this.x += this.span;
     else if (this.x > 0) this.x -= this.span;
@@ -113,7 +118,9 @@ export function initWall(): void {
   const root = document.getElementById('wall');
   if (!root) return;
   root.querySelectorAll<HTMLElement>('[data-he]').forEach((el) => {
-    const v = heGet(el.dataset.he!);
+    let v = heGet(el.dataset.he!);
+    // typography only: a dash never opens a line (glue it to the word before it)
+    if (typeof v === 'string') v = v.replace(/ ([–—]) /g, `${NBSP}$1 `);
     if (typeof v === 'string' && el.textContent !== v) el.textContent = v;
   });
 

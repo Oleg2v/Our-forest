@@ -5,7 +5,7 @@
    • FX canvas — rain, fireflies, glints of droplets on leaves, hamsin dust.
    Everything uses the same Projector as the 3D, so it sits exactly on the scene. */
 import type { Frame } from './types';
-import { ISLAND, PLAQUE } from './model';
+import { ISLAND, PLAQUE, sizeOf, growthOf } from './model';
 import { P, TINT, css, mixC, clamp, lerp, smooth, hash1, TAU, type V3 } from './util';
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -122,7 +122,8 @@ export class Overlay {
 
     /* moon + stars */
     this.moon.setAttribute('opacity', f1(clamp(night * 1.2 - 0.1) * (1 - look.rain * 0.8) * 10) / 10 + '');
-    const mx = w * (w < h ? 0.2 : 0.16), my = h * (w < h ? 0.12 : 0.17);
+    // phones: below the page's top-left pills ("יש חדש", "דמו"), beside the crown
+    const mx = w * (w < h ? 0.13 : 0.16), my = w < h ? Math.max(h * 0.2, 170) : h * 0.17;
     this.moon.setAttribute('transform', `translate(${f1(mx)} ${f1(my)}) scale(${w < h ? 0.85 : 1})`);
     this.stars.setAttribute('opacity', String(f1(clamp(night * 1.3 - 0.3) * (1 - look.rain) * 10) / 10));
     const sc = this.stars.children;
@@ -241,7 +242,7 @@ export class Overlay {
 
     /* ghost: dashed silhouette of the adult tree */
     if (a.ghost > 0.01) {
-      const key = `${f1(proj.cam.tx * 100)}|${f1(proj.cam.dist * 100)}|${f1(proj.xf.yaw * 1000)}|${f1(proj.xf.tilt * 1000)}|${w}|${h}|${f1(proj.cam.zoom * 100)}|${f1(proj.cam.ty * 100)}|${f1(proj.xf.bob)}`;
+      const key = `${f1(ghostScale(f) * 1000)}|${f1(proj.cam.tx * 100)}|${f1(proj.cam.dist * 100)}|${f1(proj.xf.yaw * 1000)}|${f1(proj.xf.tilt * 1000)}|${w}|${h}|${f1(proj.cam.zoom * 100)}|${f1(proj.cam.ty * 100)}|${f1(proj.xf.bob)}`;
       if (key !== this.ghostKey) { this.ghost.setAttribute('d', ghostPath(f, this.tmp)); this.ghostKey = key; }
       this.ghost.setAttribute('stroke', inkCss);
       this.ghost.setAttribute('opacity', String(f1(a.ghost * lerp(0.55, 0.7, night) * 100) / 100));
@@ -379,38 +380,50 @@ export class Overlay {
 /** dashed outline of the adult tree (for share images) */
 export function ghostPathFor(f: Frame): string { return ghostPath(f, [0, 0, 0]); }
 
-/** dashed outline of the adult tree: crown silhouette (radial hull of projected leaves) + trunk */
+/** the silhouette's size: the tree at `ghostAgeDays` (the timeline's future), or the adult */
+export function ghostScale(f: Frame): number {
+  const d = f.state.ghostAgeDays;
+  return d == null || !Number.isFinite(d) ? 1 : sizeOf(growthOf(d));
+}
+
+/** dashed silhouette of the tree to come, built from its own adult skeleton: a tapering trunk (each stem), the
+    main limbs, and the crown's envelope around them — a tree drawn in pencil, not a cloud. Anchored at the trunk base. */
 function ghostPath(f: Frame, tmp: V3): string {
   const M = f.model, proj = f.proj, L = M.leaves;
-  // adult tree projected at full size: temporarily treat scale = 1 (tree space positions are model units)
+  const gs = ghostScale(f);
+  const scr = (x: number, y: number, z: number): [number, number, number] => {
+    proj.tree(x * gs, y * gs, z * gs, tmp);
+    return [tmp[0], tmp[1], tmp[2]];
+  };
+  /* crown envelope: radial hull of the adult leaves, smoothed into a calm outline */
   const pts: [number, number][] = [];
   const step = Math.max(1, Math.floor(L.count / 500));
   for (let i = 0; i < L.count; i += step) {
     if (L.tHide[i] < 1.1) continue;
-    proj.treeToIsland(L.x[i], L.y[i], L.z[i], tmp);
-    // undo the breathe scale of the projector for the adult: treeToIsland already applies it
-    proj.islandToWorld(tmp[0], tmp[1], tmp[2], tmp);
-    proj.worldToScreen(tmp[0], tmp[1], tmp[2], tmp);
-    pts.push([tmp[0], tmp[1]]);
+    const q = scr(L.x[i], L.y[i], L.z[i]);
+    pts.push([q[0], q[1]]);
   }
   if (pts.length < 8) return '';
   let cx = 0, cy = 0;
   for (const p of pts) { cx += p[0]; cy += p[1]; }
   cx /= pts.length; cy /= pts.length;
-  const N = 48;
+  const N = 40;
   const rad = new Float32Array(N);
   for (const p of pts) {
     const an = Math.atan2(p[1] - cy, p[0] - cx);
     const k = Math.round(((an + Math.PI) / TAU) * N) % N;
     rad[k] = Math.max(rad[k], Math.hypot(p[0] - cx, p[1] - cy));
   }
-  // fill gaps + smooth
-  for (let pass = 0; pass < 3; pass++) for (let k = 0; k < N; k++) {
-    const a = rad[(k + N - 1) % N], b = rad[(k + 1) % N];
-    rad[k] = Math.max(rad[k] * 0.6 + (a + b) * 0.2, rad[k] * 0.92);
+  let mean = 0;
+  for (let k = 0; k < N; k++) mean += rad[k];
+  mean /= N;
+  for (let k = 0; k < N; k++) rad[k] = Math.max(rad[k], mean * 0.55);
+  for (let pass = 0; pass < 6; pass++) {
+    const prev = Float32Array.from(rad);
+    for (let k = 0; k < N; k++) rad[k] = Math.max(prev[k] * 0.5 + (prev[(k + N - 1) % N] + prev[(k + 1) % N]) * 0.25, prev[k] * 0.9);
   }
   const ppu = proj.pxPerUnit(proj.cam.dist);
-  const padPx = M.species.leaf.len * ppu * 0.6;
+  const padPx = M.species.leaf.len * ppu * 0.5 * Math.pow(gs, 0.45);
   const ring: [number, number][] = [];
   for (let k = 0; k < N; k++) {
     const an = (k / N) * TAU - Math.PI;
@@ -424,17 +437,39 @@ function ghostPath(f: Frame, tmp: V3): string {
     d += ` C${f1(p1[0] + (p2[0] - p0[0]) / 6)} ${f1(p1[1] + (p2[1] - p0[1]) / 6)} ${f1(p2[0] - (p3[0] - p1[0]) / 6)} ${f1(p2[1] - (p3[1] - p1[1]) / 6)} ${f1(p2[0])} ${f1(p2[1])}`;
   }
   d += 'Z';
-  // trunk: two dashed lines from the ground to the crown bottom
-  const tc = M.chains[0];
-  if (tc && tc.length > 2) {
-    const top = tc[Math.min(tc.length - 1, Math.floor(tc.length * 0.55))];
-    const rr = 0.07 * M.species.trunk.thick;
-    for (const side of [-1, 1]) {
-      proj.tree(M.px[tc[0]] + side * rr * 1.2, 0, M.pz[tc[0]], tmp);
-      const x0 = tmp[0], y0 = tmp[1];
-      proj.tree(M.px[top] + side * rr * 0.7, M.py[top], M.pz[top], tmp);
-      d += ` M${f1(x0)} ${f1(y0)} L${f1(tmp[0])} ${f1(tmp[1])}`;
+  const open = (q: [number, number][]) => {
+    if (q.length < 2) return '';
+    let o = `M${f1(q[0][0])} ${f1(q[0][1])}`;
+    for (let k = 0; k < q.length - 1; k++) {
+      const p0 = q[Math.max(0, k - 1)], p1 = q[k], p2 = q[k + 1], p3 = q[Math.min(q.length - 1, k + 2)];
+      o += ` C${f1(p1[0] + (p2[0] - p0[0]) / 6)} ${f1(p1[1] + (p2[1] - p0[1]) / 6)} ${f1(p2[0] - (p3[0] - p1[0]) / 6)} ${f1(p2[1] - (p3[1] - p1[1]) / 6)} ${f1(p2[0])} ${f1(p2[1])}`;
     }
+    return o;
+  };
+  /* stems: a tapering trunk outline (two edges), from the ground into the crown */
+  const r0 = 0.05 * M.species.trunk.thick * Math.pow(gs, 0.35);
+  M.chains.forEach((ch, ci) => {
+    if (M.chainOrder[ci] !== 0 || ch.length < 3) return;
+    const end = Math.max(2, Math.floor(ch.length * 0.6));
+    const line = ch.slice(0, end + 1).map((i) => scr(M.px[i], M.py[i], M.pz[i]));
+    for (const side of [-1, 1]) {
+      const edge: [number, number][] = line.map((p, k) => {
+        const a = line[Math.max(0, k - 1)], b = line[Math.min(line.length - 1, k + 1)];
+        let nx = -(b[1] - a[1]), ny = b[0] - a[0];
+        const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
+        const rpx = r0 * lerp(1, 0.4, k / (line.length - 1)) * proj.pxPerUnit(p[2]);
+        return [p[0] + nx * rpx * side, p[1] + ny * rpx * side];
+      });
+      d += ' ' + open(edge);
+    }
+  });
+  /* main limbs: the longest first-order branches, as single pencil lines reaching into the crown */
+  const limbs = M.chains.map((ch, ci) => ({ ch, ci })).filter((c) => M.chainOrder[c.ci] === 1 && c.ch.length >= 4)
+    .sort((a, b) => b.ch.length - a.ch.length).slice(0, 6);
+  for (const { ch } of limbs) {
+    const par = M.parent[ch[0]];
+    const ids = (par >= 0 ? [par] : []).concat(ch.slice(0, Math.max(2, Math.floor(ch.length * 0.7))));
+    d += ' ' + open(ids.map((i) => { const q = scr(M.px[i], M.py[i], M.pz[i]); return [q[0], q[1]] as [number, number]; }));
   }
   return d;
 }

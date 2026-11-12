@@ -21,7 +21,7 @@ import { createPlaqueEngraver, renderPlaque, type PlaqueEngraver } from '../../c
 import { Projector, composition, fit, type CamParams } from './camera';
 import { computeLook, approachLook, cloneLook, type Look } from './look';
 import {
-  generateModel, grow, growthOf, rootRevealOf, seasonLook, ISLAND, PLAQUE, TOKEN, autumnTint, leafGreen,
+  generateModel, grow, growthOf, rootRevealOf, seasonLook, sizeOf, ISLAND, PLAQUE, TOKEN, autumnTint, leafGreen,
   type TreeModel, type GrowResult, type SeasonLook,
 } from './model';
 import { speciesDef } from './species';
@@ -68,7 +68,7 @@ class TreeSceneImpl {
   private a: Anim = {
     breathe: 1, fog: 0, appear: 1, plaqueRise: 1, plaqueGlow: 0, seed: 0, seedPulse: 0, crack: 0,
     spot: 0, seep: 0, wet: 0, rootGlow: 0, rootGlowA: 0, lift: 0, glisten: 0, ghost: 0, sibling: 0, news: 0, prune: 0,
-    wind: 0.2, shake: 0, fruitSwing: -1, fruitSwingA: 0, greetPulse: -1, greetPulseA: 0, birthClose: 0, closeY: -0.12,
+    wind: 0.2, shake: 0, fruitSwing: -1, fruitSwingA: 0, greetPulse: -1, greetPulseA: 0, birthClose: 0, closeY: -0.12, closeD: 1,
   };
   private renderer: Renderer | null = null;
   private svgR: SvgRenderer | null = null;
@@ -87,8 +87,8 @@ class TreeSceneImpl {
   // growth
   private gDisp = 0.3;
   private rootDisp = 0.5;
-  private birth: { active: boolean; g: number; root: number; cot: number; tl: gsap.core.Timeline | null; resolve: (() => void) | null; onPhase?: (p: BirthPhase) => void; last?: BirthPhase } =
-    { active: false, g: 0, root: 0, cot: 0, tl: null, resolve: null };
+  private birth: { active: boolean; g: number; root: number; cot: number; hyp: number; tl: gsap.core.Timeline | null; resolve: (() => void) | null; onPhase?: (p: BirthPhase) => void; last?: BirthPhase } =
+    { active: false, g: 0, root: 0, cot: 0, hyp: 1, tl: null, resolve: null };
   // camera
   private camFit: CamLite | null = null;
   private focusState: { from: CamLite; kind: Focus; k: number; tw: gsap.core.Tween | null } = { from: { tx: 0, ty: 0, tz: 0, dist: 5 }, kind: 'reset', k: 1, tw: null };
@@ -201,8 +201,8 @@ class TreeSceneImpl {
    *  compileAsync where KHR_parallel_shader_compile exists, and the swap mid-sequence is seamless.) */
   private preBirthPose() {
     const B = this.birth;
-    B.active = true; B.tl = null; B.resolve = null; B.g = 0; B.root = 0; B.cot = 0;
-    if (this.motion) Object.assign(this.a, { birthClose: 1, closeY: ISLAND.SEED_Y + 0.03, seed: 1, seedPulse: 0, crack: 0, plaqueRise: 0, appear: 0, fog: 0 });
+    B.active = true; B.tl = null; B.resolve = null; B.g = 0; B.root = 0; B.cot = 0; B.hyp = 0;
+    if (this.motion) Object.assign(this.a, { birthClose: 1, closeY: ISLAND.SEED_Y + 0.03, closeD: 1, seed: 1, seedPulse: 0, crack: 0, plaqueRise: 0, appear: 0, fog: 0 });
     else { B.g = growthOf(this.state.ageDays); B.root = rootRevealOf(B.g); this.a.appear = 0; }
   }
 
@@ -405,9 +405,12 @@ class TreeSceneImpl {
     }
     const q = (v: number, n = 400) => Math.round(v * n);
     const cot = this.birth.active ? this.birth.cot : 0;
-    const key = `${q(this.gDisp, 5000)}|${q(this.a.birthClose, 50)}|${s.planted}|${q(this.season.density)}|${q(this.season.autumn)}|${q(this.season.bloom)}|${q(this.season.fruit)}|${s.harvestReady}|${q(cot, 200)}|${q(this.rootDisp, 1000)}`;
+    // birth close-up: the roots are the seed's own radicle + its underground stem, the adult system takes over in the pull-back
+    const radicle = this.birth.active ? smooth(0.3, 0.85, this.a.birthClose) : 0;
+    const hyp = this.birth.active ? this.birth.hyp : 1;
+    const key = `${q(this.gDisp, 5000)}|${q(this.a.birthClose, 50)}|${s.planted}|${q(this.season.density)}|${q(this.season.autumn)}|${q(this.season.bloom)}|${q(this.season.fruit)}|${s.harvestReady}|${q(cot, 200)}|${q(this.rootDisp, 1000)}|${q(radicle, 100)}|${q(hyp, 200)}`;
     if (key !== this.growKey) {
-      this.growRes = grow(this.model, { g: this.gDisp, planted: s.planted, look: this.season, ripe: s.harvestReady, cotyledon: cot, rootReveal: this.rootDisp, rootScale: lerp(1, 0.3, this.a.birthClose) }, this.growRes);
+      this.growRes = grow(this.model, { g: this.gDisp, planted: s.planted, look: this.season, ripe: s.harvestReady, cotyledon: cot, rootReveal: this.rootDisp, rootScale: lerp(1, 0.3, this.a.birthClose), radicle, hypocotyl: hyp }, this.growRes);
       this.growKey = key;
     }
     const G = this.growRes;
@@ -441,6 +444,11 @@ class TreeSceneImpl {
     }
     for (let i = 0; i < 2; i++) this.tilt[i] = dt ? damp(this.tilt[i], this.motion ? this.tiltT[i] : 0, 3, dt) : 0;
     this.zoom = dt ? damp(this.zoom, this.zoomTarget, 8, dt) : this.zoomTarget;
+    // tell the page while the crown is pinched in (it clears the panel off the enlarged scene)
+    const zoomed = this.zoomTarget > 1.04 || this.zoom > 1.04;
+    if (this.container && ('zoomed' in this.container.dataset) !== zoomed) {
+      if (zoomed) this.container.dataset.zoomed = ''; else delete this.container.dataset.zoomed;
+    }
 
     // camera
     const w = this.w, h = this.h;
@@ -453,8 +461,10 @@ class TreeSceneImpl {
       this.camFit.tx += (fitT.tx - this.camFit.tx) * kc; this.camFit.ty += (fitT.ty - this.camFit.ty) * kc;
       this.camFit.tz += (fitT.tz - this.camFit.tz) * kc; this.camFit.dist += (fitT.dist - this.camFit.dist) * kc;
     }
-    const close: CamLite = { tx: 0, ty: this.a.closeY, tz: ISLAND.ZC, dist: comp.portrait ? 0.86 : 0.78 };
+    const close: CamLite = { tx: 0, ty: this.a.closeY, tz: ISLAND.ZC, dist: (comp.portrait ? 0.86 : 0.78) * this.a.closeD };
     const bc = this.a.birthClose;
+    // phones: the close-up has no island to leave room for → centre it (the island's own spot is the top 60 %)
+    if (comp.portrait && bc > 0) comp.cy = lerp(comp.cy, h * 0.52, bc);
     // the pull-back interpolates distance in log space (feels like a dolly, not a zoom)
     const base: CamLite = {
       tx: lerp(this.camFit.tx, close.tx, bc), ty: lerp(this.camFit.ty, close.ty, bc), tz: lerp(this.camFit.tz, close.tz, bc),
@@ -502,9 +512,14 @@ class TreeSceneImpl {
       min[0] = Math.min(min[0], G.bbox.min[0]); max[0] = Math.max(max[0], G.bbox.max[0]);
       max[1] = Math.max(max[1], G.top + 0.08);
     }
+    // an empty island (before planting) or a sapling is framed with room to grow — the island keeps the size it has
+    // under a young tree instead of being blown up to fill the stage (and run into the text beside and under it)
+    max[1] = Math.max(max[1], this.model.height * 0.52 + 0.08);
     if (this.state.futureGhost) {
       const M = this.model;
-      const r = M.crownR, c = M.crownC;
+      const d = this.state.ghostAgeDays;
+      const gs = d == null || !Number.isFinite(d) ? 1 : sizeOf(growthOf(d));
+      const r = M.crownR.map((v) => v * gs), c = M.crownC.map((v) => v * gs);
       min[0] = Math.min(min[0], c[0] - r[0] * 1.05); max[0] = Math.max(max[0], c[0] + r[0] * 1.05);
       max[1] = Math.max(max[1], c[1] + r[1] + 0.12);
     }
@@ -514,8 +529,11 @@ class TreeSceneImpl {
   private focusCam(kind: Focus, base: CamLite, comp: ReturnType<typeof composition>): CamLite {
     const F0 = (this.h / 2) / Math.tan(FOV / 2);
     if (kind === 'plaque') {
-      const frac = comp.portrait ? 0.8 : 0.4;
-      return { tx: PLAQUE.x, ty: PLAQUE.y + 0.01, tz: PLAQUE.z, dist: (PLAQUE.w * F0) / (frac * this.w) + 0.02 };
+      const frac = comp.portrait ? 0.8 : 0.34;
+      const dist = (PLAQUE.w * F0) / (frac * this.w) + 0.02;
+      // landscape: the plaque steps to the left third, its card sits beside it on the reading side (not over it)
+      const shift = comp.portrait ? 0 : ((comp.cx - this.w * 0.33) * dist) / F0;
+      return { tx: PLAQUE.x + shift, ty: PLAQUE.y + 0.01, tz: PLAQUE.z, dist };
     }
     const G = this.growRes;
     const r = Math.max(0.25, G.crownR * 1.25);
@@ -640,8 +658,8 @@ class TreeSceneImpl {
         B.tl = tl;
         return;
       }
-      B.g = 0; B.root = 0; B.cot = 0;
-      Object.assign(a, { birthClose: 1, closeY: ISLAND.SEED_Y + 0.03, seed: 1, seedPulse: 0, crack: 0, plaqueRise: 0, appear: 1, fog: 0 });
+      B.g = 0; B.root = 0; B.cot = 0; B.hyp = 0;
+      Object.assign(a, { birthClose: 1, closeY: ISLAND.SEED_Y + 0.03, closeD: 1, seed: 1, seedPulse: 0, crack: 0, plaqueRise: 0, appear: 1, fog: 0 });
       // the engraving is almost finished; its last letters burn during the reveal
       this.engraver?.setMotion(true);
       try {
@@ -664,24 +682,31 @@ class TreeSceneImpl {
         tl.to(a, { crack: i + 1, duration: 0.12, ease: 'power4.out' }, t0);
         tl.call(() => sound.play('crack', { volume: 0.55 + i * 0.1 }), [], t0);
       });
-      // 2.4–4.0: root down & branching, sprout up, the first two leaves spring open
+      // 2.4–4.0: the radicle leaves the seed downward and branches; the pale stem climbs from the seed to the
+      // surface, the sprout breaks through, and the first two leaves spring open. The camera steps back a little
+      // so the whole seedling (leaves, seed, radicle) is in the frame.
       tl.call(() => phase('sprout'), [], 2.4);
-      tl.to(B, { root: 0.4, duration: 1.6, ease: 'power2.out' }, 2.4);
-      tl.to(B, { g: 0.013, duration: 1.2, ease: 'power2.out' }, 2.5);
-      tl.to(a, { closeY: -0.01, duration: 1.4, ease: 'power2.inOut' }, 2.5);
-      tl.to(a, { seed: 0.55, duration: 0.8, ease: 'power1.out' }, 2.6);
-      tl.to(B, { cot: 1, duration: 0.75, ease: 'elastic.out(1, 0.5)' }, 3.25);
-      tl.call(() => sound.play('pop', { volume: 0.35 }), [], 3.3);
-      // 4.0–6.0: camera pulls back, the island, the plaque rises, the engraving finishes on its last letter
+      const radicleLen = 0.14 / Math.max(0.1, this.model.rootsys.mMax);
+      tl.to(B, { root: radicleLen, duration: 1.6, ease: 'power1.out' }, 2.4);
+      tl.to(B, { hyp: 1, duration: 0.6, ease: 'power1.inOut' }, 2.55);
+      tl.to(B, { g: 0.013, duration: 0.85, ease: 'power2.out' }, 3.1);
+      tl.to(a, { closeY: -0.03, duration: 1.5, ease: 'power2.inOut' }, 2.45);
+      tl.to(a, { closeD: 1.3, duration: 1.5, ease: 'power2.inOut' }, 2.45);
+      tl.to(B, { cot: 1, duration: 0.75, ease: 'elastic.out(1, 0.5)' }, 3.45);
+      tl.call(() => sound.play('pop', { volume: 0.35 }), [], 3.5);
+      // 4.0–6.0: camera pulls back, the island, the plaque rises, the engraving finishes on its last letter.
+      // The tree grows only once the camera has stepped back (no trunk in the close-up).
       tl.call(() => phase('reveal'), [], 4.0);
-      tl.to(a, { birthClose: 0, duration: 2.0, ease: 'power3.inOut' }, 4.0);
-      tl.to(a, { seed: 0, duration: 0.6, ease: 'power1.in' }, 4.0);
-      tl.to(B, { g: Math.max(0.02, gEnd), duration: 2.0, ease: 'power2.inOut' }, 4.0);
-      tl.to(B, { root: rootEnd, duration: 2.0, ease: 'power2.inOut' }, 4.0);
-      tl.to(B, { cot: gEnd > 0.1 ? 0 : 1, duration: 1.2, ease: 'power1.inOut' }, 4.6);
-      tl.to(a, { plaqueRise: 1, duration: 1.1, ease: 'expo.out' }, 4.25);
-      // burnAll runs at total/duration chars per second: 30 % of the letters in 1.2 s → duration 4
-      tl.call(() => { void this.engraver?.burnAll({ from: 0.7, duration: 4.0 * slow }); }, [], 4.75);
+      tl.to(a, { birthClose: 0, duration: 2.0, ease: 'power2.inOut' }, 4.0);
+      tl.to(a, { seed: 0, duration: 0.6, ease: 'power1.in' }, 4.55);
+      tl.to(B, { g: Math.max(0.02, gEnd), duration: 1.7, ease: 'power2.inOut' }, 4.3);
+      tl.to(B, { root: rootEnd, duration: 1.8, ease: 'power2.inOut' }, 4.2);
+      tl.to(B, { cot: gEnd > 0.1 ? 0 : 1, duration: 1.2, ease: 'power1.inOut' }, 4.7);
+      // the plaque rises once the camera has stepped back far enough to show it whole (not a giant plank across the header)
+      tl.to(a, { plaqueRise: 1, duration: 1.05, ease: 'expo.out' }, 4.95);
+      // burnAll runs at total/duration chars per second: the last 30 % of the letters in ≈ 1 s → duration 3.4,
+      // starting as the plaque clears the soil and ending on the last letter at 6.0
+      tl.call(() => { void this.engraver?.burnAll({ from: 0.7, duration: 3.4 * slow }); }, [], 5.0);
       tl.call(() => phase('done'), [], 6.0);
       B.tl = tl;
     });
@@ -693,8 +718,8 @@ class TreeSceneImpl {
     const gEnd = growthOf(this.state.ageDays);
     B.active = false;
     B.tl = null;
-    this.gDisp = Math.max(0.02, gEnd); this.rootDisp = rootRevealOf(gEnd);
-    Object.assign(this.a, { birthClose: 0, seed: 0, crack: 0, plaqueRise: 1, appear: 1 });
+    this.gDisp = Math.max(0.02, gEnd); this.rootDisp = rootRevealOf(gEnd); B.hyp = 1;
+    Object.assign(this.a, { birthClose: 0, closeD: 1, seed: 0, crack: 0, plaqueRise: 1, appear: 1 });
     this.growKey = '';
     if (B.last !== 'done') { B.last = 'done'; try { B.onPhase?.('done'); } catch { /* ignore */ } }
     const r = B.resolve; B.resolve = null; B.onPhase = undefined;

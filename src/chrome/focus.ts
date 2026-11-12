@@ -86,22 +86,39 @@ function shapeFor(t: Element, w: number, h: number, pad: number): string {
   return `${r}px 2px ${r}px 2px`; // a small leaf
 }
 
+/* what the ring goes around: a visually-hidden control (chip radios, custom checkboxes, /plant options)
+   is a 1px box — the ring wraps its label / chip instead */
+function visualOf(t: Element): Element {
+  const r = t.getBoundingClientRect();
+  if (r.width >= 4 && r.height >= 4 && !t.matches('.visually-hidden, .sr-only')) return t;
+  const input = t as HTMLInputElement;
+  const lab = input.labels?.[0] ?? t.closest('label') ?? (t.id ? document.querySelector(`label[for="${CSS.escape(t.id)}"]`) : null);
+  if (lab) { const lr = lab.getBoundingClientRect(); if (lr.width >= 4 && lr.height >= 4) return lab; }
+  let p = t.parentElement;
+  for (let i = 0; p && i < 3; i++, p = p.parentElement) {
+    const pr = p.getBoundingClientRect();
+    if (pr.width >= 4 && pr.height >= 4) return p;
+  }
+  return t;
+}
+
 function place(animate: boolean, quiet = false) {
   if (!ring || !target) return;
-  const r = target.getBoundingClientRect();
+  const v = visualOf(target);
+  const r = v.getBoundingClientRect();
   if (!r.width && !r.height) { if (!quiet) hide(); return; }
-  const pad = target.matches('input, textarea, select') ? 3 : 5;
+  const pad = v.matches('input, textarea, select') ? 3 : 5;
   const x = r.left - pad, y = r.top - pad, w = r.width + pad * 2, h = r.height + pad * 2;
   const key = `${x | 0},${y | 0},${w | 0},${h | 0}`;
   if (quiet && key === last) return;
   last = key;
-  const radius = quiet ? (ring.style.borderRadius || shapeFor(target, w, h, pad)) : shapeFor(target, w, h, pad);
+  const radius = quiet ? (ring.style.borderRadius || shapeFor(v, w, h, pad)) : shapeFor(v, w, h, pad);
   if (!quiet) {
     // probe just outside the ring (above, below, both sides) — majority wins
     const W = window.innerWidth, H = window.innerHeight;
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     const pts: [number, number][] = [[cx, r.top - pad - 2], [cx, r.bottom + pad + 2], [r.left - pad - 2, cy], [r.right + pad + 2, cy]];
-    const skipRing = (n: Element) => !!n.closest('.focus-ring, .cursor') || n === target || target!.contains(n);
+    const skipRing = (n: Element) => !!n.closest('.focus-ring, .cursor') || n === v || v.contains(n);
     let dark = 0, n = 0;
     for (const [px, py] of pts) {
       if (px < 1 || py < 1 || px > W - 1 || py > H - 1) continue;

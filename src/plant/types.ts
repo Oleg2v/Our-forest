@@ -14,7 +14,8 @@ export interface Ctx {
   pricing(s?: PlantState): Pricing;
   steps(): StepId[];
   go(step: StepId, opts?: { focus?: boolean }): void;
-  next(): void;
+  /** the next step; focus: true moves keyboard focus to its title (Enter in a field, the rail) */
+  next(opts?: { focus?: boolean }): void;
   prev(): void;
   announce(msg: string): void;
   engraver(): PlaqueEngraver;
@@ -22,6 +23,8 @@ export interface Ctx {
   placePlaque(): void;
   /** run the mock payment and show the certificate */
   purchase(details: BuyerDetails): Promise<void>;
+  /** a ?spot= from the link that is not free / not on the map ('' when none) — the location step says so */
+  lostSpot: string;
   /** main product label ("עץ זית", "ספסל", …) */
   mainLabel(s?: PlantState): string;
 }

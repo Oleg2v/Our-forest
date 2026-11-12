@@ -80,6 +80,12 @@ html.js .mapsec__mount:not(.fmap) { min-height: calc(var(--fm-h) + 62px); }
   .mapsec__more { grid-area: more; align-self: end; padding-block-end: 4px; }
 }
 
+/* a phone turned sideways: the map is one screen high (it goes full screen on the first tap) */
+@media (max-height: 599px) and (pointer: coarse) and (min-width: 769px) {
+  .mapsec__mount { --fm-h: calc(100svh - 24px); }
+  html.js .mapsec__mount:not(.fmap) { min-height: calc(var(--fm-h) + 62px); }
+}
+
 /* dev-only picker test box (?mappicker=1) */
 .mapsec__dev { margin-block: 48px 0; display: grid; gap: 12px; }
 .mapsec__dev-t { font-size: 13px; color: var(--ink-soft); }

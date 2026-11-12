@@ -121,7 +121,8 @@ export class Panel {
     this.vineLeaves = this.root.querySelector<SVGGElement>('.wp__vine-leaves')!;
     this.cap = this.root.querySelector<HTMLElement>('[data-cap]')!;
     this.next = this.root.querySelector<HTMLElement>('[data-next]')!;
-    this.root.querySelector('[data-invite]')!.addEventListener('click', () => ctx.openGreet());
+    // the owner invites (a ready WhatsApp text); the friends' payment form lives behind the link (?greet=1)
+    this.root.querySelector('[data-invite]')!.addEventListener('click', () => ctx.openInvite());
     this.root.querySelector('[data-share]')!.addEventListener('click', () => ctx.openShare());
     this.root.querySelector('[data-alt]')!.addEventListener('click', () => this.start(true));
     this.updateGoal(false);
@@ -289,9 +290,11 @@ export class Panel {
     ctx.refresh();
     if (offline) this.dock.toast('ההשקיה נשמרה ותישלח כשהחיבור יחזור', 'wifiOff');
     // a calm card in a moment of joy: after the first watering → "שומרי העץ"
+    // (phones: only after the payoff has been seen — the drop asleep, "נתראה מחר", the counter, the new leaf)
     if (!ctx.store.data.guardiansSeen) {
       ctx.store.data.guardiansSeen = true; ctx.store.save();
-      setTimeout(() => this.dock.guardians(), motion ? 900 : 200);
+      const wait = ctx.mobile() ? (motion ? 4200 : 2600) : motion ? 900 : 200;
+      setTimeout(() => { if (!this.ctx.stage.dataset.card && !document.querySelector('.tsheet')) this.dock.guardians(); }, wait);
     }
   }
 

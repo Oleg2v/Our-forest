@@ -84,7 +84,7 @@ export class Timeline {
           <span class="ttl__lab ttl__lab--end">${he.tree.timeline.future}</span>
         </div>
       </div>
-      <div class="ttl-info" id="ttl-info" data-info aria-live="polite"></div>`;
+      <div class="ttl-info" id="ttl-info" data-info></div>`;
     this.input = this.root.querySelector<HTMLInputElement>('.ttl__input')!;
     this.info = this.root.querySelector<HTMLElement>('[data-info]')!;
     this.root.querySelector('[data-replay]')!.addEventListener('click', () => { this.reset(true); this.onReplayBirth(); });
@@ -123,14 +123,23 @@ export class Timeline {
     const future = days > this.total + 1;
     const dateKey = addDays(ctx.tree.plantedAt, Math.round(days));
     if (atToday) {
-      delete ctx.override.ageDays; delete ctx.override.season; delete ctx.override.futureGhost;
+      delete ctx.override.ageDays; delete ctx.override.season; delete ctx.override.futureGhost; delete ctx.override.ghostAgeDays;
       delete ctx.stage.dataset.time;
+    } else if (future) {
+      // the future hasn't happened: the tree stays as it is today, and the dashed silhouette of what it
+      // will be grows over it as the slider goes on (7.8: the dashed silhouette of the grown tree)
+      ctx.override.ageDays = this.total;
+      ctx.override.futureGhost = true;
+      ctx.override.ghostAgeDays = days;
+      delete ctx.override.season;
+      ctx.stage.dataset.time = 'future';
     } else {
       ctx.override.ageDays = days;
-      ctx.override.futureGhost = future;
+      ctx.override.futureGhost = false;
+      delete ctx.override.ghostAgeDays;
       ctx.override.season = ctx.demo.season ? undefined : seasonOf(monthOf(dateKey));
       if (!ctx.override.season) delete ctx.override.season;
-      ctx.stage.dataset.time = future ? 'future' : 'past';
+      ctx.stage.dataset.time = 'past';
     }
     ctx.refresh();
     this.paint();
@@ -155,10 +164,16 @@ export class Timeline {
     }
     if (future) {
       const years = Math.max(1, Math.round((days - this.total) / 365));
-      html = `<p class="ttl-info__eyebrow">${years >= 5 ? he.tree.timeline.future : `בעוד ${years === 1 ? 'שנה' : years === 2 ? 'שנתיים' : `${years} שנים`}`}</p>
-        <p class="ttl-info__title">${he.tree.timeline.futureCaption}</p>
-        <a class="ttl-info__link" href="/plant?species=${ctx.tree.species}&x=guardians">${he.tree.timeline.futureLink}${icon('arrow', 'icon arrow-fwd')}</a>`;
-      this.input.setAttribute('aria-valuetext', `${he.tree.timeline.futureCaption}`);
+      // the caption follows the slider: "ככה הוא ייראה בעוד שנה" … the brief's "ככה הוא ייראה בעוד 5 שנים" at the end
+      const when = years >= 5 ? he.tree.timeline.future : `בעוד ${years === 1 ? 'שנה' : years === 2 ? 'שנתיים' : `${years} שנים`}`;
+      const caption = years >= 5 ? he.tree.timeline.futureCaption : `ככה הוא ייראה ${when}`;
+      // a tree in memory stays quiet (7.12): no subscription offer at the end of its timeline
+      const link = ctx.demo.mode === 'memorial' ? ''
+        : `<a class="ttl-info__link" href="/plant?species=${ctx.tree.species}&x=guardians">${he.tree.timeline.futureLink}${icon('arrow', 'icon arrow-fwd')}</a>`;
+      html = `<p class="ttl-info__eyebrow"><bdi>${ilDate(dateKey)}</bdi> · ${ageHe(days)}</p>
+        <p class="ttl-info__title">${caption}</p>
+        ${link}`;
+      this.input.setAttribute('aria-valuetext', `${ilDate(dateKey)}, ${caption}`);
     } else {
       // the nearest team event within ±12 days (photos pop up on their dates)
       const near = ctx.tree.events
@@ -173,8 +188,17 @@ export class Timeline {
       if (near?.imageKey) photo = { key: near.imageKey as ImageKey, label, date: near.date };
       this.input.setAttribute('aria-valuetext', `${ilDate(dateKey)}${near ? `, ${label}` : ''}`);
     }
-    if (this.info.dataset.sig !== html) {
-      this.info.dataset.sig = html;
+    // while dragging only the date line changes: update it in place; re-build (and animate) only when
+    // the title changes — otherwise the whole caption flickered on every step of the slider
+    const eyebrowRe = /<p class="ttl-info__eyebrow">[\s\S]*?<\/p>/;
+    const sig = html.replace(eyebrowRe, '');
+    const eyebrow = html.match(eyebrowRe)?.[0] ?? '';
+    const curEyebrow = this.info.querySelector('.ttl-info__eyebrow');
+    if (this.info.dataset.sig === sig && curEyebrow) {
+      const inner = eyebrow.replace(/^<p class="ttl-info__eyebrow">/, '').replace(/<\/p>$/, '');
+      if (curEyebrow.innerHTML !== inner) curEyebrow.innerHTML = inner;
+    } else {
+      this.info.dataset.sig = sig;
       this.info.innerHTML = html;
       this.info.querySelector('[data-back]')?.addEventListener('click', () => { this.reset(false); this.input.focus(); });
       if (future) {

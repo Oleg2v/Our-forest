@@ -18,13 +18,15 @@ import {
   STEPS, PRODUCT_TITLE, PRODUCT_TAB, stepTitle, stepShort, speciesName, extraTitle, BENCH_ITEMS, WORKSHOPS,
   type Product, type StepId,
 } from './catalog';
-import { createStore, fromUrl, pricing, type PlantState } from './store';
-import { radioGroup } from './a11y';
+import { createStore, fromUrl, pricing, urlSpot, toQuery, type PlantState } from './store';
+import { spotFits } from './spots';
+import { radioGroup, isoPrices } from './a11y';
 import { createOdometer } from './odometer';
 import { createStage } from './stage';
 import { speciesStep, itemStep, workshopStep, dateStep, seatsStep, occasionStep, locationStep, extrasStep } from './steps-choose';
 import { plaqueStep, giftStep, summaryStep, checkoutStep } from './steps-flow';
-import { createDoneView } from './certificate';
+import type { DoneView } from './certificate';
+import './print-certificate.css';
 import type { Ctx, StepView, BuyerDetails } from './types';
 import './plant.css';
 
@@ -42,6 +44,12 @@ const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 export function initPlant(root: HTMLElement) {
   const html = document.documentElement;
   html.setAttribute('data-hide-sticky', ''); // the chrome's global sticky bar hides on this page
+  // phones: the configurator is a full-screen sheet — the document itself does not scroll (plant.css html.pc-sheet),
+  // so a swipe on the stage or on the price bar never drags the sheet and its bar up the page
+  html.classList.add('pc-sheet');
+  // history entries of this page are numbered (store.ts pushes pi+1), so Back from the done view can leave in one go
+  const arrivedWithHistory = history.length > 1;
+  try { history.replaceState({ ...(history.state ?? {}), plant: true, pi: history.state?.pi ?? 0 }, ''); } catch { /* sandboxed */ }
   const store = createStore(fromUrl());
   let motion = env.motionAllowed();
   const mq = window.matchMedia('(max-width: 768px)');
@@ -111,12 +119,13 @@ export function initPlant(root: HTMLElement) {
     pricing: (s = store.get()) => pricing(s, { main: ctx.mainLabel(s), extra: extraTitle }),
     steps: () => STEPS[store.get().product],
     go: (step, o = {}) => go(step, o),
-    next: () => next(),
+    next: (o) => next(o),
     prev: () => prev(),
     announce: (m) => { announcer.textContent = ''; requestAnimationFrame(() => { announcer.textContent = m; }); },
     engraver: () => engraver,
     placePlaque: () => placePlaque(),
     purchase: (b) => purchase(b),
+    lostSpot: ((asked) => (asked && asked !== store.get().spot ? asked : ''))(urlSpot()),
     mainLabel(s = store.get()) {
       if (s.product === 'tree') return `עץ ${speciesName(s.species)}`;
       if (s.product === 'corner') return `פינה ביער · עץ ${speciesName(s.species)}`;
@@ -144,7 +153,10 @@ export function initPlant(root: HTMLElement) {
     const p = v as Product;
     if (p === store.get().product) return;
     sound.play('click');
-    store.set({ product: p, step: STEPS[p][0] }, { history: 'push' });
+    const cur = store.get();
+    // a place chosen for a tree does not fit a bench or a corner (and back): "תבחרו בשבילנו" again
+    const keep = !cur.spot || spotFits(cur.spot, p, cur.item);
+    store.set({ product: p, step: STEPS[p][0], ...(keep ? {} : { spot: '', spotMode: 'auto' as const }) }, { history: 'push' });
   });
 
   /* ---------- build the steps of the current product ---------- */
@@ -162,7 +174,7 @@ export function initPlant(root: HTMLElement) {
     railList.innerHTML = steps.map((id, i) => `
       <li class="pc__rail-item"><button type="button" class="pc__node" data-step="${id}">
         <span class="pc__node-dot" aria-hidden="true"></span><span class="pc__node-num num" aria-hidden="true">${pad(i + 1)}</span>
-        <span class="pc__node-label">${stepShort(id, s.product)}</span></button></li>`).join('');
+        <span class="pc__node-label">${stepShort(id, s.product)}</span><span class="sr-only">: ${stepTitle(id, s.product)}</span></button></li>`).join('');
     steps.forEach((id, i) => {
       const sec = document.createElement('section');
       sec.className = `pcs pcs--${id}`;
@@ -172,7 +184,7 @@ export function initPlant(root: HTMLElement) {
       sec.innerHTML = `
         <header class="pcs__head">
           <p class="pcs__count"><span class="sr-only">שלב ${i + 1} מתוך ${steps.length}</span><span aria-hidden="true"><span class="num">${pad(i + 1)}</span><span class="pcs__of"> / ${pad(steps.length)}</span></span></p>
-          <h2 class="pcs__title" id="pcs-${id}-t" tabindex="-1"><span class="pcs__title-in">${stepTitle(id, s.product)}</span></h2>
+          <h2 class="pcs__title" id="pcs-${id}-t" tabindex="-1" data-focus-ring="none"><span class="pcs__title-in">${stepTitle(id, s.product)}</span></h2>
         </header>
         <div class="pcs__body"></div>`;
       stepsHost.appendChild(sec);
@@ -216,7 +228,10 @@ export function initPlant(root: HTMLElement) {
       gsap.set(toEl, { clearProps: 'all' });
     }
     view.enter?.();
+    const hadNext = document.activeElement === nextBtn;
     paintNav();
+    // the next button hides on the payment step: keyboard focus must not fall back to <body>
+    if (hadNext && nextBtn.hidden) focus = true;
     stage.setStep(step);
     placePlaque();
     if (prevId) {
@@ -237,7 +252,6 @@ export function initPlant(root: HTMLElement) {
       b.classList.toggle('is-done', k < i);
       b.classList.toggle('is-current', k === i);
       if (k === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
-      b.setAttribute('aria-label', `${pad(k + 1)} · ${stepTitle(steps[k], s.product)}`);
     });
     const frac = steps.length > 1 ? i / (steps.length - 1) : 0;
     if (motion) gsap.to(railFill, { scaleX: frac, duration: 0.9 * ctx.speed(), ease: EASE.page });
@@ -248,16 +262,17 @@ export function initPlant(root: HTMLElement) {
     backBtn.hidden = i === 0;
     barBack.hidden = i === 0;
     nextBtn.hidden = current === 'checkout';
-    q<HTMLElement>('.pc__next-label').textContent = cta?.label ?? 'הבא';
+    q<HTMLElement>('.pc__next-label').innerHTML = isoPrices(cta?.label ?? 'הבא');
     q<HTMLElement>('.pc__next-to').textContent = !cta && nxt ? stepTitle(nxt, s.product) : '';
     const nextName = cta?.label ?? (nxt ? `הבא: ${stepTitle(nxt, s.product)}` : 'הבא');
-    nextBtn.setAttribute('aria-label', nextName);
+    // desktop: the visible text already says "הבא · <next step>" (label in name); the phone bar shows "הבא" only
+    nextBtn.removeAttribute('aria-label');
     barNext.setAttribute('aria-label', nextName);
     nextBtn.classList.toggle('btn--fruit', !!cta?.fruit);
     barNext.classList.toggle('btn--fruit', !!cta?.fruit);
     if (cta?.fruit) { nextBtn.dataset.cursor = 'שתלו'; nextBtn.dataset.cursorFill = 'fruit'; barNext.dataset.cursor = 'שתלו'; }
     else { delete nextBtn.dataset.cursor; delete nextBtn.dataset.cursorFill; delete barNext.dataset.cursor; }
-    q<HTMLElement>('.pc-bar__label').textContent = cta?.label ?? 'הבא';
+    q<HTMLElement>('.pc-bar__label').innerHTML = isoPrices(cta?.label ?? 'הבא');
   };
 
   /* ---------- navigation ---------- */
@@ -289,20 +304,20 @@ export function initPlant(root: HTMLElement) {
     pending = null;
   };
   let pending: { step: StepId; focus: boolean } | null = null;
-  const next = () => {
+  const next = (o: { focus?: boolean } = {}) => {
     const steps = ctx.steps();
     const view = views.get(current!);
     if (view?.primary) { view.primary(); return; }
     const i = steps.indexOf(current!);
-    if (i < steps.length - 1) { sound.play('click'); go(steps[i + 1], { focus: false }); }
+    if (i < steps.length - 1) { sound.play('click'); go(steps[i + 1], { focus: !!o.focus }); }
   };
   const prev = () => {
     const steps = ctx.steps();
     const i = steps.indexOf(current!);
     if (i > 0) { sound.play('click'); pending = { step: steps[i - 1], focus: false }; store.set({ step: steps[i - 1] }); pending = null; }
   };
-  nextBtn.addEventListener('click', next);
-  barNext.addEventListener('click', next);
+  nextBtn.addEventListener('click', () => next());
+  barNext.addEventListener('click', () => next());
   backBtn.addEventListener('click', prev);
   barBack.addEventListener('click', prev);
   railList.addEventListener('click', (e) => {
@@ -347,7 +362,8 @@ export function initPlant(root: HTMLElement) {
 
   // browser back/forward moves between steps but keeps what was chosen since (a different product restores that URL)
   window.addEventListener('popstate', () => {
-    if (pc.hidden) return;
+    // after paying: Back leaves the done view (and the steps behind it) instead of walking through the form again
+    if (pc.hidden) { leaveDone(); return; }
     const u = fromUrl();
     const cur = store.get();
     if (u.product !== cur.product) store.set(u, { history: 'none' });
@@ -375,6 +391,8 @@ export function initPlant(root: HTMLElement) {
     pc.classList.remove('is-dragging');
     const moved = e.clientY - dragY0;
     pc.style.removeProperty('--stage-drag');
+    // the map step folds the stage away by itself; the handle brings it back
+    if (pc.classList.contains('is-map')) { pc.classList.remove('is-map'); pc.classList.toggle('is-full', moved < -6); return; }
     if (Math.abs(moved) < 6) pc.classList.toggle('is-full');
     else pc.classList.toggle('is-full', moved < 0);
   };
@@ -394,7 +412,11 @@ export function initPlant(root: HTMLElement) {
   vv?.addEventListener('resize', onVV);
   // the stage collapses only while the on-screen keyboard is really open (visualViewport), never on focus alone —
   // otherwise tapping a chip below a focused field would move it under the finger
-  mq.addEventListener('change', () => placePlaque());
+  mq.addEventListener('change', () => {
+    placePlaque();
+    // a phone turned back to portrait: the sheet starts at the top of the (now locked) page
+    if (mq.matches && !pc.hidden) window.scrollTo(0, 0);
+  });
 
   /* ---------- reduced motion ---------- */
   bus.on('motion:change', ({ allowed }: { allowed: boolean }) => {
@@ -403,23 +425,43 @@ export function initPlant(root: HTMLElement) {
     stage.setMotion(allowed);
   });
 
+  /* ---------- Back from the done view ---------- */
+  let leaving = false;
+  const leaveDone = () => {
+    if (leaving) return;
+    const pi = typeof history.state?.pi === 'number' ? history.state.pi : 0;
+    // came from another page (the hero, the map…): straight back there, past every step of this order
+    if (arrivedWithHistory) { leaving = true; history.go(-(pi + 1)); return; }
+    // opened /plant directly (a shared link): back to the first entry, which opens a fresh configurator
+    if (pi > 0) { history.go(-pi); return; }
+    leaving = true;
+    location.replace(location.pathname + toQuery({ ...store.get(), step: STEPS[store.get().product][0] }));
+  };
+
   /* ---------- the mock payment ---------- */
   const purchase = async (buyer: BuyerDetails) => {
     const s = store.get();
     const pr = ctx.pricing(s);
     sound.play('click');
-    await wait(motion ? 1500 : 250);
+    // the certificate (and its QR encoder) loads while the "payment" runs — off the page's critical path
+    const [{ createDoneView }] = await Promise.all([import('./certificate'), wait(motion ? 1500 : 250)]);
     const id = `OF-${Date.now().toString().slice(-6)}`;
     track('purchase', {
       transaction_id: id, value: pr.total, currency: 'ILS', payment_type: buyer.method,
       items: pr.lines.map((l) => ({ item_id: l.id, item_name: l.label, price: l.amount })),
     });
     const plaqueUrl = s.product === 'workshop' ? null : engraver.toDataURL();
-    const done = createDoneView(ctx, s, buyer, plaqueUrl);
+    const done: DoneView = createDoneView(ctx, s, buyer, plaqueUrl);
     root.appendChild(done.el);
     html.classList.add('pc-has-cert');
+    // the address bar no longer says "checkout": a reload or a shared link opens the configurator at its first step
+    store.stop();
+    try {
+      history.replaceState({ ...(history.state ?? {}), plant: true, done: true }, '', `${location.pathname}${toQuery({ ...s, step: STEPS[s.product][0] })}${location.hash}`);
+    } catch { /* sandboxed */ }
     const swap = () => {
       pc.hidden = true;
+      html.classList.remove('pc-sheet');
       window.scrollTo({ top: 0, behavior: 'auto' });
       done.el.querySelector<HTMLElement>('#pdone-t')?.focus({ preventScroll: true });
       done.play();

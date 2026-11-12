@@ -15,6 +15,7 @@ html[data-theme='dark'] .biz { --biz-h: var(--cream); --biz-accent: var(--sage);
 .biz .eyebrow { color: var(--biz-accent); transition: color var(--t-page) var(--ease-inout); }
 /* light cards / panels keep light-theme ink whatever the page behind them does */
 .biz-pk__card, .biz-form__panel {
+  --page-bg: var(--cream); /* .btn--outline:hover paints --page-bg text: cream here, not the moss page */
   --ink: var(--soil); --ink-soft: rgb(var(--soil-rgb) / 0.72);
   --line: rgb(var(--soil-rgb) / 0.14); --line-strong: rgb(var(--soil-rgb) / 0.3);
   --biz-h: var(--bark); --biz-accent: var(--olive-deep);
@@ -65,13 +66,13 @@ html[data-theme='dark'] .biz { --biz-h: var(--cream); --biz-accent: var(--sage);
 .biz-hero__sub {
   margin-block-start: clamp(22px, 3.4vh, 36px);
   font-family: var(--font-display);
-  font-size: clamp(22px, 1.9vw, 30px);
+  font-size: calc(clamp(22px, 1.9vw, 30px) * var(--a11y-k, 1));
   font-weight: 400;
   line-height: 1.25;
-  color: var(--soil);
+  color: var(--ink);
   max-width: 24ch;
 }
-.biz-hero__text { margin-block-start: 16px; max-width: 44ch; font-size: clamp(17px, 1.25vw, 19px); line-height: 1.65; color: var(--ink-soft); }
+.biz-hero__text { margin-block-start: 16px; max-width: 44ch; font-size: calc(clamp(17px, 1.25vw, 19px) * var(--a11y-k, 1)); line-height: 1.65; color: var(--ink-soft); }
 .biz-hero__actions { display: flex; flex-wrap: wrap; gap: 12px; margin-block-start: clamp(26px, 4vh, 40px); }
 
 .biz-hero__media { position: relative; margin: 0; justify-self: end; width: 100%; max-width: 560px; }
@@ -145,19 +146,21 @@ html.motion .biz-hero__next .icon { animation: biz-nudge 2.6s var(--ease-inout) 
   border-block-end: 1px solid var(--line);
 }
 .biz-art { display: block; width: 100%; height: auto; overflow: visible; }
-.biz-art [data-s] { fill: none; stroke: var(--olive); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+/* no vector-effect here: with non-scaling-stroke Chrome dashes in screen px and ignores pathLength=1, so the
+   draw stopped part-way. The width is in viewBox units instead; art.ts sets --biz-sw so it reads as 1.5px. */
+.biz-art [data-s] { fill: none; stroke: var(--olive); stroke-width: var(--biz-sw, 1.15); stroke-linecap: round; stroke-linejoin: round; }
 .biz-art [data-s='soft'] { stroke: var(--sage); }
 .biz-art [data-s='ink'] { stroke: var(--bark); }
 .biz-art [data-fill] { fill: var(--cream); }
 html.motion .biz-art [pathLength] {
-  stroke-dasharray: 1 1;
+  stroke-dasharray: 1 1.01; /* the gap a hair longer than the path: no round-cap dot at the end while hidden */
   stroke-dashoffset: 1;
   transition: stroke-dashoffset 1.3s var(--ease-out) var(--d, 0s);
 }
 html.motion .biz-art.is-drawn [pathLength] { stroke-dashoffset: 0; }
 
-.biz-pk__title { font-size: clamp(26px, 2.1vw, 34px); font-weight: 400; line-height: 1.1; color: var(--biz-h); }
-.biz-pk__text { margin-block-start: 10px; color: var(--ink-soft); font-size: 17px; line-height: 1.6; max-width: 34ch; }
+.biz-pk__title { font-size: calc(clamp(26px, 2.1vw, 34px) * var(--a11y-k, 1)); font-weight: 400; line-height: 1.1; color: var(--biz-h); }
+.biz-pk__text { margin-block-start: 10px; color: var(--ink-soft); font-size: calc(17px * var(--a11y-k, 1)); line-height: 1.6; max-width: 34ch; }
 .biz-pk__price {
   display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; row-gap: 2px;
   margin-block-start: auto;
@@ -170,7 +173,7 @@ html.motion .biz-art.is-drawn [pathLength] { stroke-dashoffset: 0; }
   display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
   margin-block-start: 14px; padding: 6px 14px 6px 12px;
   border-radius: var(--pill); background: var(--sand);
-  font-size: 14px; font-weight: 500; color: var(--olive-deep);
+  font-size: calc(14px * var(--a11y-k, 1)); font-weight: 500; color: var(--olive-deep);
 }
 .biz-pk__season .icon { width: 17px; height: 17px; }
 .biz-pk__btn { align-self: flex-start; margin-block-start: 22px; }
@@ -181,13 +184,13 @@ html.motion .biz-art.is-drawn [pathLength] { stroke-dashoffset: 0; }
 /* ---------------------------------------------------------------- 3 · how it works */
 /* a cross-section: the words stand above, the nodes sit on one line, the root runs through
    them and its rootlets hang into the soil below */
-.biz-steps { position: relative; padding-block: var(--section-pad) calc(var(--section-pad) * 0.6); color: var(--ink); }
+.biz-steps { position: relative; padding-block: var(--section-pad) calc(var(--section-pad) * 0.42); color: var(--ink); }
 .biz-steps__stage {
   --node: 80px;
   position: relative;
   width: var(--biz-w);
   margin: clamp(56px, 8vw, 104px) auto 0;
-  padding-block-end: clamp(96px, 12vw, 150px);
+  padding-block-end: clamp(80px, 8vw, 112px);
 }
 .biz-steps__roots { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .biz-steps__ghost, .biz-steps__line, .biz-steps__rootlet {
@@ -231,11 +234,11 @@ html.motion .biz-art.is-drawn [pathLength] { stroke-dashoffset: 0; }
 .biz-steps__icon { position: relative; width: 34px; height: 34px; color: var(--sage); }
 .biz-steps__icon * { vector-effect: non-scaling-stroke; }
 .biz-steps__num {
-  font-family: var(--font-display); font-size: 15px; font-variant-numeric: lining-nums tabular-nums;
+  font-family: var(--font-display); font-size: calc(15px * var(--a11y-k, 1)); font-variant-numeric: lining-nums tabular-nums;
   letter-spacing: 0.08em; color: var(--biz-accent);
 }
-.biz-steps__title { margin-block-start: 6px; font-size: clamp(22px, 2vw, 30px); font-weight: 400; line-height: 1.15; color: var(--biz-h); transition: color var(--t-page) var(--ease-inout); }
-.biz-steps__text { margin-block: 10px 40px; max-width: 30ch; font-size: clamp(15px, 1.15vw, 16.5px); line-height: 1.6; color: var(--ink-soft); }
+.biz-steps__title { margin-block-start: 6px; font-size: calc(clamp(22px, 2vw, 30px) * var(--a11y-k, 1)); font-weight: 400; line-height: 1.15; color: var(--biz-h); transition: color var(--t-page) var(--ease-inout); }
+.biz-steps__text { margin-block: 10px 40px; max-width: 30ch; font-size: calc(clamp(15px, 1.15vw, 16.5px) * var(--a11y-k, 1)); line-height: 1.6; color: var(--ink-soft); }
 
 /* lit state (the root has reached the node) */
 .biz-steps__item.is-lit .biz-steps__node::before { opacity: 1; transform: scale(1); }
@@ -275,8 +278,8 @@ html.motion .biz-steps[data-live] .biz-steps__item.is-lit .biz-steps__icon { opa
 .biz-gal__item--wide .biz-gal__frame { width: clamp(330px, 31vw, 520px); aspect-ratio: 4 / 3; }
 .biz-gal__inner { position: absolute; inset: 0 -8%; will-change: transform; }
 .biz-gal__inner picture, .biz-gal__inner img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.biz-gal__cap { display: flex; align-items: baseline; gap: 12px; margin-block-start: 14px; font-size: 16px; color: var(--ink); }
-.biz-gal__n { font-family: var(--font-display); font-size: 14px; color: var(--olive-deep); font-variant-numeric: lining-nums tabular-nums; }
+.biz-gal__cap { display: flex; align-items: baseline; gap: 12px; margin-block-start: 14px; font-size: calc(16px * var(--a11y-k, 1)); color: var(--ink); }
+.biz-gal__n { font-family: var(--font-display); font-size: calc(14px * var(--a11y-k, 1)); color: var(--biz-accent); transition: color var(--t-page) var(--ease-inout); font-variant-numeric: lining-nums tabular-nums; }
 .biz-gal__progress {
   width: min(240px, 40vw);
   height: 1px;
@@ -304,14 +307,14 @@ html.motion .biz-steps[data-live] .biz-steps__item.is-lit .biz-steps__icon { opa
 .biz-faq__aside { position: sticky; inset-block-start: calc(var(--header-h) + 40px); display: grid; gap: 14px; justify-items: start; }
 .biz-faq__lead { margin-block-start: 8px; max-width: 32ch; color: var(--ink-soft); }
 .biz-faq__wa { margin-block-start: 8px; }
-.biz-faq__legend { margin-block-start: 22px; max-width: 34ch; font-size: 14px; line-height: 1.6; color: var(--ink-soft); }
+.biz-faq__legend { margin-block-start: 22px; max-width: 34ch; font-size: calc(14px * var(--a11y-k, 1)); line-height: 1.6; color: var(--ink-soft); }
 .biz-faq__list { border-block-end: 1px solid var(--line-strong); }
 .biz-faq__item { border-block-start: 1px solid var(--line-strong); }
 .biz-faq__q {
   display: flex; align-items: center; justify-content: space-between; gap: 24px;
   min-height: 84px; padding-block: 22px;
   list-style: none; cursor: pointer;
-  font-family: var(--font-display); font-size: clamp(21px, 1.75vw, 27px); line-height: 1.3; color: var(--ink);
+  font-family: var(--font-display); font-size: calc(clamp(21px, 1.75vw, 27px) * var(--a11y-k, 1)); line-height: 1.3; color: var(--ink);
   -webkit-tap-highlight-color: transparent;
 }
 .biz-faq__q::-webkit-details-marker { display: none; }
@@ -336,8 +339,12 @@ html.motion .biz-steps[data-live] .biz-steps__item.is-lit .biz-steps__icon { opa
 .biz-faq__item[open]:not(.is-closing) .biz-faq__pm::after { background: var(--cream); }
 .biz-faq__item[open]:not(.is-closing) .biz-faq__pm::after { transform: rotate(0deg); }
 .biz-faq__a { overflow: hidden; }
-.biz-faq__a-in { display: grid; gap: 12px; padding-block-end: 28px; padding-inline-end: 68px; max-width: 64ch; color: var(--ink-soft); font-size: 17.5px; line-height: 1.7; }
-.biz-faq__a-in a { color: var(--olive-deep); }
+.biz-faq__a-in { display: grid; gap: 12px; padding-block-end: 28px; padding-inline-end: 68px; max-width: 64ch; color: var(--ink-soft); font-size: calc(17.5px * var(--a11y-k, 1)); line-height: 1.7; }
+.biz-faq__a-in a { color: var(--biz-accent); }
+
+/* open questions for the client (data-todo): html[data-notes] shows them (?notes=1, dev server); the public
+   page shows only the answers */
+html:not([data-notes]) .biz [data-todo] { display: none; }
 
 /* ---------------------------------------------------------------- 6 · form */
 .biz-form { padding-block: var(--section-pad); color: var(--ink); }
@@ -351,9 +358,9 @@ html.motion .biz-steps[data-live] .biz-steps__item.is-lit .biz-steps__icon { opa
 }
 .biz-form__aside { display: grid; gap: 16px; justify-items: start; position: sticky; inset-block-start: calc(var(--header-h) + 40px); }
 .biz-form__title { font-size: var(--fs-h2); font-weight: 300; line-height: 1; color: var(--biz-h); max-width: 10ch; transition: color var(--t-page) var(--ease-inout); }
-.biz-form__lead { font-size: clamp(18px, 1.4vw, 21px); color: var(--ink-soft); max-width: 30ch; }
+.biz-form__lead { font-size: calc(clamp(18px, 1.4vw, 21px) * var(--a11y-k, 1)); color: var(--ink-soft); max-width: 30ch; }
 .biz-form__wa { display: grid; gap: 10px; justify-items: start; margin-block-start: clamp(20px, 4vh, 44px); padding-block-start: 24px; border-block-start: 1px solid var(--line); width: 100%; }
-.biz-form__wa-label { font-family: var(--font-display); font-size: 22px; color: var(--biz-h); }
+.biz-form__wa-label { font-family: var(--font-display); font-size: calc(22px * var(--a11y-k, 1)); color: var(--biz-h); }
 .biz-form__place { display: inline-flex; align-items: center; gap: 8px; margin-block-start: 8px; font-size: var(--fs-small); color: var(--ink-soft); }
 .biz-form__place .icon { width: 18px; height: 18px; color: var(--biz-accent); }
 
@@ -368,14 +375,14 @@ html.motion .biz-steps[data-live] .biz-steps__item.is-lit .biz-steps__icon { opa
 .biz-form__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .biz-field label { font-size: var(--fs-small); color: var(--ink-soft); }
 .biz-field__req { color: var(--bark); }
-.biz-field input, .biz-field textarea { background: rgb(255 255 255 / 0.55); font-size: 17px; }
+.biz-field input, .biz-field textarea { background: rgb(255 255 255 / 0.55); font-size: calc(17px * var(--a11y-k, 1)); }
 .biz-field input[dir='ltr'] { text-align: right; }
 .biz-field input[dir='ltr']:focus, .biz-field input[dir='ltr']:not(:placeholder-shown) { text-align: left; }
 .biz-field textarea { min-height: 120px; resize: vertical; line-height: 1.55; }
 .biz-field :is(input, textarea)[aria-invalid='true'] { border-color: var(--bark); border-width: 2px; }
 .biz-field__err {
   display: flex; align-items: center; gap: 6px;
-  font-size: 14.5px; font-weight: 500; color: var(--bark);
+  font-size: calc(14.5px * var(--a11y-k, 1)); font-weight: 500; color: var(--bark);
 }
 .biz-field__err::before {
   content: ''; flex: none; width: 16px; height: 16px;
@@ -387,15 +394,15 @@ html.motion .biz-steps[data-live] .biz-steps__item.is-lit .biz-steps__icon { opa
 .biz-chips { border: 0; padding: 0; margin: 0; min-width: 0; }
 .biz-chips__legend { padding: 0; margin-block-end: 10px; font-size: var(--fs-small); color: var(--ink-soft); }
 .biz-chips__row { display: flex; flex-wrap: wrap; gap: 8px; }
-.biz-chips .chip { cursor: pointer; border-color: var(--line-strong); font-size: 15.5px; user-select: none; }
+.biz-chips .chip { cursor: pointer; border-color: var(--line-strong); font-size: calc(15.5px * var(--a11y-k, 1)); user-select: none; }
 .biz-chips .chip:hover { border-color: var(--olive-deep); }
-.biz-chips .chip:has(input:focus-visible) { outline: 2px solid var(--fruit); outline-offset: 3px; }
+html:not(.focus-ring-on) .biz-chips .chip:has(input:focus-visible) { outline: 2px solid var(--fruit); outline-offset: 3px; }
 .biz-chips .chip.is-picked { animation: biz-pick 1.1s var(--ease-out); }
 @keyframes biz-pick { 0% { transform: scale(1); } 30% { transform: scale(1.06); } 100% { transform: scale(1); } }
 
 .biz-consent { position: relative; display: grid; gap: 6px; }
 .biz-consent__box { position: absolute; opacity: 0; width: 24px; height: 24px; margin: 0; inset-block-start: 2px; inset-inline-start: 0; }
-.biz-consent__label { display: flex; align-items: flex-start; gap: 12px; font-size: 15px; line-height: 1.55; color: var(--ink-soft); cursor: pointer; }
+.biz-consent__label { display: flex; align-items: flex-start; gap: 12px; font-size: calc(15px * var(--a11y-k, 1)); line-height: 1.55; color: var(--ink-soft); cursor: pointer; }
 .biz-consent__label a { color: var(--olive-deep); }
 .biz-consent__tick {
   flex: none; display: grid; place-items: center;
@@ -406,22 +413,22 @@ html.motion .biz-steps[data-live] .biz-steps__item.is-lit .biz-steps__icon { opa
 .biz-consent__tick .icon { width: 16px; height: 16px; color: var(--cream); opacity: 0; transform: scale(0.6); transition: opacity var(--t-micro), transform var(--t-ui) var(--ease-out); }
 .biz-consent__box:checked + .biz-consent__label .biz-consent__tick { background: var(--olive-deep); border-color: var(--olive-deep); }
 .biz-consent__box:checked + .biz-consent__label .biz-consent__tick .icon { opacity: 1; transform: none; }
-.biz-consent__box:focus-visible + .biz-consent__label .biz-consent__tick { outline: 2px solid var(--fruit); outline-offset: 3px; }
+html:not(.focus-ring-on) .biz-consent__box:focus-visible + .biz-consent__label .biz-consent__tick { outline: 2px solid var(--fruit); outline-offset: 3px; }
 .biz-consent__box[aria-invalid='true'] + .biz-consent__label .biz-consent__tick { border-color: var(--bark); border-width: 2px; }
 
 .biz-form__submit { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; margin-block-start: 4px; }
 .biz-form__send[aria-busy='true'] { pointer-events: none; }
 .biz-form__send[aria-busy='true'] .icon { animation: biz-spin 1s linear infinite; }
 @keyframes biz-spin { to { transform: rotate(-360deg); } }
-.biz-form__demo { font-size: 13.5px; color: var(--ink-soft); max-width: 30ch; }
+.biz-form__demo { font-size: calc(13.5px * var(--a11y-k, 1)); color: var(--ink-soft); max-width: 30ch; }
 
 .biz-done { display: grid; justify-items: start; gap: 12px; padding-block: clamp(8px, 2vw, 24px); outline: none; }
 .biz-done__art { width: 112px; height: 112px; margin-block-end: 6px; }
 .biz-done__art path { fill: none; stroke: var(--olive); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .biz-done__ground { stroke: var(--bark) !important; }
 .biz-done__title { font-size: clamp(34px, 3.4vw, 52px); font-weight: 300; color: var(--bark); }
-.biz-done__text { font-size: 18px; color: var(--ink-soft); max-width: 36ch; }
-.biz-done__demo { font-size: 14px; color: var(--ink-soft); }
+.biz-done__text { font-size: calc(18px * var(--a11y-k, 1)); color: var(--ink-soft); max-width: 36ch; }
+.biz-done__demo { font-size: calc(14px * var(--a11y-k, 1)); color: var(--ink-soft); }
 .biz-done__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-block-start: 12px; }
 
 /* ==========================================================================
@@ -444,20 +451,21 @@ html.motion .biz-steps[data-live] .biz-steps__item.is-lit .biz-steps__icon { opa
   .biz-head__title { font-size: clamp(38px, 11vw, 52px); }
   .biz-head--row { grid-template-columns: 1fr; }
 
-  /* hero: title → photo → words → buttons; the first screen is title + leaf */
+  /* hero: title → question → buttons → leaf photo → words. The first screen answers the question with
+     «בואו להיות שותפים» (the phone bar below sells the consumer tree), and the leaf starts under it */
   .biz-hero { min-height: 0; align-items: start; padding-block: calc(var(--header-h) + var(--safe-top) + 22px) 64px; }
   .biz-hero__inner {
     grid-template-columns: 1fr;
-    grid-template-areas: 'eyebrow' 'title' 'sub' 'media' 'text' 'actions';
+    grid-template-areas: 'eyebrow' 'title' 'sub' 'actions' 'media' 'text';
   }
   .biz-hero__copy { display: contents; }
   .biz-hero__eyebrow { grid-area: eyebrow; margin-block-end: 14px; }
   .biz-hero__title { grid-area: title; font-size: clamp(46px, 13.6vw, 64px); max-width: 8ch; }
-  .biz-hero__sub { grid-area: sub; margin-block-start: 16px; font-size: 21px; }
-  .biz-hero__media { grid-area: media; justify-self: stretch; max-width: none; margin-block-start: 26px; }
+  .biz-hero__sub { grid-area: sub; margin-block-start: 16px; font-size: calc(21px * var(--a11y-k, 1)); }
+  .biz-hero__media { grid-area: media; justify-self: stretch; max-width: none; margin-block-start: 28px; }
   .biz-hero__leaf { aspect-ratio: 10 / 11; max-height: none; min-height: 0; }
   .biz-hero__cap { margin-block-start: 10px; }
-  .biz-hero__text { grid-area: text; margin-block-start: 22px; font-size: 17px; }
+  .biz-hero__text { grid-area: text; margin-block-start: 20px; font-size: calc(17px * var(--a11y-k, 1)); }
   .biz-hero__actions { grid-area: actions; margin-block-start: 22px; display: grid; grid-template-columns: 1fr; gap: 10px; width: 100%; }
   .biz-hero__actions .btn { width: 100%; }
   .biz-hero__next { display: none; }
@@ -467,8 +475,8 @@ html.motion .biz-steps[data-live] .biz-steps__item.is-lit .biz-steps__icon { opa
   .biz-pk__card { padding: 22px 22px 24px; border-radius: 36px 0 36px 0; }
   .biz-pk__card:hover, .biz-pk__card:focus-within { border-radius: 36px 0 36px 0; }
   .biz-pk__art { margin-inline: -4px; margin-block-end: 18px; padding-block-end: 10px; }
-  .biz-pk__title { font-size: 28px; }
-  .biz-pk__text { font-size: 16.5px; }
+  .biz-pk__title { font-size: calc(28px * var(--a11y-k, 1)); }
+  .biz-pk__text { font-size: calc(16.5px * var(--a11y-k, 1)); }
   .biz-pk__price { padding-block-start: 20px; }
   .of-cur { font-size: 0.6em; margin-inline-start: 0.06em; }
 .biz-pk__amount { font-size: 44px; }
@@ -482,8 +490,8 @@ html.motion .biz-steps[data-live] .biz-steps__item.is-lit .biz-steps__icon { opa
   .biz-steps__node::before { inset: -10px; }
   .biz-steps__icon { width: 26px; height: 26px; }
   .biz-steps__num { padding-block-start: 2px; }
-  .biz-steps__title { margin-block-start: 2px; font-size: 25px; }
-  .biz-steps__text { margin-block-end: 0; font-size: 16px; }
+  .biz-steps__title { margin-block-start: 2px; font-size: calc(25px * var(--a11y-k, 1)); }
+  .biz-steps__text { margin-block-end: 0; font-size: calc(16px * var(--a11y-k, 1)); }
 
   /* gallery: native swipe with snap (no drift), progress line */
   .biz-gal__viewport { overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
@@ -498,9 +506,9 @@ html.motion .biz-steps[data-live] .biz-steps__item.is-lit .biz-steps__icon { opa
   .biz-gal__hint { display: none; }
 
   /* FAQ */
-  .biz-faq__q { min-height: 72px; padding-block: 18px; font-size: 20px; gap: 16px; }
+  .biz-faq__q { min-height: 72px; padding-block: 18px; font-size: calc(20px * var(--a11y-k, 1)); gap: 16px; }
   .biz-faq__pm { width: 40px; height: 40px; }
-  .biz-faq__a-in { padding-inline-end: 0; font-size: 16.5px; }
+  .biz-faq__a-in { padding-inline-end: 0; font-size: calc(16.5px * var(--a11y-k, 1)); }
   .biz-faq__legend { margin-block-start: 10px; }
 
   /* form */

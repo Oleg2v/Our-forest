@@ -20,6 +20,11 @@ import type { HeroWindHandle, HeroWindOptions, RippleHandle } from './types';
 export type { HeroWindHandle, HeroWindOptions, GLQuality, RippleHandle } from './types';
 
 type StageModule = typeof import('./stage');
+// env.hasWebGL() creates a throwaway context on every call — ask once per page
+let webgl: boolean | null = null;
+const canGL = () => (webgl ??= hasWebGL());
+/** WebGL available on this device (asked once per page) */
+export const webglAvailable = canGL;
 let modP: Promise<StageModule> | null = null;
 
 export function preloadGL(): Promise<StageModule> {
@@ -28,7 +33,7 @@ export function preloadGL(): Promise<StageModule> {
 }
 
 export async function mountHeroWind(o: HeroWindOptions): Promise<HeroWindHandle | null> {
-  if (!env.motionAllowed() || !hasWebGL()) return null;
+  if (!env.motionAllowed() || !canGL()) return null;
   try {
     const m = await preloadGL();
     if (!env.motionAllowed()) return null;
@@ -44,7 +49,7 @@ let rippleOff: (() => void) | null = null;
 
 export function enableRipples(opts: { minTier?: Tier } = {}): () => void {
   if (rippleOff) return disableRipples;
-  if (env.isTouch || !env.motionAllowed() || !hasWebGL()) return () => {};
+  if (env.isTouch || !env.motionAllowed() || !canGL()) return () => {};
   let tierOk: boolean | null = null;
   gpuTier().then((t) => { tierOk = t.tier >= (opts.minTier ?? 1); }).catch(() => { tierOk = false; });
   let el: Element | null = null;

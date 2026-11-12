@@ -2,7 +2,7 @@
    seasonal particles with depth of field. A View of the single stage (src/gl/stage.ts). */
 import {
   BufferAttribute, BufferGeometry, LinearFilter, LinearMipmapLinearFilter, Mesh, NormalBlending,
-  OrthographicCamera, PlaneGeometry, Points, Scene, ShaderMaterial, Texture, TextureLoader, Vector2, Vector3, Vector4,
+  OrthographicCamera, PlaneGeometry, Points, Scene, ShaderMaterial, Texture, Vector2, Vector3, Vector4,
   type WebGLRenderer,
 } from 'three';
 import { getStage, type View } from './stage';
@@ -26,8 +26,8 @@ class HeroWind implements View {
   readonly priority = 1;
   readonly transient = false;
   readonly host: HTMLElement;
-  private scene = new Scene();
-  private cam = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  readonly scene = new Scene();
+  readonly cam = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
   private mat: ShaderMaterial;
   private pmat: ShaderMaterial | null = null;
   private quad: Mesh;
@@ -35,7 +35,7 @@ class HeroWind implements View {
   private tex: Texture;
   private mask: Texture;
   private visible = true;
-  private disposed = false;
+  disposed = false;
   private canvas: HTMLCanvasElement | null = null;
   private t = 0;
   private amp = 0;
@@ -226,7 +226,13 @@ export async function cleanImage(src: HTMLImageElement): Promise<HTMLImageElemen
   try {
     if (!src.complete || !src.naturalWidth) await src.decode();
     const url = src.currentSrc || src.src;
-    if (!url) return null;
+    return url ? await decodedImage(url) : null;
+  } catch { return null; }
+}
+
+/** An image decoded off the main thread — texImage2D() of an undecoded <img> would decode synchronously. */
+async function decodedImage(url: string): Promise<HTMLImageElement | null> {
+  try {
     const img = new Image();
     img.decoding = 'async';
     img.src = url;
@@ -235,28 +241,54 @@ export async function cleanImage(src: HTMLImageElement): Promise<HTMLImageElemen
   } catch { return null; }
 }
 
-/** Build the hero view. Resolves null if anything is missing (the photo stays as is). */
+const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
+/** timing marks (DevTools Performance panel / RUM): of:gl:compile|upload|draw|shown */
+const mark = (k: string) => { try { performance.mark(`of:gl:${k}`); } catch { /* old engines */ } };
+
+/** Build the hero view. Resolves null if anything is missing (the photo stays as is).
+    The GPU work is done in steps — shader compile (parallel where KHR_parallel_shader_compile exists),
+    texture upload, first draw — each one only when o.gate() allows (e.g. not while the preloader's window
+    opens), and the promise resolves once that first frame has been presented: show the canvas then. */
 export async function createHeroWind(o: HeroWindOptions): Promise<HeroWindHandle | null> {
   // A DOM <img> with srcset reports a density-corrected naturalWidth (e.g. 1440 for a 1600w file on a 1440px
   // screen) — three would allocate the wrong storage. Re-decode the very same URL (memory cache, no network).
-  const img = await cleanImage(o.img);
-  if (!img) return null;
-  const stage = getStage();
+  const [img, maskImg] = await Promise.all([cleanImage(o.img), decodedImage(o.maskUrl)]);
+  if (!img || !maskImg) return null;
+  let stage = getStage();
   if (stage.isLost) return null;
   const tex = new Texture(img);
   tex.generateMipmaps = true;
   tex.minFilter = LinearMipmapLinearFilter;
   tex.magFilter = LinearFilter;
   tex.needsUpdate = true;
-  let mask: Texture;
-  try {
-    mask = await new TextureLoader().loadAsync(o.maskUrl);
-    mask.minFilter = LinearFilter; mask.magFilter = LinearFilter; mask.generateMipmaps = false;
-  } catch { tex.dispose(); return null; }
+  const mask = new Texture(maskImg);
+  mask.minFilter = LinearFilter; mask.magFilter = LinearFilter; mask.generateMipmaps = false;
+  mask.needsUpdate = true;
   const view = new HeroWind({ ...o, img }, tex, mask);
+  const gate = async () => { if (o.gate) await o.gate(); return !view.disposed && !getStage().isLost && getStage() === stage; };
+  const fail = () => { view.dispose(); return null; };
+  // 1 · programs
+  if (!(await gate())) return fail();
+  mark('compile');
+  try {
+    // parallel (off the main thread) where the driver can; otherwise a plain compile, inside this quiet moment
+    if (stage.renderer.extensions.has('KHR_parallel_shader_compile')) await stage.renderer.compileAsync(view.scene, view.cam);
+    else stage.renderer.compile(view.scene, view.cam);
+  } catch { /* compiled on the first draw instead */ }
+  // 2 · textures (the photo + its mipmaps, the mask)
+  if (!(await gate())) return fail();
+  mark('upload');
+  stage.renderer.initTexture(tex);
+  stage.renderer.initTexture(mask);
+  // 3 · first draw, then let it reach the screen
+  if (!(await gate())) return fail();
+  stage = getStage();
+  mark('draw');
   stage.add(view);
-  // compile + upload now (one hitch, at a moment the caller chose), so the first visible frame is smooth
   stage.renderNow(view);
+  await nextFrame(); await nextFrame();
+  if (view.disposed) return null;
+  mark('shown');
   const handle: HeroWindHandle = {
     get canvas() { return stage.canvas; },
     pointer: (x, y) => view.pointer(x, y),

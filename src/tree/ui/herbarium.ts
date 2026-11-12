@@ -138,7 +138,7 @@ export class Herbarium {
     const full = seasonsHave === 4;
     const sheet = (key: string, season: Season | 'firstFruit' | 'firstVisit', title: string, leaf: HerbLeaf | undefined, waiting: string) => `
       <figure class="hb-sheet${leaf ? ' is-filled' : ''}${leaf && !leaf.laid ? ' is-new' : ''}" data-key="${leaf?.key ?? key}">
-        <span class="hb-sheet__no" aria-hidden="true">No. <bdi>${ctx.tree.id}</bdi></span>
+        <span class="hb-sheet__no" aria-hidden="true"><bdi dir="ltr" lang="en">No. ${ctx.tree.id}</bdi></span>
         <div class="hb-sheet__spec">
           ${leaf ? specimenSvg(sp, season, `${key}`) : `<svg class="hb-svg hb-svg--empty" viewBox="0 0 120 150" aria-hidden="true"><path d="${leafD(SHAPES[sp] ?? SHAPES.fig, 48, 61, 116, -4)}"/></svg>`}
           ${leaf ? '<span class="hb-tape hb-tape--a" aria-hidden="true"></span><span class="hb-tape hb-tape--b" aria-hidden="true"></span>' : ''}

@@ -93,6 +93,10 @@
 
 /* ---------------------------------------------------------------- spots */
 .fmap__m { transform: scale(var(--fm-ms)); }
+.fmap__spot:not(.k-tree) .fmap__m { transform: scale(var(--fm-ms2, var(--fm-ms))); }
+/* phones: every place keeps a target of ≥ 46px at any zoom — the hit circle is invisible, so it may grow */
+.fmap--touch .fmap__hit { transform: scale(max(1, calc(23 / (var(--h, 28) * var(--fm-kms, 1))))); }
+.fmap--touch .fmap__spot:not(.k-tree) .fmap__hit { transform: scale(max(1, calc(23 / (var(--h, 28) * var(--fm-kms2, 1))))); }
 .fmap__spot { transition: opacity var(--t-ui) var(--ease-out); }
 .fmap__hit { fill: transparent; stroke: none; }
 .fmap__crown { fill: color-mix(in srgb, var(--olive) 62%, var(--cream)); stroke: var(--olive-deep); stroke-width: 1.1; stroke-linejoin: round; vector-effect: non-scaling-stroke; transition: fill var(--t-micro), stroke-width var(--t-micro); }
@@ -127,6 +131,7 @@
   border-radius: 50%; background: var(--fruit); opacity: 0;
   scale: calc(var(--fm-px, 1) * var(--r, 11) / 50);
 }
+.fmap__g--obj { scale: calc(var(--fm-px2, var(--fm-px, 1)) * var(--r, 11) / 50); }
 .fmap__g--wide { background: rgb(var(--fruit-rgb) / 0.55); }
 html.motion .fmap.is-live.is-inview:not(.is-clustered) .fmap__g { animation: fmap-pulse 3.6s cubic-bezier(0.22, 1, 0.36, 1) infinite; animation-delay: calc(var(--d, 0) * 1s); will-change: transform, opacity; }
 html.motion .fmap.is-live.is-inview:not(.is-clustered) .fmap__g--wide { animation-name: fmap-pulse-wide; }
@@ -162,7 +167,7 @@ html.motion .fmap.is-live.is-inview .fmap__g.is-selected { animation-duration: 2
 .fmap.is-clustered .fmap__canopy { opacity: 0.5; }
 .fmap__clusters { opacity: 0; pointer-events: none; transition: opacity var(--t-ui) var(--ease-out); }
 .fmap.is-clustered .fmap__clusters { opacity: 1; pointer-events: auto; }
-.fmap.is-clustered .fmap__spot { pointer-events: none; }
+.fmap.is-clustered .fmap__spot.k-tree { pointer-events: none; }
 .fmap.is-list .fmap__glow { display: none; }
 .fmap__cs { transform: rotate(var(--fm-lrot)) scale(var(--fm-cs)); }
 .fmap__cluster { cursor: pointer; }
@@ -211,6 +216,15 @@ html.motion .fmap.is-live.is-inview .fmap__g.is-selected { animation-duration: 2
 .fmap.is-hover:not(.is-active) .fmap__hint, .fmap__hint.is-flash, .fmap--touch:not(.is-active) .fmap__hint { opacity: 1; transform: none; }
 .fmap.is-active .fmap__hint:not(.is-flash) { opacity: 0; }
 .fmap.is-list .fmap__hint { opacity: 0; }
+/* a frame too narrow for the legend and the centred hint side by side (or a touch screen): the hint
+   goes to the other bottom corner, clear of the legend (phones: to the top, below) */
+@media (max-width: 1100px), (pointer: coarse) {
+  .fmap__hint, [dir='ltr'] .fmap__hint { inset-inline-start: var(--fm-pad); translate: none; }
+}
+/* …clear of the leaf's rounded bottom corner too (the frame in the section; phones have square frames) */
+@media (max-width: 1100px) and (min-width: 769px), (pointer: coarse) and (min-width: 769px) {
+  .fmap--home:not(.is-full) .fmap__hint { inset-inline-start: calc(var(--fm-pad) + var(--leaf-r) * 0.45); }
+}
 
 .fmap__done {
   position: absolute; inset-block-start: var(--fm-pad); inset-inline-start: calc(var(--fm-pad) + 56px);
@@ -270,8 +284,13 @@ html.motion .fmap.is-live.is-inview .fmap__g.is-selected { animation-duration: 2
 }
 .fmap.is-list .fmap__list {
   inset: 0; width: auto; height: auto; margin: 0; clip: auto; white-space: normal; z-index: 5;
-  overflow: auto; overscroll-behavior: contain; padding: clamp(24px, 4vw, 56px) clamp(20px, 5vw, 72px);
+  /* a long list (170 places) in its own scroller: at either end the scroll carries on with the page */
+  overflow: auto; overscroll-behavior: auto; padding: clamp(24px, 4vw, 56px) clamp(20px, 5vw, 72px);
   background: var(--cream); display: grid; gap: 36px; align-content: start;
+}
+/* touch: the list frame leaves a good part of the screen to the page, so a thumb can always scroll on */
+@media (max-width: 768px), (pointer: coarse) {
+  .fmap--home.is-list .fmap__slot { height: min(var(--fm-h, 100%), 62svh); }
 }
 .fmap.is-list .fmap__view, .fmap.is-list .fmap__ui, .fmap.is-list .fmap__card { visibility: hidden; }
 .fmap__lg-t { font-family: var(--font-display); font-size: 26px; font-weight: 400; color: var(--bark); display: flex; align-items: baseline; gap: 10px; margin-block-end: 8px; }
@@ -294,7 +313,8 @@ a.fmap__li:hover { background: rgb(var(--fruit-rgb) / 0.05); }
 .fmap__li-price { font-family: var(--font-display); font-size: 15px; color: var(--ink-soft); }
 
 /* ---------------------------------------------------------------- intro (pre-state) */
-.fmap.is-pre .fmap__plot, .fmap.is-pre .fmap__env, .fmap.is-pre .fmap__label-t { opacity: 0; }
+.fmap.is-pre .fmap__plot, .fmap.is-pre .fmap__env, .fmap.is-pre .fmap__label-t,
+.fmap.is-pre .fmap__spots, .fmap.is-pre .fmap__canopies, .fmap.is-pre .fmap__clusters { opacity: 0; }
 
 /* ---------------------------------------------------------------- full screen + bottom sheet (phones) */
 .fmap.is-full .fmap__frame {
@@ -305,7 +325,7 @@ a.fmap__li:hover { background: rgb(var(--fruit-rgb) / 0.05); }
 .fmap.is-full { --fm-pad: 12px; }
 .fmap.is-full .fmap__done { inset-block-start: calc(12px + var(--safe-top)); inset-inline-start: 12px; }
 .fmap.is-full .fmap__zoom { inset-block-start: calc(12px + var(--safe-top)); inset-inline-start: auto; inset-inline-end: 12px; }
-.fmap.is-full .fmap__legend { inset-block-end: calc(12px + var(--safe-bottom)); inset-inline: 12px; justify-content: center; }
+.fmap.is-full .fmap__legend { inset-block-end: calc(12px + var(--safe-bottom)); inset-inline-end: calc(12px + env(safe-area-inset-left, 0px)); max-width: calc(100% - 24px); }
 .fmap--home.fmap--touch:not(.is-full) .fmap__zoom { display: none; }
 .fmap--touch .fmap__done { inset-inline-start: var(--fm-pad); }
 
@@ -341,7 +361,8 @@ a.fmap__li:hover { background: rgb(var(--fruit-rgb) / 0.05); }
   .fmap__select select { width: 100%; }
   .fmap__legend { font-size: 13px; padding: 8px 14px; gap: 2px 12px; inset-inline-start: var(--fm-pad); justify-content: center; }
   .fmap__legend b { font-size: 15px; }
-  .fmap__hint { inset-block-end: auto; inset-block-start: var(--fm-pad); }
+  .fmap__hint { inset-block-end: auto; inset-block-start: var(--fm-pad); inset-inline-start: 50%; translate: 50% 0; }
+  [dir='ltr'] .fmap__hint { inset-inline-start: 50%; translate: -50% 0; }
   .fmap--home:not(.is-full) .fmap__legend { inset-block-end: calc(var(--fm-pad) + var(--mbar-space, 0px)); }
   .fmap--home .fmap__frame::after { inset: 8px; }
   .fmap__lu { grid-template-columns: 1fr; }
@@ -352,7 +373,7 @@ a.fmap__li:hover { background: rgb(var(--fruit-rgb) / 0.05); }
 .fmap--picker .fmap__legend b { display: none; }
 .fmap--picker .fmap__key { width: 16px; height: 16px; }
 .fmap--picker .fmap__zoom { gap: 4px; }
-.fmap--picker .fmap__hint { inset-block-end: auto; inset-block-start: var(--fm-pad); font-size: 13px; padding: 7px 14px; }
+.fmap--picker .fmap__hint { inset-block-end: auto; inset-block-start: var(--fm-pad); inset-inline-start: 50%; translate: 50% 0; font-size: 13px; padding: 7px 14px; }
 
 /* reduced motion: still, fully drawn */
 html.no-motion .fmap__g { animation: none !important; opacity: 0; }

@@ -8,6 +8,7 @@ import {
   SPECIES, OCCASIONS, STEPS, EXTRAS, BENCH_ITEMS, WORKSHOPS, MAX_SEATS, extrasFor, workshopDates,
   type Product, type StepId, type OccasionId, type ExtraId, type BenchItemId, type WorkshopId,
 } from './catalog';
+import { spotFits } from './spots';
 
 export type GiftWhen = 'now' | 'tubishvat' | 'date';
 export type GiftVia = 'wa' | 'mail';
@@ -51,11 +52,13 @@ export function fromUrl(search = location.search): PlantState {
   s.species = pick(q.get('species'), SPECIES, s.species);
   s.occasion = pick(q.get('occasion'), OCCASIONS, '' as OccasionId) || '';
   s.text = (q.get('text') ?? '').slice(0, 40);
-  const spot = (q.get('spot') ?? '').replace(/[^\w-]/g, '').slice(0, 12);
-  if (spot) { s.spot = spot; s.spotMode = 'map'; }
+  s.item = pick(q.get('item'), BENCH_ITEMS.map((b) => b.id), s.item);
+  // a spot that is not on the map, already taken, or of another kind (a bench for a tree…) is dropped:
+  // the location step says so and falls back to "תבחרו בשבילנו" (see urlSpot())
+  const spot = urlSpot(search);
+  if (spot && spotFits(spot, product, s.item)) { s.spot = spot; s.spotMode = 'map'; }
   const allowed = extrasFor(product);
   s.extras = (q.get('x') ?? '').split(',').filter((x): x is ExtraId => (allowed as string[]).includes(x));
-  s.item = pick(q.get('item'), BENCH_ITEMS.map((b) => b.id), s.item);
   s.ws = pick(q.get('ws'), WORKSHOPS.map((w) => w.id), s.ws);
   const dates = workshopDates(s.ws);
   s.date = pick(q.get('date'), dates, dates[0]);
@@ -72,6 +75,11 @@ export function fromUrl(search = location.search): PlantState {
   const step = q.get('step') as StepId | null;
   if (step && STEPS[s.product].includes(step)) s.step = step;
   return s;
+}
+
+/** the ?spot= the link asked for (sanitised), whether or not it fits */
+export function urlSpot(search = location.search): string {
+  return (new URLSearchParams(search).get('spot') ?? '').replace(/[^\w-]/g, '').slice(0, 12);
 }
 
 export function toQuery(s: PlantState): string {
@@ -135,17 +143,22 @@ export interface Store {
   get(): PlantState;
   set(patch: Partial<PlantState>, opts?: { history?: 'push' | 'replace' | 'none' }): void;
   subscribe(fn: Listener): () => void;
+  /** stop writing the URL (after the purchase: the done view owns the address bar) */
+  stop(): void;
 }
 
 export function createStore(initial: PlantState): Store {
   let state = initial;
   const listeners = new Set<Listener>();
   let timer = 0;
+  let stopped = false;
   const write = (mode: 'push' | 'replace') => {
+    if (stopped) return;
     const url = `${location.pathname}${toQuery(state)}${location.hash}`;
     if (url === `${location.pathname}${location.search}${location.hash}`) return;
     try {
-      if (mode === 'push') history.pushState({ plant: true }, '', url);
+      // entries are numbered from the first /plant entry (pi 0), so the done view can leave them all at once
+      if (mode === 'push') history.pushState({ plant: true, pi: (typeof history.state?.pi === 'number' ? history.state.pi : 0) + 1 }, '', url);
       else history.replaceState({ ...(history.state ?? {}), plant: true }, '', url);
     } catch { /* sandboxed */ }
   };
@@ -160,6 +173,7 @@ export function createStore(initial: PlantState): Store {
       listeners.forEach((fn) => fn(state, prev));
     },
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
+    stop() { stopped = true; clearTimeout(timer); },
   };
 }
 

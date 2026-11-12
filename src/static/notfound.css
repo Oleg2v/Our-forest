@@ -31,17 +31,17 @@ html[data-season='winter'] .nf__stage { --leaf-fill: var(--olive-deep); --leaf-v
   align-items: flex-start;
 }
 .nf__eyebrow { gap: 10px; }
-.nf__code { font-family: var(--font-display); font-size: 17px; letter-spacing: 0.06em; }
+.nf__code { font-family: var(--font-display); font-size: calc(17px * var(--a11y-k, 1)); letter-spacing: 0.06em; }
 .nf__title {
   margin-block-start: clamp(16px, 3vh, 28px);
   font-size: clamp(64px, 10.6vw, 172px);
   font-weight: 300;
   line-height: 0.92;
   letter-spacing: -0.025em;
-  max-width: 7.5ch;
+  max-width: 4.2em; /* em, not ch: "ch" changes when the Latin webfont subset arrives (layout shift) */
   color: var(--bark);
 }
-.nf__text { margin-block-start: clamp(18px, 3vh, 30px); max-width: 34ch; font-size: clamp(18px, 1.4vw, 21px); color: var(--ink-soft); }
+.nf__text { margin-block-start: clamp(18px, 3vh, 30px); max-width: 19em; font-size: calc(clamp(18px, 1.4vw, 21px) * var(--a11y-k, 1)); color: var(--ink-soft); }
 .nf__actions { display: flex; flex-wrap: wrap; gap: 12px; margin-block-start: clamp(26px, 4vh, 40px); }
 .nf__links { display: flex; flex-wrap: wrap; gap: 6px 26px; margin: 26px 0 0; padding: 0; list-style: none; font-size: var(--fs-small); }
 .nf__links a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ink-soft); text-decoration: underline; text-decoration-color: var(--line-strong); transition: color var(--t-micro); }
@@ -82,7 +82,7 @@ html[data-season='winter'] .nf__stage { --leaf-fill: var(--olive-deep); --leaf-v
   inset-block-end: calc(var(--ground) * 0.36);
   inset-inline-end: var(--gutter);
   font-family: var(--font-display);
-  font-size: 15px;
+  font-size: calc(15px * var(--a11y-k, 1));
   color: var(--ink-soft);
   opacity: 0;
   transition: opacity 1.2s var(--ease-out);
@@ -91,8 +91,8 @@ html[data-season='winter'] .nf__stage { --leaf-fill: var(--olive-deep); --leaf-v
 
 @media (max-width: 768px) {
   .nf__stage { align-items: start; padding-block: calc(var(--header-h) + var(--safe-top) + 40px) calc(var(--ground) + var(--mbar-space, 0px) + 24px); --ground: 96px; }
-  .nf__title { font-size: clamp(60px, 18vw, 84px); max-width: 6ch; }
-  .nf__text { font-size: 18px; }
+  .nf__title { font-size: clamp(60px, 18vw, 84px); max-width: 3.4em; }
+  .nf__text { font-size: calc(18px * var(--a11y-k, 1)); }
   .nf__actions { display: grid; grid-template-columns: 1fr; width: 100%; }
   .nf__actions .btn { width: 100%; }
   .nf__links { gap: 0 22px; }

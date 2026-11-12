@@ -41,13 +41,16 @@ function rowHtml(s: Session): string {
   const d = new Date(`${s.date}T12:00:00`);
   const href = `/plant?product=workshop&ws=${s.id}&date=${s.date}`;
   const few = s.seats <= 3;
+  const wd = weekday.format(d);
+  // four links all read "שומרים מקום": in a links list each one also says which workshop and when
+  const ctx = `, ${s.title}, ${wd}, ${ilDate(s.date)}`;
   return `<li class="seasons__row" data-ws="${s.id}">
     <span class="seasons__thumb" aria-hidden="true">${pictureHtml(PHOTO[s.id], { sizes: '72px', className: 'cover' })}</span>
-    <p class="seasons__when"><span class="seasons__wd">${esc(weekday.format(d))}</span><bdi class="seasons__date num">${ilDate(s.date)}</bdi></p>
+    <p class="seasons__when"><span class="seasons__wd">${esc(wd)}</span><bdi class="seasons__date num">${ilDate(s.date)}</bdi></p>
     <h3 class="seasons__row-title">${esc(s.title)}</h3>
     <p class="seasons__seats${few ? ' is-few' : ''}">${SEAT}<span>${esc(he.workshops.seatsLeft(s.seats))}</span></p>
     <p class="seasons__row-price"><bdi class="price">${ils(s.price)}</bdi> <span class="seasons__unit">${esc(he.pricing.perParticipant)}</span></p>
-    <a class="btn btn--outline btn--sm seasons__reserve" href="${href}" data-ws-id="${s.id}" data-date="${s.date}" data-price="${s.price}"><span>${esc(he.workshops.reserve)}</span>${ARROW}</a>
+    <a class="btn btn--outline btn--sm seasons__reserve" href="${href}" data-ws-id="${s.id}" data-date="${s.date}" data-price="${s.price}"><span>${esc(he.workshops.reserve)}</span><span class="sr-only">${esc(ctx)}</span>${ARROW}</a>
   </li>`;
 }
 

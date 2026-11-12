@@ -6,7 +6,7 @@
    ========================================================================== */
 import type { Frame, Renderer } from '../types';
 import type { TreeModel } from '../model';
-import { ISLAND, PLAQUE, TOKEN } from '../model';
+import { ISLAND, PLAQUE, TOKEN, rootRuns } from '../model';
 import { Projector } from '../camera';
 import { LEAF_ART, COTYLEDON, BLOSSOM, BELL, GRASS, FRUIT_ART } from '../species';
 import { P, TINT, css, mixC, mulC, clamp, lerp, TAU, DEG, type RGB, type V3 } from '../util';
@@ -442,37 +442,38 @@ export class SvgRenderer implements Renderer {
   }
 
   private buildRoots(f: Frame, parent: SVGGElement, isl: (x: number, y: number, z: number) => Pt) {
-    const R = f.model.rootsys, G = f.grow;
+    const G = f.grow;
     if (!f.state.planted || G.rootReveal <= 0) return;
+    const runs = rootRuns(f.model, G);
+    if (!runs.length) return;
     const ppu = this.proj.pxPerUnit(this.proj.cam.dist);
-    const rev = G.rootReveal * R.mMax;
     const back = el('g', { class: 'roots' }, parent);
     const glowG = el('g', { class: 'rglow' }, parent);
-    const fronts: string[] = [], fills: { d: string; w: number }[] = [];
-    for (const ch of R.chains) {
-      const pts: Pt[] = [];
-      let wSum = 0, wn = 0;
-      for (let k = 0; k < ch.length; k++) {
-        const i = ch[k];
-        if (R.m[i] > rev) {
-          // partial last segment
-          if (k > 0) {
-            const p = ch[k - 1];
-            const fr = clamp((rev - R.m[p]) / Math.max(1e-4, R.m[i] - R.m[p]));
-            if (fr > 0.02) pts.push(isl(lerp(R.x[p], R.x[i], fr), lerp(R.y[p], R.y[i], fr), ISLAND.ZC + 0.004));
-          }
-          break;
-        }
-        pts.push(isl(R.x[i], R.y[i], ISLAND.ZC + 0.004));
-        wSum += R.w[i]; wn++;
-      }
-      if (pts.length < 2) continue;
-      const w = Math.max(0.7, (wSum / Math.max(1, wn)) * ppu * 2 * G.rootW);
+    const fills: { d: string; w: number }[] = [];
+    const minW = lerp(0.7, 0.5, G.radicle);
+    const draw = (pts: Pt[], w: number) => {
       const d = smoothOpen(pts);
-      fronts.push(d);
       fills.push({ d, w });
       const gp = el('path', { d, class: 'rg', 'stroke-width': r1(w + 3.2), pathLength: 1, 'stroke-dasharray': '0 1 0 2' }, glowG);
       this.rootGlow.push(gp);
+    };
+    for (const run of runs) {
+      const pts: Pt[] = run.map((q) => isl(q.x, q.y, ISLAND.ZC + 0.004));
+      // birth close-up: the underground stem bends to the sprout's base (the trunk stands just behind the cut)
+      if (G.radicle > 0.05 && run[0].d === 0) pts.unshift(isl(0, 0.001, lerp(ISLAND.ZC, ISLAND.ZT, G.radicle)));
+      if (G.radicle > 0.05 && run.length > 3) {
+        // a growing radicle tapers: draw it in a few pieces, thick at the seed, hair-thin at the tip
+        const n = Math.min(4, run.length - 1);
+        for (let k = 0; k < n; k++) {
+          const a = Math.floor((k * (pts.length - 1)) / n), b = Math.floor(((k + 1) * (pts.length - 1)) / n);
+          const qa = run[Math.min(run.length - 1, a)], qb = run[Math.min(run.length - 1, b)];
+          draw(pts.slice(a, b + 1), Math.max(minW, (qa.r + qb.r) * ppu));
+        }
+        continue;
+      }
+      let wSum = 0;
+      for (const q of run) wSum += q.r;
+      draw(pts, Math.max(minW, (wSum / run.length) * ppu * 2));
     }
     // outlined roots: ink stroke then a lighter core
     for (const r of fills) el('path', { d: r.d, class: 'ro', 'stroke-width': r1(r.w + 1.7) }, back);

@@ -27,7 +27,9 @@ let cascade = 0;
 
 export function initReveal(hold?: Promise<unknown>) {
   if (hold) ready = hold;
-  enabled = env.motionAllowed();
+  // the head failsafe already showed everything (JS arrived after 3 s): never hide content again
+  const late = root.classList.contains('chrome-off');
+  enabled = env.motionAllowed() && !late;
   if (!enabled) root.classList.remove('reveals-on');
   else {
     root.classList.add('reveals-on');

@@ -81,22 +81,39 @@ export function luminance([r, g, b]: [number, number, number, number] | number[]
 }
 
 const DARK_BG = new Set(['soil', 'moss']);
-/** Is the background behind (x, y) dark? Looks at data-header/data-tone hints, media and painted backgrounds. */
+const pageBg = () => {
+  const r = document.documentElement.dataset;
+  return r.bgSection === 'season' ? 'season' : (r.bg || 'cream');
+};
+/** Is the background behind (x, y) dark? Looks at data-header/data-tone hints, media and painted backgrounds.
+ *  Walking down the stack: a box with its own solid colour decides by that colour — also inside a hinted
+ *  section (the cream form panel in the moss /business form section: the focus ring turns fruit there);
+ *  media inside a hinted section, or the section itself, take the hint (the tree's WebGL stage). */
 export function isDarkAt(x: number, y: number, skip: (el: Element) => boolean): boolean {
   const stack = document.elementsFromPoint(Math.round(x), Math.round(y));
+  const isMedia = (el: Element) => el instanceof HTMLImageElement || el instanceof HTMLVideoElement || el instanceof HTMLCanvasElement || el.tagName === 'PICTURE';
+  let hint: boolean | null = null;
   for (const el of stack) {
     if (skip(el)) continue;
     if (el === document.documentElement || el === document.body) break;
+    const own = parseRGB(getComputedStyle(el).backgroundColor);
+    const solid = !!own && own[3] > 0.5;
     const hinted = (el as HTMLElement).closest?.('[data-header]:not(.site-header),[data-tone-hint]') as HTMLElement | null;
-    if (hinted) {
+    // a transparent [data-bg] section shows the page background: its hint only counts while the page
+    // actually wears that section's colour (e.g. the bottom of a soil section after the page turned cream)
+    if (hinted && !(hinted.dataset.bg && hinted.dataset.bg !== pageBg())) {
       const v = hinted.dataset.header || hinted.dataset.toneHint;
-      if (v === 'light') return true;   // section asks for light chrome (it is dark)
-      if (v === 'dark') return false;
+      hint = v === 'light' ? true : v === 'dark' ? false : null; // light chrome = the section is dark
+      if (hint !== null) {
+        if (hinted === el || isMedia(el)) return hint;
+        if (solid) return luminance(own!) < 0.22;
+        continue; // a transparent box inside the section: look further down
+      }
     }
-    if (el instanceof HTMLImageElement || el instanceof HTMLVideoElement || el instanceof HTMLCanvasElement || el.tagName === 'PICTURE') return true;
-    const c = parseRGB(getComputedStyle(el).backgroundColor);
-    if (c && c[3] > 0.5) return luminance(c) < 0.22;
+    if (isMedia(el)) return true;
+    if (solid) return luminance(own!) < 0.22;
   }
+  if (hint !== null) return hint;
   // transparent all the way down → the page background (target theme, not a mid-tween colour)
   const theme = document.documentElement.dataset.theme;
   if (theme) return theme === 'dark';

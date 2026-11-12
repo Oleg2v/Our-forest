@@ -144,15 +144,40 @@ function ellipsePath(cx: number, cy: number, rx: number, ry: number, rot = 0): s
 }
 
 export interface LeafArt { outline: string; veins: string; /** width / length of the drawing */ aspect: number }
+/** palmately lobed leaf (fig): polar outline around the blade's centre (0° = up), petiole drawn as a vein to (50, 100) */
+function palmate(o: { cy: number; R: number; lobes: [number, number, number][]; base: number; notch: number }): LeafArt {
+  const rAt = (t: number) => {
+    const th = Math.abs(t);
+    let lob = 0;
+    for (const [c, l, w] of o.lobes) lob = Math.max(lob, l * Math.exp(-(((th - c) / w) ** 2)));
+    // heart-shaped base: a soft notch where the petiole joins
+    const notch = 1 - o.notch * Math.exp(-(((th - 180) / 16) ** 2));
+    return o.R * (o.base + (1 - o.base) * lob) * notch * (1 + 0.012 * Math.sin(th * 0.42));
+  };
+  const at = (th: number, k = 1): Pt => {
+    const a = (th * Math.PI) / 180, r = rAt(th) * k;
+    return [50 + Math.sin(a) * r, o.cy - Math.cos(a) * r];
+  };
+  const right: Pt[] = [];
+  for (let th = 180; th >= 0; th -= 4.5) right.push(at(th));
+  right[0] = [50, right[0][1]];
+  right[right.length - 1] = [50, right[right.length - 1][1]];
+  const f = (v: number) => Math.round(v * 10) / 10;
+  const base = right[0];
+  let veins = `M50 100 L50 ${f(base[1])} L50 ${f(o.cy)}`;
+  for (const [c] of o.lobes) {
+    for (const side of c === 0 ? [1] : [1, -1]) {
+      const tip = at(c * side, 0.9);
+      const mid = at(c * side * 0.92, 0.45);
+      veins += ` M50 ${f(o.cy)} Q${f(mid[0])} ${f(mid[1])} ${f(tip[0])} ${f(tip[1])}`;
+    }
+  }
+  return { outline: mirrored(right), veins, aspect: 0.95 };
+}
 export const LEAF_ART: Record<LeafShape, LeafArt> = {
-  fig: {
-    outline: mirrored([
-      [50, 97], [55, 91], [64, 93], [76, 92], [86, 84], [86, 75], [77, 70], [86, 66], [95, 58], [97, 46],
-      [92, 38], [82, 39], [74, 44], [77, 33], [76, 20], [68, 9], [58, 3], [50, 1],
-    ]),
-    veins: 'M50 97 L50 10 M50 72 C62 64 76 54 92 46 M50 72 C38 64 24 54 8 46 M50 86 C62 82 72 80 82 79 M50 86 C38 82 28 80 18 79 M50 48 C56 42 64 36 70 30 M50 48 C44 42 36 36 30 30',
-    aspect: 0.95,
-  },
+  // a fig leaf is palmate: three to five broad lobes with deep rounded sinuses and a heart-shaped base
+  // (the same outline family as the pressed fig leaf in the herbarium) — not the many shallow lobes of an oak
+  fig: palmate({ cy: 68, R: 64, lobes: [[0, 1, 25], [54, 0.84, 22], [112, 0.6, 19]], base: 0.27, notch: 0.45 }),
   mulberry: {
     outline: mirrored([[50, 86], [55, 94], [66, 97], [80, 91], [90, 76], [93, 58], [88, 38], [76, 21], [62, 9], [50, 1]]),
     veins: 'M50 88 L50 8 M50 76 C60 70 72 64 84 62 M50 76 C40 70 28 64 16 62 M50 54 C58 48 68 42 78 38 M50 54 C42 48 32 42 22 38 M50 34 C56 30 62 26 68 22 M50 34 C44 30 38 26 32 22',
