@@ -529,28 +529,36 @@ html.menu-open .site-header { transform: none; }
   inset-inline-start: var(--gutter); /* reading start: never over the buy buttons (header CTA, /plant summary) */
   inset-block-end: calc(var(--mbar-space, 0px) + 20px + var(--safe-bottom));
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 12px 14px;
-  width: min(430px, calc(100vw - 20px));
-  padding: 18px 20px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px 14px;
+  width: min(600px, calc(100vw - 2 * var(--gutter)));
+  padding: 10px 12px 10px 16px;
   border: 1px solid var(--line);
-  border-radius: 26px 0 26px 0;
+  border-radius: 20px 0 20px 0;
   opacity: 0;
   transform: translateY(20px);
   transition: opacity 0.6s var(--ease-out), transform 0.9s var(--ease-out), inset-block-end 0.6s var(--ease-out);
 }
 .cookie[hidden] { display: none !important; }
 .cookie[data-shown] { opacity: 1; transform: none; }
-.cookie__icon { color: var(--olive); width: 28px; height: 28px; margin-block-start: 2px; }
-.cookie__title { font-family: var(--font-body); font-size: 0.9375rem; font-weight: 500; color: var(--ink); line-height: 1.4; }
-.cookie__text { margin-block-start: 2px; font-size: 0.875rem; line-height: 1.55; color: var(--ink-soft); }
+.cookie__icon { color: var(--olive); width: 24px; height: 24px; }
+.cookie__title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.cookie__text { font-size: 0.8125rem; line-height: 1.45; color: var(--ink-soft); }
 .cookie__text a { color: var(--olive-deep); white-space: nowrap; }
-.cookie__actions { grid-column: 1 / -1; display: flex; gap: 8px; }
-.cookie__actions .btn { flex: 1 1 0; }
+.cookie__actions { display: flex; gap: 6px; }
+.cookie__actions .btn { flex: none; min-height: 44px; padding-inline: 16px; }
 .cookie .btn--outline { --btn-fg: var(--soil); }
 .cookie .btn--outline:hover { --btn-bg: var(--soil); --btn-fg: var(--cream); --btn-bd: var(--soil); }
 @media (max-width: 768px) {
-  .cookie { inset-inline: 10px; inset-block-end: calc(var(--mbar-space, 0px) + 10px + var(--safe-bottom)); width: auto; padding: 16px; }
+  .cookie {
+    inset-inline: 10px; inset-block-end: calc(var(--mbar-space, 0px) + 10px + var(--safe-bottom));
+    width: auto; padding: 10px 12px; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px;
+  }
+  .cookie__icon { display: none; }
+  .cookie__text { font-size: 0.75rem; }
+  .cookie__actions { flex-direction: column; gap: 4px; }
+  .cookie__actions .btn { min-height: 44px; padding-inline: 14px; font-size: 0.8125rem; }
 }
 
 /* ---------------------------------------------------------------- custom cursor */

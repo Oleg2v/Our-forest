@@ -431,9 +431,8 @@ export function initFooter(): void {
         sound.play('rustle', { volume: 0.4 });
       }
       gsap.set(seed, { x: dx, y: dy, rotation: clamp(-50, 50, dx * 0.08) });
+      // (the field's own pointermove listener lets the seed brush the grass on its way down)
       moveHole(e.clientX, overSoil(e.clientY) ? 'open' : nearSoil(e.clientY) ? 'near' : 'none');
-      // the seed brushes the grass on its way down
-      brush(e.clientX, e.clientY, e.movementX || 0, 3.6);
     });
     const end = (e: PointerEvent, ok: boolean) => {
       if (e.pointerId !== pid) return;

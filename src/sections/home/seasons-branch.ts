@@ -135,36 +135,50 @@ export interface BranchOptions {
   seed: number;
   /** extra stem leaves between twigs */
   stemLeaves: number;
+  /** half-thickness of the stem where it enters (viewBox units, before scale) */
+  thick: number;
+  /** fruit size relative to the leaves */
+  fruitScale: number;
+  /** side branches: position along the stem, turn from the stem's direction (rad, + = up), length, bend, leaves */
+  forks: { u: number; turn: number; len: number; bend: number; leaves: number; kind: 'fig' | 'pom' }[];
 }
 
-export const WIDE: BranchOptions = { w: 1600, h: 210, from: { x: 1650, y: 30 }, to: { x: 64, y: 74 }, fruits: 8, scale: 1, seed: 427, stemLeaves: 9 };
-export const COMPACT: BranchOptions = { w: 400, h: 128, from: { x: 430, y: 18 }, to: { x: 18, y: 44 }, fruits: 4, scale: 0.78, seed: 612, stemLeaves: 3 };
+export const WIDE: BranchOptions = {
+  w: 1600, h: 210, from: { x: 1660, y: 24 }, to: { x: 70, y: 76 }, fruits: 8, scale: 1.08, fruitScale: 1.32, seed: 427, stemLeaves: 12, thick: 6.4,
+  forks: [
+    { u: 0.16, turn: 0.3, len: 120, bend: -0.1, leaves: 3, kind: 'fig' },
+    { u: 0.47, turn: -0.5, len: 170, bend: 0.1, leaves: 4, kind: 'pom' },
+    { u: 0.72, turn: 0.32, len: 110, bend: -0.1, leaves: 2, kind: 'fig' },
+  ],
+};
+export const COMPACT: BranchOptions = {
+  w: 400, h: 116, from: { x: 432, y: 10 }, to: { x: 20, y: 38 }, fruits: 4, scale: 0.8, fruitScale: 1.3, seed: 612, stemLeaves: 4, thick: 4.6,
+  forks: [{ u: 0.5, turn: -0.55, len: 80, bend: 0.1, leaves: 3, kind: 'pom' }],
+};
 
 /** returns the inner markup of an <svg viewBox="0 0 w h"> */
 export function buildBranch(o: BranchOptions): string {
   const r = rng(o.seed);
   const { w } = o;
   const spanX = o.from.x - o.to.x;
-  // stem: gentle sag + one soft wave, thinning to a tip that lifts a little
+  // stem: enters high at the start edge, sags, lifts a little towards the tip
   const ctrl: Pt[] = [];
   const N = 7;
   for (let i = 0; i < N; i++) {
     const k = i / (N - 1);
-    const sag = Math.sin(k * Math.PI * 0.92) * (o.h * 0.13) + Math.sin(k * Math.PI * 2.1 + 0.6) * (o.h * 0.035);
-    ctrl.push({ x: o.from.x - spanX * k, y: o.from.y + (o.to.y - o.from.y) * k + sag * (i === 0 || i === N - 1 ? 0.3 : 1) });
+    const sag = Math.sin(k * Math.PI * 0.9) * (o.h * 0.2) + Math.sin(k * Math.PI * 2.2 + 0.4) * (o.h * 0.05);
+    ctrl.push({ x: o.from.x - spanX * k, y: o.from.y + (o.to.y - o.from.y) * k + sag * (i === 0 || i === N - 1 ? 0.25 : 1) });
   }
-  const poly = sample(ctrl, 30);
-  const lens = [0];
-  for (let i = 1; i < poly.length; i++) lens.push(lens[i - 1] + Math.hypot(poly[i].x - poly[i - 1].x, poly[i].y - poly[i - 1].y));
+  const S = o.scale;
+  const stem = limb(ctrl, o.thick * S);
   // the visible part starts at the start edge (x = w)
   const visibleFrom = (() => {
-    for (let i = 0; i < poly.length; i++) if (poly[i].x <= w) return lens[i] / lens[lens.length - 1];
+    for (let i = 0; i < stem.poly.length; i++) if (stem.poly[i].x <= w) return stem.lens[i] / stem.total;
     return 0;
   })();
 
   const tOf = (x: number) => Math.max(0, Math.min(1, (w - x) / (w - o.to.x)));
-  let twigs = '', leaves = '', fruits = '', stalks = '';
-  const S = o.scale;
+  let twigs = '', leaves = '', fruits = '', stalks = '', wood = stem.d;
 
   const leafAt = (p: Pt, rot: number, kind: 'fig' | 'pom', size: number) => {
     const t = tOf(p.x);
@@ -176,29 +190,55 @@ export function buildBranch(o: BranchOptions): string {
       + `<g class="seasons__lf-fall"><g transform="rotate(${f(rot)})"><g class="seasons__lf-grow">${shape}</g></g></g></g>`;
   };
 
+  // forks: real side branches (what makes it read as a branch, not a wire)
+  for (const fk of o.forks) {
+    const u = visibleFrom + (1 - visibleFrom) * fk.u;
+    const { p: base, a } = along(stem.poly, stem.lens, u);
+    const dir = a + fk.turn; // relative to the stem's direction (towards the tip)
+    const L = fk.len * S;
+    const end = { x: base.x + Math.cos(dir) * L, y: base.y + Math.sin(dir) * L };
+    const bend = fk.bend * L;
+    const c1 = { x: base.x + Math.cos(dir) * L * 0.35 + Math.cos(dir + Math.PI / 2) * bend, y: base.y + Math.sin(dir) * L * 0.35 + Math.sin(dir + Math.PI / 2) * bend };
+    const c2 = { x: base.x + Math.cos(dir) * L * 0.7 + Math.cos(dir + Math.PI / 2) * bend * 0.6, y: base.y + Math.sin(dir) * L * 0.7 + Math.sin(dir + Math.PI / 2) * bend * 0.6 };
+    const br = limb([base, c1, c2, end], stem.half(u) * 0.62);
+    wood += br.d;
+    // leaves along the fork, pointing away from it, the last ones at its tip
+    const n = fk.leaves;
+    for (let k = 0; k < n; k++) {
+      const uu = 0.35 + (0.65 * (k + 1)) / n;
+      const q = along(br.poly, br.lens, Math.min(0.98, uu));
+      const side = k % 2 === 0 ? 1 : -1;
+      const deg = (q.a * 180) / Math.PI - 90 + side * (40 + r() * 30);
+      const kind: 'fig' | 'pom' = fk.kind;
+      leafAt(q.p, deg, kind, kind === 'fig' ? (40 + r() * 12) * S : (24 + r() * 8) * S);
+    }
+  }
+
   // fruit twigs
   for (let i = 0; i < o.fruits; i++) {
     const kind: 'fig' | 'pom' = i % 2 === 0 ? 'fig' : 'pom';
     const u = visibleFrom + (1 - visibleFrom) * (0.07 + (0.86 * (i + 0.15 + r() * 0.5)) / o.fruits);
-    const { p, a } = along(poly, lens, u);
+    const { a } = along(stem.poly, stem.lens, u);
+    const p = stem.edge(u, -1);
     // hang down, leaning a little towards the tip
     const dir = Math.PI / 2 + (r() - 0.35) * 0.55;
-    const len = (22 + r() * 30) * S;
+    const len = (20 + r() * 30) * S;
     const end = { x: p.x + Math.cos(dir) * len, y: p.y + Math.sin(dir) * len };
     const mid = { x: (p.x + end.x) / 2 + Math.cos(a) * 6 * S, y: (p.y + end.y) / 2 + Math.sin(a) * 2 * S };
     twigs += `M${f(p.x)} ${f(p.y)}Q${f(mid.x)} ${f(mid.y)} ${f(end.x)} ${f(end.y)}`;
+    const FS = S * o.fruitScale;
     const stalk = (kind === 'fig' ? 4 : 6 + r() * 4) * S;
     stalks += `M${f(end.x)} ${f(end.y)}L${f(end.x)} ${f(end.y + stalk)}`;
     const t = tOf(end.x);
     const shape = kind === 'fig' ? FIG : POM;
     const bloom = kind === 'pom' ? `<g class="seasons__bloom"><path d="${POM.bloom}"/></g>` : '';
-    fruits += `<g class="seasons__fr seasons__fr--${kind}" transform="translate(${f(end.x)} ${f(end.y + stalk)}) scale(${S})" style="--t:${t.toFixed(3)}">`
+    fruits += `<g class="seasons__fr seasons__fr--${kind}" transform="translate(${f(end.x)} ${f(end.y + stalk)}) scale(${FS.toFixed(3)})" style="--t:${t.toFixed(3)}">`
       + `${bloom}<g class="seasons__fr-grow"><path class="seasons__fr-body" d="${shape.body}"/><path class="seasons__fr-detail" d="${shape.detail}"/></g></g>`;
     // leaves on the twig: one broad fig leaf, or a little fan of narrow pomegranate leaves
     if (kind === 'fig') {
       const q = { x: p.x + (end.x - p.x) * 0.38, y: p.y + (end.y - p.y) * 0.38 };
       const side = r() < 0.5 ? -1 : 1;
-      leafAt(q, side * (34 + r() * 30), 'fig', (40 + r() * 10) * S);
+      leafAt(q, side * (34 + r() * 30), 'fig', (42 + r() * 10) * S);
     } else {
       const q = { x: p.x + (end.x - p.x) * 0.55, y: p.y + (end.y - p.y) * 0.55 };
       const n = 2 + Math.round(r());
@@ -209,20 +249,51 @@ export function buildBranch(o: BranchOptions): string {
   // leaves straight on the stem, alternating up and down
   for (let i = 0; i < o.stemLeaves; i++) {
     const u = visibleFrom + (1 - visibleFrom) * (0.04 + (0.9 * (i + 0.5 + (r() - 0.5) * 0.6)) / o.stemLeaves);
-    const { p } = along(poly, lens, u);
     const up = i % 2 === 0;
+    const p = stem.edge(u, up ? 1 : -1);
     const kind: 'fig' | 'pom' = r() < 0.45 ? 'fig' : 'pom';
     const rot = up ? 180 + (r() - 0.5) * 90 : (r() - 0.5) * 100;
-    leafAt(p, rot, kind, kind === 'fig' ? (32 + r() * 10) * S : (20 + r() * 8) * S);
+    leafAt(p, rot, kind, kind === 'fig' ? (34 + r() * 10) * S : (21 + r() * 8) * S);
   }
 
   // the tip: two small new leaves
-  const tip = along(poly, lens, 1).p;
+  const tip = along(stem.poly, stem.lens, 1).p;
   const tipLeaves = `M${f(tip.x)} ${f(tip.y)}c${f(-4 * S)} ${f(-5 * S)} ${f(-10 * S)} ${f(-6 * S)} ${f(-14 * S)} ${f(-4 * S)}c${f(4 * S)} ${f(4 * S)} ${f(10 * S)} ${f(6 * S)} ${f(14 * S)} ${f(4 * S)}Z`
     + `M${f(tip.x)} ${f(tip.y)}c${f(-3 * S)} ${f(4 * S)} ${f(-8 * S)} ${f(7 * S)} ${f(-12 * S)} ${f(6 * S)}c${f(2 * S)} ${f(-4 * S)} ${f(7 * S)} ${f(-7 * S)} ${f(12 * S)} ${f(-6 * S)}Z`;
 
-  return `<g class="seasons__wood"><path class="seasons__stem" d="${smooth(ctrl)}"/><path class="seasons__twig" d="${twigs}"/><path class="seasons__twig seasons__tip" d="${tipLeaves}"/><path class="seasons__stalk" d="${stalks}"/></g>`
+  return `<g class="seasons__wood">${wood}<path class="seasons__twig" d="${twigs}"/><path class="seasons__twig seasons__tip" d="${tipLeaves}"/><path class="seasons__stalk" d="${stalks}"/></g>`
     + `<g class="seasons__leaves">${leaves}</g><g class="seasons__fruits">${fruits}</g>`;
+}
+
+/** a tapered limb through control points: double contour + wash fill, thick at the base, a point at the tip */
+function limb(ctrl: Pt[], thick: number) {
+  const poly = sample(ctrl, 30);
+  const lens = [0];
+  for (let i = 1; i < poly.length; i++) lens.push(lens[i - 1] + Math.hypot(poly[i].x - poly[i - 1].x, poly[i].y - poly[i - 1].y));
+  const total = lens[lens.length - 1] || 1;
+  const half = (u: number) => thick * Math.pow(1 - u, 0.9) + 0.35;
+  const upper: Pt[] = [], lower: Pt[] = [];
+  const side = (i: number) => {
+    const a = poly[Math.max(0, i - 1)], b = poly[Math.min(poly.length - 1, i + 1)];
+    const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    const nx = -(b.y - a.y) / len, ny = (b.x - a.x) / len; // "upper" side while the limb runs leftwards
+    const hw = half(lens[i] / total);
+    upper.push({ x: poly[i].x + nx * hw, y: poly[i].y + ny * hw });
+    lower.push({ x: poly[i].x - nx * hw, y: poly[i].y - ny * hw });
+  };
+  const stepN = Math.max(6, Math.round(poly.length / 7));
+  for (let i = 0; i < poly.length - 1; i += stepN) side(i);
+  side(poly.length - 1);
+  /** point on the upper (1) or lower (-1) contour at fraction u */
+  const edge = (u: number, s: 1 | -1) => {
+    const { p, a } = along(poly, lens, u);
+    const hw = half(u) * 0.9;
+    return { x: p.x - Math.sin(a) * hw * s, y: p.y + Math.cos(a) * hw * s };
+  };
+  const last = lower[lower.length - 1];
+  const fill = `${smooth(upper)}L${f(last.x)} ${f(last.y)}${smooth([...lower].reverse()).replace(/^M[^C]+/, '')}Z`;
+  const d = `<path class="seasons__stem-fill" d="${fill}"/><path class="seasons__stem" d="${smooth(upper)}"/><path class="seasons__stem" d="${smooth(lower)}"/>`;
+  return { poly, lens, total, half, edge, d };
 }
 
 /* ---------------------------------------------------------------- almond twig (Tu BiShvat plaque art) */

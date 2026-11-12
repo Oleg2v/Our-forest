@@ -264,14 +264,17 @@ class SeasonsSection {
     const svg = this.branchHost.firstElementChild;
     if (!svg) return;
     const stem = qsa<SVGPathElement>('.seasons__stem', svg);
+    const fill = svg.querySelector('.seasons__stem-fill');
     const twigs = qsa<SVGPathElement>('.seasons__twig, .seasons__stalk', svg);
     const parts = qsa<SVGGElement>('.seasons__lf, .seasons__fr', svg)
       .sort((a, b) => Number(getComputedStyle(a).getPropertyValue('--t')) - Number(getComputedStyle(b).getPropertyValue('--t')));
     gsap.set(stem, { drawSVG: '0%' });
     gsap.set(twigs, { drawSVG: '0%' });
     gsap.set(parts, { '--in': 0 });
+    gsap.set(fill, { opacity: 0 });
     const tl = gsap.timeline({ paused: true });
     tl.to(stem, { drawSVG: '100%', duration: 1.8, ease: 'power2.inOut' })
+      .to(fill, { opacity: 1, duration: 1, ease: EASE.soft }, 1.1)
       .to(twigs, { drawSVG: '100%', duration: 0.7, ease: 'power2.out', stagger: 0.05 }, 0.5)
       .to(parts, { '--in': 1, duration: 0.9, ease: 'back.out(1.6)', stagger: { each: 1.4 / Math.max(1, parts.length) } }, 0.7);
     ScrollTrigger.create({ trigger, start, once: true, onEnter: () => tl.play() });

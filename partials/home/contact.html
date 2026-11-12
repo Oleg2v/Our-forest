@@ -1,7 +1,8 @@
 <!-- home/contact — section 8 "צרו קשר". Owned by the "lower" agent.
      Script: src/sections/home/contact.ts (+ contact.css). A demo form: real validation (Hebrew),
      nothing is sent anywhere; track('generate_lead'). After sending, a seed falls into the ground
-     and sprouts (line art). Without JS the form posts nowhere (action-less, novalidate is set by JS). -->
+     and sprouts (line art). Without JS the browser's own required-field checks run and the form posts to
+     this page (method=post, so no personal data ends up in the URL); JS sets novalidate and takes over. -->
 <section class="contact" id="contact" data-bg="cream" aria-labelledby="contact-title">
   <div class="contact__grid container">
     <div class="contact__aside">
@@ -21,7 +22,7 @@
     </div>
 
     <div class="contact__panel" data-contact-panel data-reveal="fade">
-      <form class="contact__form" data-contact-form aria-labelledby="contact-title">
+      <form class="contact__form" method="post" data-contact-form aria-labelledby="contact-title">
         <div class="contact__row">
           <div class="contact__field">
             <label for="cf-name"><span data-he="contact.form.name">שם מלא</span><span class="contact__star" aria-hidden="true">*</span></label>

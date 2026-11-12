@@ -78,6 +78,7 @@ export function initWorkshops(host: HTMLElement): void {
   let current = '';
   let qx: gsap.QuickToFunc | null = null, qy: gsap.QuickToFunc | null = null, qr: gsap.QuickToFunc | null = null;
   let lastX = 0, lastT = 0, inside = false;
+  let px = -1, py = -1, scrollRaf = 0;
 
   const canFloat = () => !env.isTouch && env.motionAllowed() && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
@@ -104,8 +105,9 @@ export function initWorkshops(host: HTMLElement): void {
 
   const onMove = (e: PointerEvent) => {
     if (!on || e.pointerType !== 'mouse') return;
-    const b = list.getBoundingClientRect();
-    const x = e.clientX - b.left, y = e.clientY - b.top;
+    // the photo is position:fixed (viewport coords) — it never adds scrollable overflow
+    const x = e.clientX, y = e.clientY;
+    px = x; py = y;
     if (!inside) {
       inside = true;
       gsap.set(float, { x, y });
@@ -120,19 +122,30 @@ export function initWorkshops(host: HTMLElement): void {
     if (row?.dataset.ws) show(row.dataset.ws); else if (current) hide();
   };
   const onLeave = () => { if (on) { hide(); qr?.(0); } };
+  // wheel-scrolling under a still cursor: follow the row that is now under it
+  const onScroll = () => {
+    if (!on || !current || scrollRaf) return;
+    scrollRaf = requestAnimationFrame(() => {
+      scrollRaf = 0;
+      const el = document.elementFromPoint(px, py);
+      const row = el?.closest<HTMLElement>('.seasons__row');
+      if (!el || !list.contains(el)) onLeave();
+      else if (row?.dataset.ws) show(row.dataset.ws);
+    });
+  };
 
   const enable = () => {
     if (on || !canFloat()) return;
     on = true;
     host.classList.remove('seasons--thumbs');
-    list.style.position = 'relative';
-    list.appendChild(float);
+    host.appendChild(float);
     gsap.set(float, { autoAlpha: 0, xPercent: -50, yPercent: -100, x: 0, y: 0, rotation: 0 });
     qx = gsap.quickTo(float, 'x', { duration: 0.75, ease: 'power3.out' });
     qy = gsap.quickTo(float, 'y', { duration: 0.75, ease: 'power3.out' });
     qr = gsap.quickTo(float, 'rotation', { duration: 0.9, ease: 'power3.out' });
     list.addEventListener('pointermove', onMove, { passive: true });
     list.addEventListener('pointerleave', onLeave, { passive: true });
+    window.addEventListener('scroll', onScroll, { passive: true });
   };
   const disable = () => {
     host.classList.add('seasons--thumbs');
@@ -140,6 +153,7 @@ export function initWorkshops(host: HTMLElement): void {
     on = false;
     list.removeEventListener('pointermove', onMove);
     list.removeEventListener('pointerleave', onLeave);
+    window.removeEventListener('scroll', onScroll);
     gsap.killTweensOf(float);
     float.remove();
     current = '';

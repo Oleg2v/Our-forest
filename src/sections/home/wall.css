@@ -108,6 +108,7 @@ html:not(.js) .wall__band { display: none; }
 .wall--static .wall__track { width: auto; flex-wrap: wrap; justify-content: center; transform: none !important; direction: rtl; }
 .wall--static .wall__list { flex-wrap: wrap; justify-content: center; row-gap: 6px; }
 .wall--static .wall__list[aria-hidden] { display: none; }
+.wall--static .wall__item { white-space: normal; flex-wrap: wrap; justify-content: center; max-width: 100%; text-align: center; }
 .wall--static .wall__row--a .wall__item:nth-child(n + 7) { display: none; }
 .wall--static .wall__row--b .wall__item:nth-child(n + 11) { display: none; }
 .wall--static .wall__row--a .wall__ded { font-size: clamp(30px, 3.4vw, 52px); }
