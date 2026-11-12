@@ -159,6 +159,28 @@ html.js.touch .roots:not(.roots--grain) .roots__texture::after { background-imag
 .roots__node[data-node='teams']     { --x: 0.3;  --y: 0.6; }
 .roots__node[data-node='workshops'] { --x: 0.68; --y: 0.66; }
 .roots__node[data-node='soil']      { --x: 0.5;  --y: 0.76; }
+/* ---------- desktop polish (tablet / desktop only; the phone layout below overrides or ignores all of it) ---------- */
+@media (min-width: 769px) {
+  /* The net's heading on the content column, like the story above it and every other heading on the page — it hung
+     on the window gutter (56 px in at 1920 while the story title sits 240 px in). Same edge up to 1552 px wide. */
+  .roots__net-title { inset-inline-start: max(var(--gutter), (100% - var(--maxw)) / 2); }
+  /* The five directions spread over the screen, but over no more than 1.25 × the column: on 2K+ screens they drifted
+     out past the column towards the window edges (the outer captions 380 px from the edge at 2560, the column at 560).
+     Up to 1800 px wide nothing moves. */
+  .roots__nodes { inset-inline: max(0px, (100% - var(--maxw) * 1.25) / 2); }
+  /* Big, tall screens (2K+): the story and the net scale with the screen instead of stopping at their 1440-wide sizes —
+     at 2560 × 1440 the story filled the top 40 % of the frame and the captions were 16 px. Each max() / vmin term only
+     takes over above ~1100 px of height (or ~2200 px of width), so laptops and 1080p screens are untouched. */
+  .roots {
+    --photo-w: min(26vw, max(400px, 36vh));
+    --story-pad: clamp(28px, 9vh, 140px);
+    --dot: max(68px, 5.2vmin);
+  }
+  .roots__title { font-size: clamp(52px, 7vw, max(118px, 10vmin)); }
+  .roots__text { font-size: clamp(18px, 1.32vw, max(21px, 1.6vmin)); }
+  .roots__net-title { font-size: clamp(40px, 4.4vw, max(74px, 6vmin)); }
+  /* (the node title / caption sizes are further down, after their base rules — here those would win over them) */
+}
 @media (max-width: 1100px) and (min-width: 769px) {
   .roots__node { --w: 200px; }
   .roots__node[data-node='dogs']      { --y: 0.4; }
@@ -172,10 +194,12 @@ html.js.touch .roots:not(.roots--grain) .roots__texture::after { background-imag
   .roots { --photo-w: 35vw; --dot: 80px; --story-pad: clamp(40px, 6vh, 80px); }
   .roots__title { font-size: clamp(52px, 7.6vw, 84px); }
   .roots__text { font-size: 19px; }
-  .roots__net-title { font-size: clamp(46px, 6.4vw, 70px); }
+  /* two lines (≤ 6em): on one line the heading reached past the middle of the stage and the tap root ran through its "?" */
+  .roots__net-title { font-size: clamp(46px, 6.4vw, 70px); max-width: 6em; }
   .roots__node { --w: 250px; }
-  .roots__node-title { font-size: 30px; }
-  .roots__node-text { font-size: 17px; }
+  /* .roots-scoped: the base .roots__node-title / -text rules come later in this file and used to win over these */
+  .roots .roots__node-title { font-size: 30px; }
+  .roots .roots__node-text { font-size: 17px; }
   .roots__node[data-node='nature']    { --x: 0.22; --y: 0.3; }
   .roots__node[data-node='dogs']      { --x: 0.78; --y: 0.42; }
   .roots__node[data-node='teams']     { --x: 0.26; --y: 0.58; }
@@ -220,6 +244,13 @@ html.js.touch .roots:not(.roots--grain) .roots__texture::after { background-imag
   text-wrap: balance;
 }
 .roots__node-text { font-size: 16px; font-weight: 300; line-height: 1.5; color: rgb(var(--cream-rgb) / 0.74); max-width: 22ch; text-wrap: balance; }
+/* Big, tall screens: the node titles and captions grow with the net (32 → 37 px, 16 → 19 px at 2560 × 1440; the
+   captions 16.9 px at 1920 × 1080, 16 px at 1768 × 900 and below). After the base rules above so that they win; the
+   portrait-tablet sizes (.roots-scoped, above) and the phone / landscape-phone block (later) still override them. */
+@media (min-width: 769px) {
+  .roots__node-title { font-size: clamp(24px, 2.05vw, max(32px, 2.6vmin)); }
+  .roots__node-text { font-size: clamp(16px, 0.6vw + 0.5vh, 19px); }
+}
 
 /* ---------- generated layers ---------- */
 /* SVG user space is physical px of the world box, so the overlay is anchored at its physical origin */

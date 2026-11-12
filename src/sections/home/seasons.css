@@ -222,15 +222,24 @@
 .seasons--pinned { padding-block: 0; }
 .seasons--pinned .seasons__pin {
   --branch-h: min(13vw, 21svh);
-  --ruler-h: 92px;
+  /* the ruler's band: its distance from the bottom, its own 40px (line + names) and a calm gap above it,
+     so the lowest button never sits on the line (≈ 28px on a laptop, 52px on a big screen) */
+  --ruler-b: clamp(16px, 3svh, 32px);
+  --ruler-gap: clamp(28px, 3.6svh, 52px);
+  --ruler-h: calc(var(--ruler-b) + 40px + var(--ruler-gap));
   /* the stage starts under the branch's lowest leaf (≈ 0.9 of its box), so the fruit never
      hangs into a photo; the photos take what is left after the card text and the ruler */
   --stage-top: calc(var(--branch-h) * 0.92 + 24px);
   /* the card text under the photo (+ the stagger): a fallback — seasons.ts measures the tallest card
      (a two-line title on a narrow screen) and sets --body-h and --stagger-h: 0px */
   --body-h: 256px;
-  --img-h: clamp(150px, calc(100svh - var(--stage-top) - var(--ruler-h) - var(--body-h) - var(--stagger-h, 2.2svh)), min(520px, 30vw));
-  --card-w: clamp(260px, 22vw, 400px);
+  --img-room: calc(100svh - var(--stage-top) - var(--ruler-h) - var(--body-h) - var(--stagger-h, 2.2svh));
+  /* a tall screen (1440px and up) grows the photos with it instead of leaving a band of empty season
+     above the ruler; up to 1080px high the cap is the old 520px */
+  --img-h: clamp(150px, var(--img-room), min(max(520px, 46svh), 30vw));
+  /* whatever the capped photos still leave is split above and below the strip */
+  --slack: max(0px, var(--img-room) - var(--img-h));
+  --card-w: clamp(240px, 22vw, max(400px, 34svh)); /* 240: three cards fit a 1024px window */
   position: relative;
   display: block;
   height: 100svh;
@@ -246,13 +255,19 @@
   position: absolute; inset: 0;
   display: flex; align-items: flex-start;
   overflow: clip;
-  padding-block: var(--stage-top) var(--ruler-h);
+  padding-block: calc(var(--stage-top) + var(--slack) / 2) var(--ruler-h);
 }
 .seasons--pinned .seasons__track {
   display: flex; align-items: flex-start;
   width: max-content; margin: 0;
-  gap: var(--card-gap);
-  padding-inline: var(--gutter) calc(var(--gutter) * 2.4);
+  /* the strip ends on the three cards centred in the window (100% = the visible width, without a
+     scrollbar), the heading wholly gone. Before, the end padding was a fixed 2.4 gutters: at 1024px the
+     first card ended cut by the right edge, up to 1768px the end frame sat off-centre, and on a big screen
+     (a strip only a little wider than the window) it stopped with the heading half off the right edge.
+     The gap only grows where the window is wide enough for that (≥ 1800px); below, it is the old one */
+  --strip-gap: max(var(--card-gap), (100vw - 3 * var(--card-w)) / 4);
+  gap: var(--strip-gap);
+  padding-inline: var(--gutter) max(var(--gutter), (100% - 3 * var(--card-w) - 2 * var(--strip-gap)) / 2);
   will-change: transform;
 }
 .seasons--pinned .seasons__intro {
@@ -276,10 +291,10 @@
 .seasons--pinned .seasons__card[data-card='events'] { margin: 0; translate: 0 0.9svh; }
 .seasons--pinned .seasons__body { padding-block-start: 20px; gap: 8px; }
 .seasons--pinned .seasons__idx { top: calc(20px + 0.55em); }
-.seasons--pinned .seasons__card-text { font-size: 16.5px; }
+.seasons--pinned .seasons__card-text { font-size: clamp(16.5px, 1.2svh, 18px); } /* 16.5px up to 1375px high */
 @media (max-height: 820px) {
   .seasons--pinned .seasons__card-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .seasons--pinned .seasons__pin { --branch-h: min(13vw, 18svh); --ruler-h: 80px; --body-h: 226px; }
+  .seasons--pinned .seasons__pin { --branch-h: min(13vw, 18svh); --body-h: 226px; }
   .seasons--pinned .seasons__card-title { font-size: 26px; }
   .seasons--pinned .seasons__body { padding-block-start: 16px; gap: 6px; }
   .seasons--pinned .seasons__idx { top: calc(16px + 0.5em); }
@@ -291,9 +306,12 @@
   display: block;
   position: absolute; z-index: 3;
   inset-inline: var(--gutter);
-  bottom: clamp(16px, 3svh, 32px);
+  bottom: var(--ruler-b);
   height: 44px;
 }
+/* the season names and "עכשיו" grow a little on a big screen (14 / 12px on a laptop) */
+.seasons--pinned .seasons__tick { font-size: clamp(14px, 0.78vw, 16px); }
+.seasons--pinned .seasons__tick-now { font-size: clamp(12px, 0.68vw, 14px); }
 .seasons__ruler-line { position: absolute; inset-inline: 0; top: 4px; height: 1px; background: var(--line-strong); }
 .seasons__ruler-fill {
   position: absolute; inset: 0; background: var(--ink);
@@ -365,6 +383,9 @@
 .seasons__when { grid-area: when; display: grid; line-height: 1.2; gap: 2px; }
 .seasons__wd { font-size: 14px; color: var(--ink-soft); }
 .seasons__date { font-size: 26px; color: var(--bark); font-variant-numeric: lining-nums tabular-nums; }
+/* the date is a <bdi> of digits (an LTR box): as a grid item it stretched and sat on the column's left,
+   80px off the weekday's right edge above it. Shrink it to its text, on the RTL start edge. */
+@media (min-width: 769px) and (min-height: 561px) { .seasons__date { justify-self: start; } }
 .seasons__row-title {
   grid-area: title;
   font-size: clamp(22px, 1.9vw, 30px); line-height: 1.2; color: var(--ink);

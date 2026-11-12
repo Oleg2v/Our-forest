@@ -29,8 +29,9 @@ export interface DogOptions {
   hidden?: boolean;
   /** runAcross: run once automatically when the host scrolls into view (default true) */
   autoplay?: boolean;
-  /** px between the host's bottom edge and the paws (default 14) */
-  ground?: number;
+  /** px between the host's bottom edge and the paws (default 14). A function is read every frame: a host that is
+      partly below the visible frame (the roots' pinned net while the camera pans up) keeps the dog in view. */
+  ground?: number | (() => number);
 }
 export interface DogHandle {
   destroy(): void;
@@ -161,7 +162,10 @@ class Dog {
 
   /* ---------------- geometry ---------------- */
   hostSize() { return { w: this.host.clientWidth, h: this.host.clientHeight }; }
-  trackY() { return this.hostSize().h - (this.opts.ground ?? 14) - H + 6; }
+  trackY() {
+    const g = this.opts.ground;
+    return this.hostSize().h - (typeof g === 'function' ? g() : g ?? 14) - H + 6;
+  }
   homePos() {
     const home = this.opts.home;
     const hr = this.host.getBoundingClientRect();

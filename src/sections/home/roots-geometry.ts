@@ -95,6 +95,33 @@ function flatten(d: string): P[] | null {
   return out.length > 1 ? out : null;
 }
 
+/** A rectangle the roots keep out of (e.g. a heading: a root running along under its letters reads as a mistake). */
+export interface Keep { x0: number; x1: number; y: number }
+
+/** How far (px) the smooth path through `pts` reaches up into the zone above keep.y between keep.x0 and keep.x1. */
+export function intrudes(pts: P[], keep: Keep): number {
+  const poly = flatten(smoothPath(pts));
+  let need = 0;
+  if (poly) for (const q of poly) if (q.x > keep.x0 && q.x < keep.x1 && q.y < keep.y) need = Math.max(need, keep.y - q.y);
+  return need;
+}
+
+/** Lower the inner points of a smooth path (not its two ends) until the curve stays below `keep.y` wherever it is
+    between keep.x0 and keep.x1. Points near the zone go down to its floor; the curve between them is re-checked
+    and nudged again if it still bulges up into it. No randomness: the seeded sequence is never touched. */
+export function keepBelow(pts: P[], keep: Keep): P[] {
+  const out = pts.map((p) => ({ ...p }));
+  const lead = 80; // a point just before the zone shapes the curve inside it too
+  for (let k = 0; k < 6; k++) {
+    const need = intrudes(out, keep);
+    if (need < 0.5) break;
+    for (let i = 1; i < out.length - 1; i++) {
+      if (out[i].x > keep.x0 - lead && out[i].x < keep.x1 + lead) out[i].y = Math.max(out[i].y + (k ? need : 0), keep.y + 2);
+    }
+  }
+  return out;
+}
+
 /** Sample a path into (length, x, y) triples, every ~step px of length.
     The browser's getPointAtLength walks the path again on every call — a few hundred calls were ~100 ms of a
     throttled phone's init. Our paths are flattened in JS instead (the same curve) and the lengths scaled to the

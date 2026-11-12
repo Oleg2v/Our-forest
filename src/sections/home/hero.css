@@ -207,6 +207,14 @@ html.motion .hero__dim { will-change: opacity; }
 /* the static wave: crest ≈ 27 %, troughs ≈ 61 % of the box — 38 % down shows the whole wavy edge, and the
    cream below it continues straight into the roots' cream band */
 
+/* ---------- desktop / tablet: the counter on the content column ----------
+   The copy, the header and every section below sit on the --maxw column; the counter hung on the window gutter
+   instead — 108 px out from the header CTA above it at 1768, 184 px at 1920, 504 px at 2560. Now its inline-end
+   edge is the column's (= the header CTA's). Up to 1552 px wide the column edge IS the gutter: nothing moves. */
+@media (min-width: 769px) {
+  .hero__corner { inset-inline-end: max(var(--gutter), (100% - var(--maxw)) / 2); }
+}
+
 /* ---------- tablet ---------- */
 @media (max-width: 1100px) {
   .hero__content { grid-template-columns: minmax(0, 1fr); row-gap: 26px; }

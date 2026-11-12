@@ -26,8 +26,8 @@ import { mountDog, type DogHandle } from '../../components/dog';
 import { scrollTo } from '../../core/scroll';
 import { whenScrollQuiet } from './preloader';
 import {
-  seeded, smoothPath, pebble, samplePath, lengthAtY, pointAt, rootlet, surfaceMarkup,
-  type P, type Rand, type Sample,
+  seeded, smoothPath, keepBelow, intrudes, pebble, samplePath, lengthAtY, pointAt, rootlet, surfaceMarkup,
+  type Keep, type P, type Rand, type Sample,
 } from './roots-geometry';
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -399,19 +399,35 @@ class Roots {
 
     // lateral roots to nodes 1–4, leaving the tap root at increasing depths
     const fracs = [0.14, 0.24, 0.4, 0.54];
+    // ...and never along the underside of the net's heading: the first branch out to "חיבור לטבע" ran right under
+    // its letters (touching the "?" at 1366; once the heading sat on the content column, under the whole line)
+    const head = this.box(this.netTitle, wr);
+    const keep: Keep = { x0: head.x - 24, x1: head.x + head.w + 24, y: head.bottom + Math.max(32, H * 0.04) };
     const branches = dots.slice(0, 4).map((N, i) => {
-      const lenB = lengthAtY(tapS, J.y + (deep.cy - J.y) * fracs[i]);
-      const B = pointAt(tapS, lenB).p;
-      const dx = N.cx - B.x, dy = N.cy - B.y;
+      // the jitter is drawn first, once (same seeded values, same order as before) — the shape is then a pure
+      // function of where the branch leaves the tap root
+      const jx = rand.range(-10, 10), jy = rand.range(-6, 6), jx2 = rand.range(-5, 5);
+      const make = (frac: number) => {
+        const lenB = lengthAtY(tapS, J.y + (deep.cy - J.y) * frac);
+        const B = pointAt(tapS, lenB).p;
+        const dx = N.cx - B.x, dy = N.cy - B.y;
+        const pts: P[] = [
+          B,
+          { x: B.x + dx * 0.26, y: B.y + dy * 0.1 + 8 },
+          { x: B.x + dx * 0.6 + jx, y: B.y + dy * 0.36 + jy },
+          { x: B.x + dx * 0.9 + jx2, y: B.y + dy * 0.74 },
+          { x: N.cx, y: N.cy },
+        ];
+        return { lenB, B, dx, pts };
+      };
+      // a branch that would run under the heading leaves the tap root a little deeper (short of the next one) —
+      // the natural curve then clears it; only what is still left is bent down (keepBelow)
+      let m = make(fracs[i]);
+      const deepest = (fracs[i + 1] ?? fracs[i] + 0.1) - 0.02;
+      for (let f = fracs[i] + 0.01; intrudes(m.pts, keep) > 0.5 && f <= deepest + 1e-6; f += 0.01) m = make(f);
+      const { lenB, B, dx } = m;
       const side = Math.sign(dx) || 1;
-      const pts: P[] = [
-        B,
-        { x: B.x + dx * 0.26, y: B.y + dy * 0.1 + 8 },
-        { x: B.x + dx * 0.6 + rand.range(-10, 10), y: B.y + dy * 0.36 + rand.range(-6, 6) },
-        { x: B.x + dx * 0.9 + rand.range(-5, 5), y: B.y + dy * 0.74 },
-        { x: N.cx, y: N.cy },
-      ];
-      const d = smoothPath(pts);
+      const d = smoothPath(keepBelow(m.pts, keep));
       const path = this.path(d, 'roots__root');
       const { total, samples } = samplePath(path, 6);
       // the root goes on past the node, finer, outwards and down
@@ -530,7 +546,6 @@ class Roots {
       .to(title, { opacity: 1, y: 0, duration: 0.8, ease: 'expo.out' }, 0.2)
       .to(text, { opacity: 1, y: 0, duration: 0.8, ease: 'expo.out' }, 0.32));
     nodeTls.forEach((t) => this.prime(t));
-    const nodeOn = nodeParts.map(() => false);
     const lightNode = (i: number, at: number) => { ignite[i] = at; };
     branches.forEach((b, i) => {
       const start = Math.max(TL.netAt + i * TL.branchEvery, tapTimeAt(b.lenB) + 0.05);
@@ -589,6 +604,24 @@ class Roots {
     placeAnchor();
     this.tlDur = tl.duration();
     this.prime(tl);
+    // The nodes (and the dog) follow the playhead: lit once the root has reached them. Kept in sync from the
+    // timeline's updates — but not from the ones a ScrollTrigger.refresh() makes while it reverts everything to
+    // measure (it renders this timeline at 0, then puts it back without an update): a refresh with the reader in the
+    // net (the deferred inits' refresh, 'load', fonts, a window resize) left all five directions dark and the dog
+    // gone until the next scroll. During a refresh the state is left alone; at its end it is re-synced (onRefresh).
+    const nodeOn = nodeParts.map(() => false);
+    let dogShown = false;
+    const syncNodes = () => {
+      const t = tl.time();
+      nodeTls.forEach((ntl, i) => {
+        const on = t >= ignite[i] - 0.08;
+        if (on === nodeOn[i]) return;
+        nodeOn[i] = on;
+        if (on) { ntl.timeScale(1).play(); sound.play('pop', { volume: 0.25 }); } else ntl.timeScale(1.8).reverse();
+      });
+      const show = t >= ignite[1] + 0.5;
+      if (show !== dogShown) { dogShown = show; show ? this.dog?.show() : this.dog?.hide(); }
+    };
     this.pin = ScrollTrigger.create({
       trigger: this.s,
       start: 'top top',
@@ -603,23 +636,18 @@ class Roots {
         // a refresh reverts + invalidates the timeline: initialise the tweens beyond the playhead again, here
         const p = tl.progress();
         tl.progress(1, true).progress(p, true);
+        syncNodes();
       },
     });
 
     // dog: appears with its node, follows the cursor along the bottom of the section
-    this.dog = mountDog(this.net, { mode: 'follow', home: nodeParts[1].n.querySelector<HTMLElement>('.roots__dot')!, hidden: true });
-    let dogShown = false;
-    tl.eventCallback('onUpdate', () => {
-      const t = tl.time();
-      nodeTls.forEach((ntl, i) => {
-        const on = t >= ignite[i] - 0.08;
-        if (on === nodeOn[i]) return;
-        nodeOn[i] = on;
-        if (on) { ntl.timeScale(1).play(); sound.play('pop', { volume: 0.25 }); } else ntl.timeScale(1.8).reverse();
-      });
-      const show = t >= ignite[1] + 0.5;
-      if (show !== dogShown) { dogShown = show; show ? this.dog?.show() : this.dog?.hide(); }
-    });
+    // Its ground is the bottom of the FRAME, not of the net: the finale pans the camera up, which takes the net's
+    // bottom edge below the stage by up to the pan (25 px at 1768 × 900, 54 at 1920 × 1080) — the running dog had its
+    // paws, at 1080p most of its body, cut off by the stage edge / the seasons panel at the end of the pin.
+    // (clamped to the finale's own pan range: the dog is only out once the descent is over)
+    const pan = () => Math.min(H * 0.24, Math.max(0, (Number(gsap.getProperty(this.world, 'y')) || 0) + camNet));
+    this.dog = mountDog(this.net, { mode: 'follow', home: nodeParts[1].n.querySelector<HTMLElement>('.roots__dot')!, hidden: true, ground: () => 14 + pan() });
+    tl.eventCallback('onUpdate', () => { if (!(ScrollTrigger as unknown as { isRefreshing?: boolean }).isRefreshing) syncNodes(); });
 
     this.makeFlies(g.rand, 9, { x0: g.W * 0.04, x1: g.W * 0.96, y0: g.ground.y + H * 0.3, y1: g.Hw - 40 });
   }

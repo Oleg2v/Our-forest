@@ -361,6 +361,23 @@ a.fmap__li:hover { background: rgb(var(--fruit-rgb) / 0.05); }
 .fmap__sheet .fmc__cta { justify-self: stretch; min-height: 52px; font-size: 17px; margin-block-start: 10px; }
 .fmap__sheet .fmc__cta, .fmap__sheet .fmc__link { margin-inline-end: -40px; }
 
+/* ---------------------------------------------------------------- desktop (the home map)
+   The zoom buttons and the legend sat 16px from the frame, 6px from its printed margin line: on a big
+   frame they looked glued to the edge. The inset grows with the screen; the legend and the hover card
+   read a size up (their 13–14px captions were small at 1920). Phones and the picker are unchanged. */
+@media (min-width: 769px) and (min-height: 561px) {
+  .fmap--home:not(.is-full) { --fm-pad: clamp(16px, 1.5vw, 32px); }
+}
+@media (min-width: 1440px) and (min-height: 561px) {
+  .fmap--home .fmap__legend { gap: 4px 22px; padding: 12px 22px; font-size: 15px; }
+  .fmap--home .fmap__legend b { font-size: 18px; }
+  .fmap--home .fmap__key { width: 22px; height: 22px; }
+  .fmap--home .fmap__card { width: min(320px, calc(100% - 20px)); padding: 18px 22px 20px; }
+  .fmap--home .fmap__card .fmc__eyebrow { font-size: 14px; }
+  .fmap--home .fmap__card .fmc__meta { font-size: 14px; }
+  .fmap--home .fmap__li-num, .fmap--home .fmap__li-meta { font-size: 14px; }
+}
+
 /* ---------------------------------------------------------------- phones */
 @media (max-width: 768px) {
   .fmap { --fm-pad: 12px; }

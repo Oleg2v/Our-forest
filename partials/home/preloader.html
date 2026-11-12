@@ -20,7 +20,8 @@ html.pl-on .preloader { display: block; animation: pl-failsafe .6s ease 5s forwa
 html.pl-on .preloader.is-js { animation: none; }
 @media (prefers-reduced-motion: reduce) { html.pl-on .preloader { display: none; } }
 .preloader__disc {
-  position: absolute; left: 50%; top: 47%; width: min(70vmin, 80vw, 460px); aspect-ratio: 1;
+  /* 460 px, or 42vmin on tall screens (≥ 1100 px high: 605 px at 2560 × 1440, where 460 px read as a third of the screen) */
+  position: absolute; left: 50%; top: 47%; width: min(70vmin, 80vw, max(460px, 42vmin)); aspect-ratio: 1;
   translate: -50% -50%; overflow: visible; transform-origin: 48.25% 52.25%;
   animation: pl-turn 2.2s cubic-bezier(.22,1,.36,1) both;
 }

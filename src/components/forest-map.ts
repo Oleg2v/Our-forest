@@ -23,7 +23,7 @@ import { navigate } from '../chrome';
 import {
   SPOTS, SPECIES_IDS, speciesName, speciesTitle, MC, cardHtml, spotHref, spotLabel, zonesOf, priceFor, occasionLabel, KIND_LABEL, type Zone,
 } from './forest-map/data';
-import { envArt, plotArt, labelArt } from './forest-map/art';
+import { envArt, plotArt, labelArt, ROAD_TOP } from './forest-map/art';
 import { spotInner, type SpotGeom } from './forest-map/spots';
 import { Camera, type CamState, type Rect } from './forest-map/camera';
 import { PLAN, type Pt } from './forest-map/plan';
@@ -372,12 +372,25 @@ export function createForestMap(el: HTMLElement, opts: ForestMapOptions = { mode
     if (!lr.height) return fit;
     const l = cam.layoutRect(PLAN_RECT);
     const bottom = fit.y + fit.k * l.y1, top = fit.y + fit.k * l.y0;
-    const padB = Math.max(pad, fr.bottom - lr.top + 6);
+    let padB = Math.max(pad, fr.bottom - lr.top + 6);
     // on touch the hint stays up while the map is not active (phones: at the top)
     const hr = touch && !full ? hint.getBoundingClientRect() : null;
     const padT = hr && hr.height && hr.top - fr.top < fr.height / 2 ? Math.max(pad, hr.bottom - fr.top + 6) : pad;
     if (bottom <= cam.h - padB && top >= padT) return fit;
-    return cam.fitState(PLAN_RECT, pad, Infinity, padB, padT);
+    let res = cam.fitState(PLAN_RECT, pad, Infinity, padB, padT);
+    // desktop: the room made for the legend shrinks the plan, and the moshav road drawn under the plot crept in
+    // as a stray wavy band along the frame's bottom edge. Give back just enough of that room to keep the road
+    // out; the legend sits over the empty field at the plot's bottom-left, ~70 plan units above this rect's
+    // bottom, so it still clears the fence. (Phones, the picker and full screen fit as before.)
+    if (!touch && !full && cam.rot === 0) {
+      for (let i = 0; i < 4; i++) {
+        const peek = cam.h + 2 - (res.y + res.k * ROAD_TOP);
+        if (peek <= 0 || padB <= pad) break;
+        padB = Math.max(pad, padB - peek);
+        res = cam.fitState(PLAN_RECT, pad, Infinity, padB, padT);
+      }
+    }
+    return res;
   }
   function initialState(fit: CamState): CamState {
     const want = pendingId ?? selectedId ?? opts.initialSpotId;
@@ -1126,9 +1139,15 @@ export function createForestMap(el: HTMLElement, opts: ForestMapOptions = { mode
   function fillList() {
     if (listFilled || !listEl || destroyed) return;
     listFilled = true;
-    listEl.innerHTML = listInner();
-    if (!el.classList.contains('is-list')) listEl.querySelectorAll<HTMLAnchorElement>('a').forEach((a) => { a.tabIndex = -1; });
-    if (filter.species || filter.occasion) applyFilter();
+    // filled with the slot held awake and laid out right here, in the idle moment: put into the skipped
+    // slot, its ~1600 elements (the list is visually hidden, not display: none) were styled and laid out
+    // only when the map came near — one 40–50 ms layout (4× CPU) in a frame of the scroll towards it
+    awake(() => {
+      listEl.innerHTML = listInner();
+      if (!el.classList.contains('is-list')) listEl.querySelectorAll<HTMLAnchorElement>('a').forEach((a) => { a.tabIndex = -1; });
+      if (filter.species || filter.occasion) applyFilter();
+      void listEl.offsetHeight;
+    });
   }
   function setListView(onOff: boolean) {
     if (!listEl || !toggle) return;

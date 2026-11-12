@@ -11,6 +11,11 @@ import {
 
 const P = (d: string, cls: string, extra = '') => `<path class="${cls}" d="${d}"${extra}/>`;
 
+/** the moshav road along the bottom of the drawing, under the plot */
+const ROAD: Pt[] = [[-460, 1168], [200, 1158], [800, 1172], [1250, 1160], [1700, 1176], [2060, 1166]];
+/** the highest plan y its drawn edge reaches (centre line − wobble 2 − half of the 50-unit edge stroke) */
+export const ROAD_TOP = Math.min(...ROAD.map((q) => q[1])) - 28;
+
 /** parallel furrows inside a rotated rectangle (one path) */
 function hatch(cx: number, cy: number, w: number, h: number, rot: number, gap: number, r: Rand, inset = 0): string {
   const a = (rot * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a);
@@ -80,8 +85,7 @@ export function envArt(): string {
   ].join('');
   const wadiPts: Pt[] = [[-90, -360], [-60, -80], [-110, 220], [-58, 520], [-120, 820], [-86, 1080], [-140, 1360]];
   const wadi = sketchLine(wadiPts, r, 3, 60) + sketchLine(wadiPts.map(([x, y]) => [x + 16, y + 4] as Pt), r, 3, 60);
-  const road: Pt[] = [[-460, 1168], [200, 1158], [800, 1172], [1250, 1160], [1700, 1176], [2060, 1166]];
-  const roadD = smooth(wobble(road, r, 2, 80), false, 0.9);
+  const roadD = smooth(wobble(ROAD, r, 2, 80), false, 0.9);
   let houses = '';
   const hx = [380, 520, 690, 860, 1020, 1400, 1560, 1720, 1880, 2010];
   hx.forEach((x, i) => {
