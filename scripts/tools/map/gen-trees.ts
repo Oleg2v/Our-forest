@@ -4,7 +4,7 @@
 import { writeFileSync } from 'node:fs';
 import { PLAN, type Pt } from '../../../src/components/forest-map/plan.ts';
 
-const root = process.argv[2] ?? new URL('../../../', import.meta.url).pathname.replace(//$/, '');
+const root = process.argv[2] ?? new URL('../../..', import.meta.url).pathname;
 
 function rng(seed: number) {
   let a = seed >>> 0;
