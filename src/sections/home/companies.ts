@@ -79,6 +79,13 @@ export function initCompanies(): void {
   const copy = root.querySelector<HTMLElement>('[data-companies-copy]');
   if (!banner || !stage || !photo || !media || !copy) return;
   const scrim = photo.querySelector<HTMLElement>('.companies__scrim');
+  // the banner photo is big (2400w on a DPR 3 phone: it covers a portrait stage): this init runs in an idle slot
+  // after the intro, so fetch + decode it now, off the main thread — not while the stage scrolls into view
+  const img = media.querySelector<HTMLImageElement>('img');
+  if (img && img.loading === 'lazy') {
+    img.loading = 'eager';
+    img.decode?.().catch(() => { /* decoded on first paint instead */ });
+  }
 
   const mq = window.matchMedia('(max-width: 768px)');
   let mode: Mode | null = null;

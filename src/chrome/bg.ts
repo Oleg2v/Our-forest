@@ -79,8 +79,9 @@ function apply(bg: string) {
   if (!HEX[bg] || bg === current) return;
   current = bg;
   const dark = DARK.has(bg);
-  // the page colour: one non-inherited property, no cascade (<body> fades it, <html> paints the overscroll)
-  const colour = `var(--${bg})`;
+  // the page colour: one non-inherited property, no cascade (<body> fades it, <html> paints the overscroll).
+  // A literal colour, not var(--x): in Blink a var() in <html>'s inline style restyled the whole page on every change.
+  const colour = tokenColour(bg);
   root.style.backgroundColor = colour;
   document.body.style.backgroundColor = colour;
   const t = dark ? 'dark' : 'light';
@@ -107,6 +108,18 @@ function apply(bg: string) {
   // the mobile browser chrome follows the forest too
   meta?.setAttribute('content', HEX[bg]);
   bus.emit('theme:section', { bg, dark });
+}
+
+/** the palette token's value (tokens.css is the source of truth; HEX is only the fallback). All four are read
+    once, on the first apply at boot — never a computed-style read mid-scroll. */
+let tokens: Record<string, string> | null = null;
+function tokenColour(bg: string) {
+  if (!tokens) {
+    const cs = getComputedStyle(root);
+    tokens = {};
+    for (const k of Object.keys(HEX)) tokens[k] = cs.getPropertyValue(`--${k}`).trim() || HEX[k];
+  }
+  return tokens[bg] || HEX[bg];
 }
 
 /** --page-bg for the few rules that paint "the page colour" (outline-button hover text, the wall's talk button) */

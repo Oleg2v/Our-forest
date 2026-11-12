@@ -8,6 +8,9 @@
    ========================================================================== */
 .companies {
   position: relative;
+  /* own colour (like .wall / .contact / .site-footer): while body's colour eases at a page-colour change, the
+     inherited change stops here instead of restyling this whole subtree every frame (nothing here paints it) */
+  color: var(--ink);
   /* accents follow the page theme: the wall below turns the page moss while the end of this section
      (packages, partners, buttons) is still on screen — the same pattern as .wall / .biz */
   --cp-head: var(--bark);

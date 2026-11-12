@@ -28,15 +28,25 @@ export function initHeader(page: PageName) {
   let toneTimer = 0;
 
   // write only on change: an attribute write per scroll frame invalidates the header's style every frame
-  const setAttr = (name: string, on: boolean) => { if (h.hasAttribute(name) !== on) { if (on) h.setAttribute(name, ''); else h.removeAttribute(name); } };
-  // the tone probe (3 × elementsFromPoint + computed styles) needs layout: during a scroll it runs at most every
-  // 140 ms with a mouse and every 450 ms on touch screens, and always once the scroll settles
+  const setAttr = (name: string, on: boolean) => {
+    if (h.hasAttribute(name) === on) return;
+    if (on) h.setAttribute(name, ''); else h.removeAttribute(name);
+    if (name === 'data-hidden' && !on && toneStale) tone(); // back in view: the right colour as it slides in
+  };
+  // the tone probe (3 × elementsFromPoint + computed styles) needs layout and a hit test of the whole stack: during
+  // a scroll it runs at most every 140 ms with a mouse and every 450 ms on touch screens, always once the scroll
+  // settles — and never while the header is hidden
   const toneEvery = window.matchMedia('(hover: none) and (pointer: coarse)').matches ? 450 : 140;
   let headerH = 0;
   window.addEventListener('resize', () => { headerH = 0; }, { passive: true });
 
+  // while the header is slid away (scrolling down) its colour cannot be seen: no probe, just remember to look
+  // again the moment it comes back (most of a phone swipe down probes nothing)
+  let toneStale = false;
   const tone = () => {
     lastTone = performance.now();
+    if (h.hasAttribute('data-hidden')) { toneStale = true; return; }
+    toneStale = false;
     if (!headerH) headerH = parseFloat(getComputedStyle(h).height) || 64;
     const py = headerH / 2 + 2;
     const w = window.innerWidth;
