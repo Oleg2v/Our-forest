@@ -17,6 +17,8 @@
 .mapsec__mount { --fm-h: clamp(560px, 84vh, 920px); }
 html.js .mapsec__mount:not(.fmap) { min-height: calc(var(--fm-h) + 62px); }
 .mapsec .fmap__bar { width: min(100% - 2 * var(--gutter), var(--maxw)); margin-inline: auto; }
+/* desktop: the filters breathe above the plan instead of sitting on its edge */
+@media (min-width: 769px) { .mapsec .fmap__bar { margin-block-end: clamp(28px, 2.4vw, 44px); } }
 .mapsec .fmap__slot { margin-inline: clamp(8px, 1.4vw, 24px); }
 
 /* four ways to take part */

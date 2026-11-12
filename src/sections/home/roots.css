@@ -237,6 +237,8 @@ html.js.touch .roots:not(.roots--grain) .roots__texture::after { background-imag
 .roots__root { stroke: var(--root); stroke-width: 1.6; }
 .roots__root--tap { stroke-width: 2.1; }
 .roots__root--thin { stroke-width: 1.15; }
+/* the root going on past a node: a fine, receding rootlet — not a second line that frames the caption */
+.roots__root--tip { stroke: var(--root-fine); stroke-width: 1; }
 .roots__rootlet { stroke: var(--root-fine); stroke-width: 1; }
 .roots__glow { stroke: var(--cream); stroke-width: 2.1; }
 .roots__glow--soft { stroke: rgb(var(--cream-rgb) / 0.12); stroke-width: 9; }

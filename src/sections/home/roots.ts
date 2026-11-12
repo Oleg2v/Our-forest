@@ -415,10 +415,10 @@ class Roots {
       const path = this.path(d, 'roots__root');
       const { total, samples } = samplePath(path, 6);
       // the root goes on past the node, finer, outwards and down
-      const tip = i === 1 ? null : this.path(this.tipPath(this.nodes[i], N, side), 'roots__root roots__root--thin');
+      const tip = i === 1 ? null : this.path(this.tipPath(this.nodes[i], N, side), 'roots__root roots__root--thin roots__root--tip');
       return { path, d, total, samples, lenB, B, side, tip };
     });
-    const deepTip = this.path(this.tipPath(this.nodes[4], deep, -1), 'roots__root roots__root--thin');
+    const deepTip = this.path(this.tipPath(this.nodes[4], deep, -1), 'roots__root roots__root--thin roots__root--tip');
 
     // fine rootlets (timed by where they leave their parent)
     const rootlets: { path: SVGPathElement; parent: number; at: number }[] = [];
@@ -556,7 +556,13 @@ class Roots {
       tl.to(g.branchGlows[i], { drawSVG: '0% 100%', duration: TL.branchGlowDur, ease: 'power1.in' }, arrive - TL.branchGlowDur);
       tl.to(nodeParts[i].n, { '--glow': 1, duration: 0.4, ease: 'power2.out' }, arrive - TL.branchGlowDur - 0.15);
     });
-    const panUp = Math.round(H * 0.24);
+    // The pan may never push a node out of the stage: the pin ends on this frame and the next section follows the
+    // stage's bottom edge, so a node cut by the viewport here stays cut while the whole block scrolls away (the
+    // lowest captions sliced by the seasons panel on desktop). Up to a quarter screen, but the lowest caption keeps
+    // at least ~8vh of soil below it.
+    const lowest = Math.max(...this.nodes.map((n) => this.box(n, this.world.getBoundingClientRect()).bottom));
+    const room = H - Math.max(56, H * 0.08) - (lowest - camNet);
+    const panUp = Math.round(Math.max(0, Math.min(H * 0.24, room)));
     const lenOut = lengthAtY(tapS, camNet - panUp - H * 0.1);
     tl.to(g.branchGlows.flat(), { opacity: 0.16, duration: 0.7, ease: 'power1.inOut' }, TL.riseAt);
     tl.to(nodeParts.map((p) => p.n), { '--glow': 0.3, duration: 0.7, ease: 'power1.inOut' }, TL.riseAt);
