@@ -5,7 +5,7 @@
      data-reveal="lines" | "letters" | "words" (read: pale→full on scroll) | "fade" | "leaf" (image clip reveal 1.2→1)
        + data-reveal-delay="0.2", data-reveal-start="top 70%"
      data-bg="cream|sand|soil|moss|season"   section background for the page bg system
-     data-header="light|dark"                (optional, on a section) force the header tone over it
+     data-header="light|dark"                (optional, on a section) force the header tone over it (a solid-coloured box inside wins)
      data-magnetic                           magnetic pull (≈30px) on desktop
      data-cursor="שתלו|גלו|גררו|none"        custom cursor label; data-cursor-fill="fruit" fills the ring
      data-cursor-icon="<svg …>"              (optional) icon inside the ring (map trees)
@@ -13,6 +13,8 @@
      data-sound-hover                        soft wooden click on hover (links/buttons get it by default; ="off" to mute)
      data-wa="text"                          on a[href*=wa.me]: prefilled WhatsApp text (all wa.me clicks are tracked)
      html[data-hide-sticky]                  hides the phone sticky bottom bar (a page with its own bar)
+     data-cookie-avoid                       the cookie card never rests on it; at the bottom edge it is a floor (the card sits above)
+     font-size: calc(17px * var(--a11y-k, 1)) body-scale text that follows the a11y panel's text size (chrome.css)
    Bus events (full list with payloads in src/core/bus.ts) — emitted: 'theme:section', 'menu:open|close',
    'modal:open|close' (a11y panel), 'page:leave', 'page:restore', 'consent:change', 'a11y:change', 'cursor:drag',
    'sound:change'. Listened: 'preloader:done' (holds first-screen reveals + cookie card), 'modal:open|close'

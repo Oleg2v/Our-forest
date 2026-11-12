@@ -93,3 +93,66 @@ The /business mobile LCP of 3.0–3.2 s is Lighthouse's *simulated* value. Measu
   - `button.hero__tilt`: the visible text «הטיה» is not in its accessible name (label-content-name-mismatch).
   - /plant `.pcs__of` contrast is 3.1:1.
   - /tree: `.tree-feed__lead .price` is 4.26:1 (fruit on sand), and the herbarium `.hb-label__wait` / `__date` are about 3.1:1.
+
+---
+
+# Pass 2 — critic findings (12.11.2026)
+
+All ten findings were checked in the running site (Playwright, phone 390×844 / 375×667, desktop 1440×900 / 1280×720, reduced motion). Nine are fixed. One (the legal «לאישור» chips) is kept on purpose; the reason is below.
+
+## Fixed
+- **Text size (a11y panel) barely changed the page.** `chrome.css` now defines `--a11y-k` (1 / 1.125 / 1.25), next to `data-a11y-font`. It also scales the `--fs-small` and `--fs-eyebrow` tokens at those levels, so `.eyebrow`, field labels and every `var(--fs-small)` grow on all pages.
+  In business.css, doc.css, credits.css and notfound.css, every body-scale size up to 40px is now written as `calc(Npx * var(--a11y-k, 1))`. Display titles stay as they are.
+  Characters inside `<main>` that grow at «גדול מאוד»:
+
+  | page | before | after |
+  |---|---|---|
+  | /business | 1% | 94% (body text 97%) |
+  | terms, privacy, accessibility | 0% | 99–100% |
+  | /credits | 0% | 100% |
+  | 404 | 0% | 69% (body text 80%) |
+
+  The rest of the 404 is the two `.btn` labels (base.css, lead). `steps.ts` rebuilds the root on `a11y:change`, and the root still meets the nodes (0–1 px).
+- **The package line art never finished drawing.** Chrome ignores `pathLength` under `non-scaling-stroke`, so the art stopped part-way. Removed `vector-effect`. Stroke width is now in viewBox units (`--biz-sw`, set by a ResizeObserver in `art.ts` to stay 1.5 screen px). The dash gap is now `1 1.01`, so no round-cap dot shows at the end of a hidden stroke. The art draws completely on phone, desktop and tablet, and the hidden state is clean.
+- **The success panel ended up off-screen after a valid submit.** `form.ts` `reveal()` scrolls the panel top under the header (`core/scroll` `scrollTo`, immediate under reduced motion), after the height timeline is set so the page doesn't jump. On phones the panel used to end at y = −78 and is now at 106–530. On desktop it was −30 and is now 150–559.
+  Also fixed: `.btn--outline:hover` inside the light panel painted moss text on soil. Cards and the panel now set `--page-bg: var(--cream)`.
+- **Cookie card placement** (`cookies.ts` rewritten, plus CSS):
+  - Phones get a compact one-row card, about 68px tall.
+  - A primary that hugs the bottom edge (the /plant price bar, the tree's «דלגו», a dock) becomes a floor (`--ck-floor`), and the card sits just above it instead of jumping to the top. /plant and the tree now keep the stage clear.
+  - The first show waits, invisible, until a slot is free and the page has settled (the same answer twice, 0.7 s apart). The longest wait is 20 s. The card is measured without its entry transform.
+  - On the phone home hero both slots are blocked (the CTAs, and `.hero__count` at the top), so the card appears after the first scroll and the counter is never covered.
+  - After the card shows, it moves only off a primary, never back to a slot it has left. In its first 6 s it may also leave plain links for a free corner.
+  - Desktop counts all links and buttons a little, so a free corner wins: on 404 at 1280×720 it now picks the other corner and the escape links are clear.
+  - A full scroll of /business on a phone gives 0 flips (it was 5).
+  - Keyboard order is unchanged: skip link → privacy → מאשרים → …
+- **/business phone hero.** The order is now title → question → «בואו להיות שותפים» + וואטסאפ → leaf photo → text. The CTA sits at 379–439 at 390×844 (it was 967) and 373–433 at 375×667.
+  Short laptops (≤ 820px tall): the title is height-capped and the spacing tightened, so at 1280×720 the CTA is at 592–652 (it was 694–754, cut by the fold).
+- **Trailing-slash links.** Every internal link in my files now uses the canonical slash form, which avoids the production 307: header, menu, phone bar, cookie, legal ×3, credits, 404, /business, and the console credits.
+  The dev server serves both forms. `legal.ts` and `transition.ts` already normalise slashes. Other owners' links are listed in the requests.
+- **Focus ring on hidden radios.** `focus.ts` measures the label or chip, or the nearest sized parent, when the focused control is under 4px or `.visually-hidden`. This also covers /plant's options.
+  The chip and tick CSS outlines now apply only without the ring (`html:not(.focus-ring-on)`).
+  - **Bigger bug found while checking:** `isDarkAt` let a section's `data-header` hint win over a solid box inside it. The ring was therefore *cream on the cream form panel* (invisible) for every field of the /business form.
+  - Now a solid-coloured box inside a hinted section is judged by its own colour. Media inside a hinted section (the tree's WebGL stage) and the section itself still take the hint. The ring is fruit in the form.
+  - Header contrast audit after the change: /business, terms, /tree and /plant on phone, and /business and terms on desktop, have 0 low-contrast steps. On home desktop, y=0 is 4.06 next to the sun; this was already known and unchanged.
+- **/business «איך זה עובד» on desktop.** The scrub runs from `top 62%` to `bottom 62%`. Node 01 lights when the row is at about 690px and node 04 when it reaches 440px (mid-screen); before, node 04 lit only as the section left.
+  The stage bottom padding is now clamp(80px, 8vw, 112px) (it was up to 150px) and the section bottom padding is 0.42 × section-pad (it was 0.6).
+- **The client-only note on the public page.**
+  - /business: the FAQ's open questions and the legend carry `[data-todo]` and are hidden unless `html[data-notes]` is set. `?notes=1` turns them on for the session and `?notes=0` turns them off. The default is off in dev too, so the dev server shows what the public sees.
+  - The section-46 note now reads «לבירור מול היער: …», without «לא לפרסם…». The public answer is unchanged and complete.
+- **Theme colours.** `.biz-hero__sub` now uses `var(--ink)` instead of `--soil`. `.biz-gal__n` and the FAQ links use `var(--biz-accent)`.
+  axe on /business: 0 violations in the states base, formerr (scrolled to the form), top and cookie, on phone and desktop. formerr had 4–5 color-contrast violations before.
+
+## Kept, with reason
+- **The «לאישור» chips on the legal pages stay visible.** Those pages open with an explicit draft notice («טיוטת הדגמה … פרטים שמסומנים לאישור עוד צריכים השלמה»). Many chips are the value itself: «דוא״ל: לאישור», «חניה: לאישור היער». Hiding them would leave blank fields in a legal text, which is less honest and reads as more broken.
+
+## Verified
+- tsc: 0 errors.
+- The production build into scratch succeeds.
+- No console errors or horizontal overflow on /business, credits, accessibility, terms and 404, on phone and desktop.
+
+Scripts are in `scratchpad/agents/global/`: `cookiepos`, `homeck`, `art`, `art2`, `steps`, `chipring`, `notes`, `a11ysteps`, `cktab`, `tone`. The critic's scripts, retargeted, are in `crit/`: `scale`, `form`, `formR`, `hero`, `cookiescroll`, `kb`, `axe`.
+
+## Remaining
+- `.btn`, `.lead`, `.field`, `.chip` (base.css) and section CSS on home, /plant and tree don't follow `--a11y-k` yet (see the requests). The panel's promise is therefore met on my pages but not yet site-wide.
+- Cookie AVOID names three other owners' classes (`.hero__count`, `.tbirth-skip`, plus the existing `.pc-bar` and `.tdock-card`). They can go once those owners add `data-cookie-avoid`.
+- On home desktop at y=0 the header is 4.06:1 next to the sun. Unchanged from before.

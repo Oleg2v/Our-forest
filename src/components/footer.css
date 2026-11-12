@@ -239,6 +239,8 @@ html.sf-seed-drag .cursor.is-label .cursor__label { opacity: 0; transition-delay
   .site-footer__sp { flex: 0 0 100%; width: 100%; height: 0; } /* the space becomes the line break */
   /* the lower word a little closer (its tall ל still clears the upper word's baseline by ≈ .12em) */
   .site-footer__sp ~ .site-footer__ch { margin-block-start: -0.1em; }
+  /* before JS splits the letters (and without JS): the plain text breaks at its space into the same two lines */
+  .site-footer__big > [data-he] { flex: 1 1 100%; min-width: 0; white-space: normal; text-wrap: wrap; text-align: center; }
   .site-footer__seedbox { left: var(--gap-shift, 0px); }
 }
 

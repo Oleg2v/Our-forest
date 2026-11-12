@@ -80,3 +80,60 @@ Every item below was checked in the running dev site (:5203) with Playwright, on
 - **Lead / chrome — `src/core/scroll.ts` `scrollTo()`, used by `src/chrome/transition.ts` `deepLink()`.** When `lenis` exists and the target is an element or selector, resolve it to a number from the native scroll: `y = el.getBoundingClientRect().top + window.scrollY + offset`. Then call `lenis.scrollTo(y, { immediate, duration: 1.2, force: true })` instead of passing the element.
   Why: after `ScrollTrigger.refresh()` sets `window.scrollY` natively, Lenis's `animatedScroll` is stale and element targets land off by that difference. `/#contact` (and the footer link «צרו קשר» from other pages) lands at the end of the companies banner instead of the contact title.
 - **Hometop (`src/sections/home/roots.ts`):** nothing required. The footer now loads `./dog` lazily; home still ships it up front because roots imports it statically. That is fine on home, but if roots ever lazy-loads it too, the chunk leaves the home critical path as well.
+
+---
+
+# Pass 2 — the critic's findings (verified one by one)
+
+All checks ran on my dev server (:5203) with Playwright; the no-JS check ran on a scratch production build (`vite preview` on :5213). I looked at the PNGs. Scripts and shots are in `scratchpad/agents/homelow/` (`*.mjs`, `s3/`).
+
+## Fixed
+- **The seed was hidden while you dragged it (desktop).** The chrome cursor's 78 px cream «גררו» disc sat right on top of the seed for the whole drag.
+  - footer.ts now sets `html.sf-seed-drag` while the seed is being carried.
+  - footer.css then drops the disc's fill and label for that time. The cursor becomes a thin ring in the cursor's own colour (soil on cream, cream over the soil), so the seed shows inside it.
+  - Before you press, the «גררו» label still shows on hover.
+  - I scoped this to the footer. The other «גררו» user is the map's pan view, where the disc does no harm.
+  - Shot: `s3/foot-desktop-drag-b-drag.png` (seed visible at the soil line, ring around it).
+- **The wall's by-line was ambiguous.**
+  - The species always carries its noun now, through the map's own `speciesTitle()`: «עץ רימון», «עץ שקד». So «צוות הגינה של בית הספר · עץ רימון» no longer reads as "the Rimon school", and «כיתה ה׳ 2, באהבה · עץ שקד» no longer reads as "with love, Shaked".
+  - If the signature already appears in the dedication, it is dropped. Bench 0922 now reads «מקום לנוח, מהחבר׳ה מהמושב · ספסל».
+  - Screen readers get a visually hidden «, » between the dedication and the by-line. Checked from the DOM: «כיתה ה׳ 2, באהבה, עץ שקד» and «לכבוד הולדת נועה, משפחת כהן · עץ תאנה».
+- **The companies photo on phones showed a man's back and grass.**
+  - The fix is `object-position: 94% 50%` at ≤ 768 px. When fully open, the stage now shows the girl with the seedling and the boy planting beside her. The reduced-motion 4:5 leaf shows three people planting.
+  - The zoom's `transform-origin` stays at the stage centre. That origin is in stage coordinates, so it is already the centre of the new crop.
+  - Contrast of the cream title over the new crop (95% of pixels behind the glyphs): eyebrow ≥ 7.2:1, title lines ≥ 7.0:1 (`contrast.mjs`).
+- **Contact send moved the footer without input (desktop).**
+  - When the form sits beside the title (two grid columns, measured from the computed grid), the panel now keeps the form's height (`min-height`, `.contact__panel--held`). The thank-you sits centred in it. «שולחים פנייה נוספת» releases it.
+  - In one column (tablet and phone) the panel still eases to the shorter thank-you. There the footer is below the fold, and on phones `revealDone()` brings the panel back.
+  - CLS after a valid send, without recent input: desktop 0.0076 → **0** (footer top 888 → 888). Tablet 0. Phone 0.
+- **Letters stayed frozen at a tilt** after «עצירת אנימציות», or after reduced motion turned on while the footer was off screen. Now `motion:change` always resets them. Checked with the a11y-panel flow: all `.site-footer__ch` transforms are empty.
+- **The dog ran on every page view.** It now runs once per visit: a session flag `footer:dog` is set when it mounts.
+  - Checked in one session: `/business` shows the dog. `/legal/terms` and a second `/business` show no dog and request 0 dog modules.
+- **The footer word is now big on phones.** At ≤ 520 px «בואו» stands over «לנטוע», and each line is fitted to the full width. The longer word, 2.102 em in Frank Ruhl, sets the size: **171 px at 390** (it was 92 px), 157 px at 360 and 232 px at 520. From 521 px up it stays one line.
+  - **CSS:** `--big-lines: 2`, the matching pre-JS fit `(100vw − 24px) × 0.4686`, and the space becomes the line break. The lower word sits 0.1 em closer, and its tall ל still clears the upper baseline.
+  - **Without JS** the plain text breaks into the same two lines (checked on the build with JS off).
+  - **JS:**
+    - Each letter knows its own baseline (`ch.base`), so the brush only moves the letters of the line being touched.
+    - Only the lower word has roots in the soil.
+    - In the intro, the upper word rises a little and fades in, because it cannot hide in the soil.
+    - A tap or keyboard press plants at the letter joint of the lower word nearest the centre. The sprout grows in front of the letters with its cream halo, as a desktop drag can already do.
+    - The seed and the CTA are centred.
+  - Late-font CLS on the phone footer is still 0. The desktop footer is unchanged: 335 px, one line, footer-attributed shift 0.0004.
+  - Phone tap, phone touch-drag, desktop drag, and reduced-motion keyboard all plant, show the CTA and focus it. Checked with no overflow on `/`, `/plant`, `/tree/0427`, `/legal/terms`, `/business` and 404.
+- An empty `gsap.set([])` on desktop (no upper line) printed "GSAP target not found". It is now guarded.
+
+## Rejected / not mine
+- **The high one: `/#contact` lands in the companies packages (desktop).** I traced it, and the cause is not the one in my earlier note.
+  - Lenis clamps every `scrollTo` to its cached `limit`. That limit comes from a ResizeObserver that is debounced by 250 ms. On a deep link, the sections are built and the page keeps growing while `land()` runs, so the cached limit is stale and the target gets clamped. In the trace, `Lenis.setScroll(11156)` was called while contact sat at 13800, and 11156 was the old limit.
+  - Resolving the element to a number (my earlier request and the critic's fix) does **not** help. With that patch, 3 of 4 runs still landed at 11156.
+  - Calling `lenis.resize()` right before `lenis.scrollTo()` fixes it. I tested it by patching `scroll.ts` in flight (Playwright route): direct `/?mode=still#contact` 5/5 at top = 38, and footer «צרו קשר» from `/business` 3/3. Unpatched, from `/business`, 1 of 2 failed.
+  - See the request below. Same-page anchors that go through `scrollTo()` get the same fix (for example the wall's «דברו איתנו» → `#contact`).
+
+## Remaining (honest)
+- `/#contact` (and any deep link that goes through Lenis) stays wrong on desktop until the one-line `scroll.ts` change is applied.
+- On phones, axe still flags the same 3 `.rv-w` words of the wall text, part-way through chrome's "words being read" reveal. Desktop and reduced motion have 0 violations in all four blocks, and on phones companies, contact and footer have 0 too.
+- In one-column layouts (tablet and phone), contact still tweens the panel `height` once after sending, for 0.9 s. It measures 0 CLS there, but it is a height tween, not transform/opacity.
+- The stacked footer word on phones has not been checked on a real device (only in headless Chromium with touch emulation).
+
+## Requests to other owners
+- **Lead / chrome — `src/core/scroll.ts`, `scrollTo()`:** in the `if (lenis)` branch, call `lenis.resize();` before `lenis.scrollTo(target, { offset, immediate, duration: 1.2 })`. That makes Lenis recompute its `limit` and sync `animatedScroll` before it clamps. The scroll target can stay an element. This replaces my earlier request (numeric target), which I measured as insufficient. Verify with `scratchpad/agents/homelow/deep3.mjs http://localhost:<port>/?mode=still#contact 5` and `deepfrom.mjs /business 3`.
