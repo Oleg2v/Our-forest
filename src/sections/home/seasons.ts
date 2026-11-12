@@ -166,14 +166,14 @@ class SeasonsSection {
 
   private headIn(trigger: Element, start: string) {
     const lines = qsa('.seasons__tl > span', this.head);
-    const plaque = this.plaque && this.head.contains(this.plaque) ? [this.plaque] : [];
-    gsap.set(lines, { yPercent: 108 });
-    gsap.set(plaque, { autoAlpha: 0, y: 28 });
+    const plaque = this.plaque && this.head.contains(this.plaque) ? this.plaque : null;
+    if (lines.length) gsap.set(lines, { yPercent: 108 });
+    if (plaque) gsap.set(plaque, { autoAlpha: 0, y: 28 });
     ScrollTrigger.create({
       trigger, start, once: true,
       onEnter: () => {
-        gsap.to(lines, { yPercent: 0, duration: T.appear, ease: EASE.appear, stagger: T.lineStep });
-        gsap.to(plaque, { autoAlpha: 1, y: 0, duration: T.appear, ease: EASE.appear, delay: 0.35 });
+        if (lines.length) gsap.to(lines, { yPercent: 0, duration: T.appear, ease: EASE.appear, stagger: T.lineStep });
+        if (plaque) gsap.to(plaque, { autoAlpha: 1, y: 0, duration: T.appear, ease: EASE.appear, delay: 0.35 });
       },
     });
   }
@@ -264,7 +264,7 @@ class SeasonsSection {
     const svg = this.branchHost.firstElementChild;
     if (!svg) return;
     const stem = qsa<SVGPathElement>('.seasons__stem', svg);
-    const fill = svg.querySelector('.seasons__stem-fill');
+    const fill = qsa('.seasons__stem-fill', svg);
     const twigs = qsa<SVGPathElement>('.seasons__twig, .seasons__stalk', svg);
     const parts = qsa<SVGGElement>('.seasons__lf, .seasons__fr', svg)
       .sort((a, b) => Number(getComputedStyle(a).getPropertyValue('--t')) - Number(getComputedStyle(b).getPropertyValue('--t')));
@@ -409,6 +409,9 @@ class SeasonsSection {
       this.track.prepend(this.plaque);
       this.offs.push(() => this.plaque?.classList.remove('seasons__slide'));
     }
+    // browsers re-snap to the previously snapped card after the prepend — start from the first slide
+    this.viewport.scrollLeft = 0;
+    requestAnimationFrame(() => { if (Math.abs(this.viewport.scrollLeft) < 40) this.viewport.scrollLeft = 0; });
     const slides = qsa<HTMLElement>(':scope > .seasons__card, :scope > .seasons__plaque', this.track);
     const n = slides.length;
     // progress dots (one per slide) + the season's name

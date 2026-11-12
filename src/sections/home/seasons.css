@@ -361,9 +361,13 @@
 /* ---------------------------------------------------------------- phones: swipe carousel */
 @media (max-width: 768px) {
   .seasons { padding-block: clamp(72px, 11svh, 104px) 0; }
-  .seasons__head { gap: 22px; }
+  /* phone order: heading → branch → carousel → dots */
+  .seasons__pin { display: flex; flex-direction: column; }
+  .seasons__head { order: 0; gap: 22px; }
+  .seasons__branch { order: 1; margin-block: 4px 2px; width: 100%; }
+  .seasons__viewport { order: 2; }
+  .seasons__dots { order: 3; }
   .seasons__title { font-size: clamp(38px, 11vw, 48px); }
-  .seasons__branch { margin-block: 10px 6px; width: 100%; }
   .seasons__viewport {
     overflow-x: auto; overflow-y: hidden;
     scroll-snap-type: x mandatory;
