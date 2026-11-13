@@ -86,3 +86,43 @@ Builds of 6401b06 and of the change, served with `vite preview`. Everything is i
 ### Left open
 - Headless Chromium only. I have not checked it on a real monitor or with a classic scrollbar. `100vh` is still the stage height there, so the formula should hold.
 - The copy term copies three sizes from this file: the eyebrow's clamp, the stage copy gap and the title's clamp. If any of them changes, update `--cp-copy-top` too. The comment says so.
+
+## Verification (integration round)
+An independent verifier checked HEAD dd59afd against 6401b06. The area diff is `companies.css` +25 and one comment line in `companies.ts`; `map.css` and `companies.html` are untouched. Both trees were built into scratch folders and served with `vite preview` (6401b06 on :5636, the current tree on :5637). Every pair below was looked at. Evidence is in `scratchpad/agents/fin-v-companies/`: `cmp/` (before | after pairs), `hand/`, `gaps/`, `hit/`, `cs/` and `phone/`.
+
+**The item is solved.** "Gap" means the cards' bottom to the leaf's top, then to the eyebrow, measured with the hand-over frame (the cards' bottom at 36 % of the screen).
+
+| viewport | to the leaf, before → after | to the eyebrow, before → after | 2 × pad |
+|---|---|---|---|
+| 1366×768 | 323 → 215 | 349 → 242 | 215 |
+| 1768×900 | 378 → 252 | 397 → 271 | 252 |
+| 1920×1080 | 481 → 303 | 507 → 328 | 302 |
+| 2560×1440 | 690 → 360 | 715 → 385 | 360 |
+| 1920×600 | 264 → 244 | 212 → 192 | 192 |
+| 900×700 | 294 → 196 | 350 → 252 | 196 |
+| 800×600 | 264 → 192 | 308 → 236 | 192 |
+| 1180×820, touch | 345 → 230 | 400 → 285 | 230 |
+
+- **Rhythm.** `gaps.mjs`, last content to first content at each section boundary, on the current build:
+  - 1366×768: map → companies is 245; the other hand-overs are 215–245.
+  - 1768×900: 282, against 252–276.
+  - 1920×1080: 333, against 301–327.
+  - It now reads as the page's normal spacing.
+- **Pin, opening and scrub are unchanged.** The start, mid, open, end and release frames at 1366, 1920 and 2560 put the leaf, eyebrow, title and the body's subtitle at the same pixels as 6401b06. The same holds for the start and open frames at 1768 and 1920×600, and for the start, mid and open frames on the 1180×820 touch tablet. The run only starts earlier on the page.
+  - The one visible difference is intended. At the pin start on tall screens, the bottom of the map cards is still in view above the stage: 27 px at 1080 and 150 px at 1440.
+- **Hit testing** (`hit.mjs`).
+  - At 2560×1440, and at 1920×1080 after a live resize from 1366×768, the visible card bottoms at the pin start return `a.mapsec__card`, and hovering opens the card panel.
+  - At the open frame, the header probe's stack is `scrim > img`, with tone "light", the same as before.
+  - `.companies__copy` was already `pointer-events: none` in 6401b06, so no text or control lost input. `#map` and `#companies` are both `data-bg="sand"`, so the header tone is the same over the overlap.
+- **Nothing else changed on desktop.** The computed-style diff of `#map` and `#companies` at 1920×1080 shows only the intended changes:
+  - `display: flow-root` on the section;
+  - the banner's `margin-top: -178.8px` and `pointer-events: none`, which the stage inherits;
+  - the section is 179 px shorter, and the wall, contact and footer move up by that amount.
+  - The `.rv-line` matrix → `none` changes come from the chrome area's `reveal.ts`.
+  - Reduced motion at 1920×1080 is identical: there is no pin class, and the eyebrow sits 302 below the cards in both builds.
+- **Phones are identical.**
+  - Screenshots around `#companies` at 390×844 and 844×390 (isMobile, touch) differ by 0 px from 6401b06.
+  - 844×390 does get `companies--pin`, but the rule's `min-height: 561px` excludes it.
+  - Computed styles on iPhone 13 portrait and landscape show only the chrome `.rv-line` change and the forest map's time-based label opacities. Section tops and heights are equal.
+- **Checks.** No console errors in any run. No horizontal overflow (scrollWidth = clientWidth everywhere). `npx tsc --noEmit` is clean. This area does not touch `/plant`, so the purchase flow was not re-run.
+- **Fixes:** none needed.
