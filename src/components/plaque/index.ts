@@ -365,9 +365,13 @@ export function createPlaqueEngraver(canvas: HTMLCanvasElement, opts: PlaqueEngr
   let lastChar = 0;
   let resolveAll: (() => void) | null = null;
   let fixedDuration = 0;
+  /** a size change waiting to settle (see applySize) */
+  const SETTLE_MS = 140;
+  let settleT = 0;
 
   const relayout = () => {
-    sizeCanvas(canvas, opts);
+    // while a size change is settling (below) the canvas keeps its current backing size
+    if (!settleT) sizeCanvas(canvas, opts);
     L = layoutText(ctx, text, canvas.width, canvas.height);
     cols = null; // lazily computed while burning
   };
@@ -485,11 +489,10 @@ export function createPlaqueEngraver(canvas: HTMLCanvasElement, opts: PlaqueEngr
   };
 
   /* Size changes are redrawn once the size has been still for SETTLE_MS; meanwhile the canvas keeps its bitmap,
-     scaled by CSS. A size animation (the phone stage folding and unfolding, a window being dragged) reports a new
-     size every frame, and every frame used to re-lay the text and often make a new wood texture. A canvas getting
-     its first real size is drawn at once; a host that moves the canvas calls resize(), which is immediate too. */
-  const SETTLE_MS = 140;
-  let settleT = 0;
+     scaled by CSS (and a text change meanwhile is laid out at that size). A size animation (the phone stage folding
+     and unfolding, a window being dragged) reports a new size every frame, and every frame used to re-lay the text
+     and often make a new wood texture. A canvas getting its first real size is drawn at once; a host that moves
+     the canvas calls resize(), which is immediate too. */
   const applySize = () => {
     settleT = 0;
     const pw = canvas.width, ph = canvas.height, was = measured.has(canvas);
