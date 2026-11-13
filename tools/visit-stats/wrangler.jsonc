@@ -1,0 +1,10 @@
+{
+  // Private visit statistics for every site and demo on the Cloudflare account (not part of the forest site build).
+  // Secrets (set in the dashboard or with `wrangler secret put`, never committed): CF_API_TOKEN (Account Analytics: Read),
+  // STATS_CODE (the login code). Optional: SESSION_KEY, CF_ACCOUNT_ID.
+  "name": "kikkey-stats",
+  "main": "worker.js",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": false,
+  "routes": [{ "pattern": "stats.kikkey.com", "custom_domain": true }]
+}
