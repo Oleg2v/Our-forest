@@ -159,3 +159,62 @@ loaded (load average 18–28 on 4 CPUs), so fps is noisy; style time and long ta
   photo 06 is never seen whole (at most a 125 px sliver) and 05 only in its upper half. The owner may read this as
   "cut off". A fix needs a pin, or an end tied to the frames with a faster drift (about 2.5×). That is a motion
   design decision, so I left it.
+
+## Integration round
+A previous run made these edits and was cut off before it could check them. This run checked each one against
+`6401b06` (a worktree on its own port) and changed no code. Scratch: `scratchpad/agents/fin-pages/`.
+
+1. **/business gallery: done.** On wide screens (≥ 769 × 561, motion allowed) the section now pins while the strip
+   drifts at 1 px per px of scroll, with short rests at both ends (`gallery.ts`, mode `pin`). Landscape phones keep
+   the unpinned drift, phones keep the swipe strip, and reduced motion keeps its static rows. Where the drift ends:
+   | viewport | strip on screen | photo 06 |
+   |---|---|---|
+   | 1366×768 | 68–623 | 100 % (191–508) |
+   | 1440×900 | 223–806 | 100 % |
+   | 1768×900 | 72–726 | 100 % (x 164–684, on the column edge) |
+   | 1920×1080 | 283–937 | 100 % |
+   | 2560×1440 | 464–1119 | 100 % |
+
+   Every photo is seen whole at some point. No horizontal overflow and no console errors. FAQ, form and footer
+   after the pin are measured and revealed correctly (`ScrollTrigger.sort()` before the refresh). The pinned view
+   at 1768×900 leaves the section title just above the screen; the strip and its progress line are what you see.
+2. **/business 1024–1180: done.** At 769–1319 px the scroll arrow moves to the copy column's start edge, under the
+   buttons, so the cookie card takes the free corner under the photo. Overlap between card and arrow:
+   - Before: 2304 px² at 1024×768, 1977 at 1180×820.
+   - Now: 0 at 1024×768, 1100×800, 1180×820 and 1280×720.
+
+   At 1320 px and wider the arrow stays centred as before. At 1280×720 the arrow sits 11 px under the main button.
+3. **/tree/0427 first visit: done at 1440 px and wider.** During the birth intro the hidden timeline, readout,
+   `דמו` button and hotspots are `inert` on wide screens, and `cookies.ts` skips `[inert]`. At 1768×900 and
+   1920×1080 the card rests in the bottom corner on the far side, during the intro and after it. That is the same
+   rect as on a return visit, and the moon and `דמו` stay clear. After the intro `inert` is removed and these parts
+   count again. Phones are unchanged.
+   - **Open (chrome's placement, not caused by the intro):** at 1366×768 the card ends at top-end, over the
+     `דמו` button and the moon, on first and return visits alike. On a first visit it shows bottom-left first.
+     About 6 s later the tree caption comes back in the birth's caption phase, and the card moves.
+   - **Open:** at 1440–1920 the card's resting place (first and return visits) covers the left part of the
+     timeline, including the "היום" knob.
+4. **/tree phones, layers: done.** Two changes:
+   - On phones and landscape phones `.tree-stage` is its own layer (`will-change: transform`, `tree.css`).
+   - `.ts-fog` is promoted only while the fog is there (`data-live`, `scene/index.ts` + `scene.css`).
+
+   `layers.mjs` at 390×844:
+
+   | | page-long squashed layer | layer area |
+   |---|---|---|
+   | 6401b06 | 390×7728 (`tree-fx` / `tbirth` / `tree-stage__ui`) | 32.9 viewports |
+   | now | none besides `#document` | 22.0 viewports |
+
+   The fog change alone does not remove the squashed layer; the stage layer does. `jank.mjs` (4× CPU, DPR 3,
+   0–1500, return visit) was run as A/B on one server: A = CSS undo of item 4, B = item 4. Over 7 pairs in both
+   orders the medians are 35.5 vs 38.3 fps, within the noise (load average 9–15 on 4 CPUs, and the first run of
+   each pair is favoured). So there is no measurable fps change in headless Chrome. The gain is structural: one
+   page-long layer less, which matters for memory and raster on iOS. This is not checked on a real iPhone.
+
+**Phones identical to 6401b06.** iPhone 13 emulation, consent preset:
+- /business 390×844, 10 positions (gallery included): 0.00–0.03 %.
+- /tree 390×844, 9 positions (return visit): 0.00 % except the live WebGL scene at y=0 (fireflies and glow, the
+  same look side by side).
+- /tree 844×390: the same.
+
+`npx tsc --noEmit` is clean for these files.
