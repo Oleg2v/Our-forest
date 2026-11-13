@@ -248,9 +248,17 @@ html[data-theme='dark'] .companies {
      (the leaf's top = 50vh − min(22vh, 210px), the same formula as render() in companies.ts), so the leaf lands
      2 × section-pad under the cards at every height. Pin, scrub and opening are measured on the banner itself:
      they run exactly as before, only that much earlier on the page. flow-root keeps the section's own box where
-     it was (the margin does not collapse through it onto the map). */
+     it was (the margin does not collapse through it onto the map).
+     In a short, wide window (≈ 1920×600) the centred copy block is taller than the leaf, and its eyebrow comes
+     first (up to ~50px above the leaf), so the stage's first content is the higher of the two. The copy block =
+     the eyebrow's line (1.6 × its size, as below) + the stage copy gap + the two-line title (its box measures
+     1.96 × its size) — keep these in step with .companies__eyebrow, .companies--stage .companies__copy and .companies__title. */
   .companies--pin { display: flow-root; }
-  .companies--pin .companies__banner { margin-block-start: min(0px, var(--section-pad) - 50vh + min(22vh, 210px)); }
+  .companies--pin .companies__banner {
+    --cp-leaf-top: calc(50vh - min(22vh, 210px));
+    --cp-copy-top: calc(50vh - (1.6 * clamp(var(--fs-eyebrow), 0.95vw, 18px) + clamp(18px, 2.4vw, 34px) + 1.96 * clamp(50px, 8.6vw, 156px)) / 2);
+    margin-block-start: min(0px, var(--section-pad) - min(var(--cp-leaf-top), var(--cp-copy-top)));
+  }
   /* above ~950px of height the banner's empty top now lies over the bottom of the map cards as the pin starts
      (28px at 1080, 150px at 1440), and it paints above them (inside the positioned section): the pointer goes
      through to the cards. The leaf stays a hit target (its clip-path is its hit area) — the header, cursor and

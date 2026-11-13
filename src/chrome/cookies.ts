@@ -224,7 +224,10 @@ export function initCookies(page: PageName, hold: Promise<unknown>) {
     }
     setFloor(floor); // a bar under the card came or went: it slides (CSS transition)
   };
-  const later = () => { clearTimeout(settle); settle = window.setTimeout(place, 260); };
+  // a re-check asked for while something is still scrolling (the phone bar toggling mid-swipe of the /plant
+  // sheet) waits until it has been still for a moment
+  const settled = () => { if (Date.now() - lastScroll < 240) later(); else place(); };
+  const later = () => { clearTimeout(settle); settle = window.setTimeout(settled, 260); };
   // Any scroll pauses the re-check loop: the page's own (then it re-checks once the scroll settles) and, through
   // the capture phase, a scroll inside an element — the /plant phone sheet, lists, the map list — which used to
   // run the survey (rects of every candidate + a measure pass) in the middle of a swipe.

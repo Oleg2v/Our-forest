@@ -394,10 +394,13 @@ export function createForestMap(el: HTMLElement, opts: ForestMapOptions = { mode
     return res;
   }
   /** the picker on a desktop-sized screen: its legend sits over the frame's bottom-left corner, which is where the
-      outdoor classroom's label 'כיתת חוץ' falls. The plan moves up (if the fit left room above it) and then shrinks
-      around its top just enough for the label to clear the legend — at most 15 %. The title keeps its place at the
-      top; the hover hint takes the title's place there (forest-map.css). Phones, landscape phones and a portrait
-      (rotated) frame fit as before. */
+      outdoor classroom's label 'כיתת חוץ' falls (the frame is wide and short there, so the plan fills its height).
+      The plan moves up into any room the fit left above it, then shrinks around its top just enough for the label
+      to clear the legend (1–5 % at 1024–1920; forest-map.css makes that legend a little slimmer and lower). Two
+      limits win over the label: the moshav road drawn under the plot stays below the frame's bottom edge (a few
+      px of it read as a stray wavy band, as on the home map), and the plan never loses more than 15 %. The title
+      keeps its place at the top; the hover hint takes the title's place there (forest-map.css). Phones, landscape
+      phones, full screen and a portrait (rotated) frame fit as before. */
   const deskMq = window.matchMedia('(min-width: 769px) and (min-height: 561px)');
   const CLASS_LABEL = PLAN_LABELS.find((q) => q.id === 'class')!;
   function pickerFit(fit: CamState, pad: number): CamState {
@@ -410,24 +413,28 @@ export function createForestMap(el: HTMLElement, opts: ForestMapOptions = { mode
     let bb: DOMRect;
     try { bb = text.getBBox(); } catch { return fit; }
     if (!bb.height) return fit;
-    // the label keeps its on-screen size at every zoom (scale 1/k); its cream halo adds 2 px around it
-    const gap = 6, halo = 2;
+    // the label keeps its on-screen size at every zoom (scale 1/k), so its box is in screen px; the cream halo
+    // (a 4 px stroke) adds 2 px around the glyphs, and the box already has a little air above and below them
+    const gap = 3, halo = 2;
     const legTop = lr.top - fr.top - gap, legL = lr.left - fr.left - gap, legR = lr.right - fr.left + gap;
+    const lblBottom = bb.y + bb.height + halo;
     const over = (st: CamState) => {
       const x = st.x + st.k * CLASS_LABEL.x;
       return x + bb.x + bb.width + halo > legL && x + bb.x - halo < legR;
     };
-    const below = (st: CamState) => st.y + st.k * CLASS_LABEL.y + bb.y + bb.height + halo - legTop;
-    let need = below(fit);
+    let need = fit.y + fit.k * CLASS_LABEL.y + lblBottom - legTop;
     if (need <= 0 || !over(fit)) return fit;
     const l = cam.layoutRect(PLAN_RECT);
+    /** how far the plan may move up before the road's edge comes into the frame */
+    const roadRoom = (y: number, k: number) => y + k * ROAD_TOP - (cam.h + 2);
     const top = fit.y + fit.k * l.y0;
-    const up = Math.min(need, Math.max(0, top - pad));
+    const up = Math.max(0, Math.min(need, top - pad, roadRoom(fit.y, fit.k)));
     const res = { ...fit, y: fit.y - up };
     need -= up;
     if (need <= 0) return res;
     const top2 = top - up;
-    let k = Math.max(fit.k * 0.85, (legTop - top2 - (bb.y + bb.height + halo)) / (CLASS_LABEL.y - l.y0));
+    let k = (legTop - top2 - lblBottom) / (CLASS_LABEL.y - l.y0);
+    k = Math.max(k, fit.k * 0.85, (cam.h + 2 - top2) / (ROAD_TOP - l.y0));
     // a plan that showed its trees one by one keeps doing so (the groves gather below thr × 0.94, see render())
     if (fit.k >= thr * 0.94) k = Math.max(k, thr * 0.94 + 0.0005);
     if (!(k < fit.k)) return res;

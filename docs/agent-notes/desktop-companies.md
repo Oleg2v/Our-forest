@@ -60,6 +60,29 @@ Builds of 6401b06 and of the change, served with `vite preview`. Everything is i
 - **Desktop computed-style diff:** only the 4 intended rules. The wall, contact and footer move up by the pull.
 - **Checks:** no horizontal overflow at any size (scrollWidth = clientWidth), no console errors, and `npx tsc --noEmit` is clean.
 
+### After the container restart: re-verified, and one gap closed
+**Re-verified on c5f0a07.** The fix above was committed as WIP in c5f0a07, together with the other areas' changes. I built that tree and A/B'd it against the 6401b06 build. Results are in `scratchpad/agents/int-companies/`: `now/`, `cmp-now/`, `gaps-now/`, `cs-now/` and `hit/now-*`.
+- **Gap to the leaf, before → after.** 1366×768: 323 → 215. 1768×900: 378 → 252. 1920×1080: 481 → 303. 2560×1440: 690 → 360. Each new value is 2 × pad.
+- **Pin frames.** start, mid, open, end and release sit at the same pixel positions.
+- **Rhythm at 1920×1080.** map → companies is 333. The other hand-overs are seasons → map 327 and companies → wall → contact → footer 301–303. At 1366×768 the same hand-overs measure 245 for map → companies, against 215–245.
+- **Hit tests.** Same as before: the cards win at the pin start, and the header probe finds the photo.
+- **Phones.** In `#companies`, 2 of 149 computed styles differ. Both are `.rv-line` going from an identity matrix to `none`. That comes from the chrome agent's `clearProps` in `reveal.ts`, not from this section. Section tops are identical.
+- **Reduced motion.** 0 differences.
+
+**The "left open" case was real, and is now fixed in `companies.css`.**
+- **The problem.** In short, wide windows the centred copy block is taller than the leaf, so the eyebrow comes first, above the leaf. The leaf-only pull then left the eyebrow too close to the cards. Against a target of 2 × pad = 192:
+  - 1920×600: 139
+  - 1920×680: 157
+  - 1600×620: 165
+  - 1366×580: 177
+  - 2560×700: 165 (target 196)
+- **The change.** The pull now uses the higher of two tops:
+  - the leaf's top (unchanged);
+  - the copy block's top: `50vh − (1.6 × eyebrow size + stage copy gap + 1.96 × title size) / 2`. The two-line title's box measures 1.96 × its font size.
+- **Short windows now.** All five sizes come out at exactly 192 (196 at 2560×700). The leaf sits 220–244 below the cards. See `cmp-now/short-*.png`.
+- **Everywhere else, unchanged.** Computed `margin-top` is identical to the leaf-only formula at 769×561, 900×700, 1024×768, 1180×820, 1280×640, 1366×768, 1440×900, 1536×730, 1768×900, 1920×940, 1920×1080, 2560×1440 and 3840×2160. The c5f0a07 and refined screenshots differ by 0.00 % of pixels for every frame at 1366, 1768, 1920 and 2560.
+- **Other checks.** Phones and reduced motion are unchanged (`cs-fix/`). `tsc` is clean. No horizontal overflow and no console errors.
+
 ### Left open
-- Headless Chromium only. I have not checked it on a real monitor, or with a classic scrollbar, where `100vh` is still the stage height, so the formula holds.
-- The formula follows the leaf. At every measured size the eyebrow is at or below the leaf's top (at 1280×640 it is 7 px below). Below ~600 px of height, a large title could put the eyebrow a few px above the leaf, which would make the gap a few px under 2 × pad. I did not measure this.
+- Headless Chromium only. I have not checked it on a real monitor or with a classic scrollbar. `100vh` is still the stage height there, so the formula should hold.
+- The copy term copies three sizes from this file: the eyebrow's clamp, the stage copy gap and the title's clamp. If any of them changes, update `--cp-copy-top` too. The comment says so.

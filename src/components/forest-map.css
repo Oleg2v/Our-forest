@@ -408,8 +408,11 @@ a.fmap__li:hover { background: rgb(var(--fruit-rgb) / 0.05); }
 .fmap--picker .fmap__hint { inset-block-end: auto; inset-block-start: var(--fm-pad); inset-inline-start: 50%; translate: 50% 0; font-size: 13px; padding: 7px 14px; }
 /* desktop picker: the hint stands at the top centre, right over the plan's title cartouche. While the hint shows
    (pointer over the map, a flash, or a touch screen's standing hint) the title steps back and the hint takes its
-   place; they cross-fade (both use --t-ui). The legend's side is handled by the fit (forest-map.ts, pickerFit). */
+   place; they cross-fade (both use --t-ui). The legend covered the outdoor classroom's label: the fit lifts the
+   label clear of it (forest-map.ts, pickerFit), and a legend 4 px slimmer and 6 px nearer the corner lets that
+   take only a 1–5 % smaller plan, without the road under the plot creeping in at the bottom. */
 @media (min-width: 769px) and (min-height: 561px) {
+  .fmap--picker .fmap__legend { inset-block-end: 10px; inset-inline-end: 10px; line-height: 1.2; }
   .fmap--picker.is-hover:not(.is-active) .fmap__label--title .fmap__label-t,
   .fmap--picker.fmap--touch:not(.is-active) .fmap__label--title .fmap__label-t,
   .fmap--picker:has(.fmap__hint.is-flash) .fmap__label--title .fmap__label-t { opacity: 0; }
